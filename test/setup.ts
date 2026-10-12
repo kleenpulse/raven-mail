@@ -54,9 +54,20 @@ mock.module("next/server", () => ({
 	},
 }));
 
+// Mirrors lib/jev/client.ts: the session's own key wins, then the "server" key (fakeJev.enabled).
+type KeyedSession = { jevKey?: string } | null;
 mock.module(path.resolve(import.meta.dir, "../lib/jev/client.ts"), () => ({
-	jevEnabled: () => fakeJev.enabled,
-	getJevClient: () => ({ systemOne: (...args: [unknown, unknown?]) => fakeJev.systemOne(...args) }),
+	jevFor: (session: KeyedSession) =>
+		session?.jevKey
+			? { client: fakeJev.client, source: "user" }
+			: fakeJev.enabled
+				? { client: fakeJev.client, source: "server" }
+				: null,
+	jevStatus: (session: KeyedSession) =>
+		session?.jevKey
+			? { source: "user", hint: session.jevKey.slice(-4) }
+			: { source: fakeJev.enabled ? "server" : null, hint: null },
+	verifyJevKey: (key: string) => fakeJev.verifyKey(key),
 }));
 
 beforeEach(() => {

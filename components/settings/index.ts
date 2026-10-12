@@ -211,6 +211,16 @@ export const SETTINGS: SettingEntry[] = [
 		keywords: "log out logout",
 	},
 	{
+		id: "jev-key",
+		section: "account",
+		card: "Jev",
+		label: "Your TypeSafe Key",
+		description:
+			"Use your own key for Ask Jev and Deep triage. It's kept encrypted with your sign-in on this device, and removed when you sign out.",
+		keywords: "byok bring your own api key typesafe jev ai assistant ask triage",
+		stack: true,
+	},
+	{
 		id: "build",
 		section: "about",
 		card: "Raven",

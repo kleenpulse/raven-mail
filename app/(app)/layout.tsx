@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/session";
+import { jevStatus } from "@/lib/jev/client";
 import { AccountProvider } from "@/components/providers/account-provider";
 import { PersistedQueries } from "@/components/providers/persisted-queries";
 import { WorkspaceFrame } from "@/components/shell/workspace-frame";
@@ -17,6 +18,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     email: session.email,
     displayName: session.displayName,
     provider: session.dev ? "dev · local mailbox" : session.provider,
+    jev: jevStatus(session),
   };
 
   return (

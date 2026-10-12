@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { POST } from "@/app/api/jev/triage/route";
 import { call, readJson, req } from "../helpers/request";
-import { fakeJev } from "../helpers/jev";
+import { answers, fakeJev } from "../helpers/jev";
 import { makeSession } from "../helpers/session";
 
 type Err = { ok: false; error: string; code: string };
@@ -23,7 +23,7 @@ describe("POST /api/jev/triage", () => {
 		expect(res.status).toBe(409);
 		const body = await readJson<Err>(res);
 		expect(body).toMatchObject({ ok: false, code: "jev_disabled" });
-		expect(body.error).toContain("TYPESAFE_API_KEY");
+		expect(body.error).toContain("Settings → Account");
 		expect(fakeJev.systemOne).not.toHaveBeenCalled();
 	});
 
@@ -33,5 +33,14 @@ describe("POST /api/jev/triage", () => {
 		const statuses: number[] = [];
 		for (let i = 0; i < 5; i++) statuses.push((await call(POST, req("/api/jev/triage", { method: "POST", session }))).status);
 		expect(statuses).toEqual([409, 409, 409, 409, 409]);
+	});
+
+	test("a session with its own key runs Deep triage without a server key", async () => {
+		fakeJev.systemOne.mockImplementation(async () => answers({}));
+		const session = makeSession({ jevKey: "user-key-0123456789abcd" });
+		const res = await call(POST, req("/api/jev/triage", { method: "POST", session }));
+		expect(res.status).toBe(200);
+		const body = await readJson<{ ok: true; data: { items: unknown[] } }>(res);
+		expect(body.ok).toBe(true);
 	});
 });

@@ -1,6 +1,6 @@
 import "server-only";
 import { choice } from "@typesafe-ai/sdk";
-import { getJevClient, jevEnabled } from "@/lib/jev/client";
+import type { Jev } from "@/lib/jev/client";
 import { formatAge } from "@/lib/jev/ask/format";
 import type { EnrichedRow } from "@/lib/insights/metrics";
 import type { Ranked } from "@/lib/jev/ask/retrieve";
@@ -23,15 +23,16 @@ export async function jevRank(
   question: string,
   rows: EnrichedRow[],
   now: number,
+  jev: Jev | null,
   signal?: AbortSignal,
 ): Promise<Ranked[] | null> {
-  if (!jevEnabled() || rows.length === 0) return null;
+  if (!jev || rows.length === 0) return null;
   const pool = rows.slice(0, POOL);
   const criteria: Record<string, string> = Object.fromEntries(pool.map((r, i) => [`m${i}`, describe(r, now)]));
   criteria.none = "None of these emails answer the question";
 
   try {
-    const res = await getJevClient().systemOne(
+    const res = await jev.client.systemOne(
       { state: { question }, questions: { best: choice("Which email best answers the user's question?", criteria) } },
       { signal },
     );

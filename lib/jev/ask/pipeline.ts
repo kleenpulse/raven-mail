@@ -3,7 +3,7 @@ import type { MailSession } from "@/lib/session";
 import { getSnapshot } from "@/lib/mail/snapshot";
 import { computeOverview, enrichSnapshot, person, type EnrichedRow } from "@/lib/insights/metrics";
 import type { Snapshot } from "@/lib/insights/types";
-import { jevEnabled } from "@/lib/jev/client";
+import { jevFor } from "@/lib/jev/client";
 import { finalize, knownSenders, scanDetail, understoodDetail } from "@/lib/jev/ask/answer";
 import { planAsk } from "@/lib/jev/ask/plan";
 import { execute, type Ranked } from "@/lib/jev/ask/retrieve";
@@ -28,12 +28,13 @@ export async function* runAsk(
 ): AsyncGenerator<AskEvent> {
   yield { type: "stage", stage: "understand", detail: "Reading your question" };
 
+  const jev = jevFor(session);
   const now = Date.now();
   const snapshot = await getSnapshot(session, { days: 30 });
   const { rows, local, today } = enrichSnapshot(snapshot, { now, tz });
   const overview = computeOverview(snapshot, { now, tz, self: [session.email] });
 
-  const plan = await planAsk(request, knownSenders(rows, session.email), signal);
+  const plan = await planAsk(request, knownSenders(rows, session.email), jev, signal);
   if (request.context?.uid && request.context.folder && !plan.sender) {
     const current = rows.find((r) => r.path === request.context!.folder && String(r.uid) === request.context!.uid);
     if (current && (plan.intent === "from_person" || plan.intent === "response_time")) {
@@ -60,10 +61,10 @@ export async function* runAsk(
 
   const execution = execute(plan, { now, today, local, rows, overview, extraRows: extra, question: request.question });
   let ranked: Ranked[] = execution.candidates.map((row) => ({ row }));
-  if (execution.rankable && jevEnabled()) {
+  if (execution.rankable && jev) {
     const pool = Math.min(execution.candidates.length, 120);
     yield { type: "stage", stage: "rank", detail: `Ranking ${pool} ${pool === 1 ? "candidate" : "candidates"} with Jev` };
-    const byJev = await jevRank(request.question, execution.candidates, now, signal);
+    const byJev = await jevRank(request.question, execution.candidates, now, jev, signal);
     if (byJev) ranked = byJev;
   }
   if (signal?.aborted) return;

@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Activity, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ActivityList } from "@/components/integrations/activity-list";
@@ -123,7 +124,11 @@ export function JevPanel({ data }: { data: IntegrationsOverview }) {
 							.
 						</li>
 						<li>
-							Set <code className="font-mono">TYPESAFE_API_KEY</code> in the server environment and restart.
+							Save it in{" "}
+							<Link href="/settings?s=account" className="text-signal-ink underline-offset-2 hover:underline dark:text-signal">
+								Settings → Account
+							</Link>
+							. If you run this Raven, you can set <code className="font-mono">TYPESAFE_API_KEY</code> on the server instead.
 						</li>
 						<li>Run the check below. Everything keeps working on heuristics until then.</li>
 					</ol>

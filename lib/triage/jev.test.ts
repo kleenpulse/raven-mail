@@ -1,5 +1,5 @@
 import { describe, expect, mock, test } from "bun:test";
-import { answers, fakeJev } from "@/test/helpers/jev";
+import { answers, fakeJev, testJev } from "@/test/helpers/jev";
 import { jevTriage } from "@/lib/triage/jev";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 
@@ -29,13 +29,13 @@ const firstCall = () => fakeJev.systemOne.mock.calls[0] as unknown as [Call, { s
 
 describe("jevTriage", () => {
 	test("disabled → heuristic result, no Jev call", async () => {
-		expect(await jevTriage(input)).toEqual(heuristicTriage(input));
+		expect(await jevTriage(input, { jev: testJev() })).toEqual(heuristicTriage(input));
 		expect(fakeJev.systemOne).not.toHaveBeenCalled();
 	});
 
 	test("maps category, urgency score/3, needsReply, confidence", async () => {
 		respond();
-		expect(await jevTriage(input)).toEqual({
+		expect(await jevTriage(input, { jev: testJev() })).toEqual({
 			category: "primary",
 			urgency: 2 / 3,
 			needsReply: true,
@@ -49,7 +49,7 @@ describe("jevTriage", () => {
 		const controller = new AbortController();
 		await jevTriage(
 			{ subject: "Hi", snippet: "s".repeat(1500), body: "b".repeat(2500) },
-			{ signal: controller.signal },
+			{ jev: testJev(), signal: controller.signal },
 		);
 		const [call, opts] = firstCall();
 		expect(opts.signal).toBe(controller.signal);
@@ -78,21 +78,21 @@ describe("jevTriage", () => {
 		[-1, 0],
 	])("urgency score %p → %p (clamped)", async (score, urgency) => {
 		respond({ urgency: { score } });
-		expect((await jevTriage(input)).urgency).toBe(urgency);
+		expect((await jevTriage(input, { jev: testJev() })).urgency).toBe(urgency);
 	});
 
 	test("needsReply threshold is noul ≥ 0.6", async () => {
 		respond({ needsReply: { noul: 0.6 } });
-		expect((await jevTriage(input)).needsReply).toBe(true);
+		expect((await jevTriage(input, { jev: testJev() })).needsReply).toBe(true);
 		respond({ needsReply: { noul: 0.59 } });
-		expect((await jevTriage(input)).needsReply).toBe(false);
+		expect((await jevTriage(input, { jev: testJev() })).needsReply).toBe(false);
 	});
 
 	test("confidence falls back to urgency confidence, then 0.7", async () => {
 		respond({ category: { choice: "receipts" }, urgency: { score: 1, confidence: 0.42 } });
-		expect((await jevTriage(input)).confidence).toBe(0.42);
+		expect((await jevTriage(input, { jev: testJev() })).confidence).toBe(0.42);
 		respond({ category: { choice: "receipts" }, urgency: { score: 1 } });
-		const result = await jevTriage(input);
+		const result = await jevTriage(input, { jev: testJev() });
 		expect(result.confidence).toBe(0.7);
 		expect(result.category).toBe("receipts");
 	});
@@ -102,13 +102,13 @@ describe("jevTriage", () => {
 		fakeJev.systemOne = mock(async () => {
 			throw new Error("rate limited");
 		});
-		expect(await jevTriage(input)).toEqual(heuristicTriage(input));
+		expect(await jevTriage(input, { jev: testJev() })).toEqual(heuristicTriage(input));
 	});
 
 	test("a malformed response → heuristic result", async () => {
 		fakeJev.enabled = true;
 		fakeJev.systemOne = mock(async () => answers({ category: { choice: "primary" } }));
-		const result = await jevTriage(input);
+		const result = await jevTriage(input, { jev: testJev() });
 		expect(result).toEqual(heuristicTriage(input));
 		expect(result.source).toBe("heuristic");
 	});

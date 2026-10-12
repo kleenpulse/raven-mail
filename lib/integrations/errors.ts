@@ -91,11 +91,11 @@ export const ERROR_COPY = {
 	/* Jev */
 	jev_no_key: copy(
 		"Jev isn't configured.",
-		"Add TYPESAFE_API_KEY to your environment and restart. Raven runs on free local heuristics until then.",
+		"Add your TypeSafe key in Settings → Account, or set TYPESAFE_API_KEY on the server. Raven runs on free local heuristics until then.",
 	),
 	jev_key_rejected: copy(
 		"TypeSafe rejected the API key.",
-		"Create a new key at console.typesafe.ai and update TYPESAFE_API_KEY.",
+		"Create a new key at console.typesafe.ai, then save it in Settings → Account (or update TYPESAFE_API_KEY on the server).",
 		false,
 		true,
 	),

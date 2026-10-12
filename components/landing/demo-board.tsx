@@ -10,7 +10,7 @@ import { RhythmSparkCard } from "@/components/overview/rhythm-spark-card";
 import { ThreadsRadar } from "@/components/overview/threads-radar";
 import { VolumeCard } from "@/components/overview/volume-card";
 import { WeatherCard } from "@/components/overview/weather-card";
-import { AccountProvider } from "@/components/providers/account-provider";
+import { AccountProvider, type Account } from "@/components/providers/account-provider";
 import { DotMatrix, type DotState } from "@/components/viz/dot-matrix";
 import { DemoBadge, DemoGuard } from "@/components/landing/demo-guard";
 import { useAskFromBoard } from "@/components/landing/demo-ask";
@@ -18,7 +18,12 @@ import type { Overview } from "@/lib/insights/types";
 import { cn } from "@/lib/utils";
 
 /** DailyBrief reads an account for its triage cache key; nothing is fetched for it. */
-const DEMO_ACCOUNT = { email: "demo@raven.invalid", displayName: "Demo", provider: "Demo mailbox" };
+const DEMO_ACCOUNT: Account = {
+	email: "demo@raven.invalid",
+	displayName: "Demo",
+	provider: "Demo mailbox",
+	jev: { source: null, hint: null },
+};
 
 // Illustrative: the real streak is tracked on the visitor's own device, so the demo mailbox has none.
 const STREAK: DotState[] = [

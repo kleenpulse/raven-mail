@@ -20,6 +20,12 @@ describe("searchSettings", () => {
 		expect(ids).toContain("shortcut-list");
 	});
 
+	test("finds the Jev key row by the words people use for it", () => {
+		for (const query of ["byok", "api key", "typesafe"]) {
+			expect(searchSettings(query).map((s) => s.id)).toContain("jev-key");
+		}
+	});
+
 	test("blank query returns nothing", () => {
 		expect(searchSettings("   ")).toEqual([]);
 	});

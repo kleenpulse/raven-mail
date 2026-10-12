@@ -13,6 +13,8 @@ export type MailSession = {
   imap: ServerEndpoint;
   smtp: ServerEndpoint;
   createdAt: number;
+  /** The user's own TypeSafe key (BYOK). Lives and dies with this cookie. */
+  jevKey?: string;
   /** Dev-only local mailbox — set by devLoginAction, never honored in production. */
   dev?: boolean;
 };

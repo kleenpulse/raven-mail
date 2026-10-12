@@ -1,6 +1,6 @@
 import "server-only";
 import { choice, noul, type Questions } from "@typesafe-ai/sdk";
-import { getJevClient, jevEnabled } from "@/lib/jev/client";
+import type { Jev } from "@/lib/jev/client";
 import { DEFAULT_TIMEFRAME, INTENT_META, TIMEFRAME_META } from "@/lib/jev/ask/catalog";
 import { forcePlan, heuristicPlan } from "@/lib/jev/ask/heuristic-plan";
 import { explicitTimeframe } from "@/lib/jev/ask/timeframe";
@@ -22,13 +22,18 @@ const SENDER_POOL = 60;
  * Unambiguous app-side matches (explicit dates, exact names) still win —
  * Jev reads dates as text.
  */
-export async function planAsk(request: AskRequest, senders: PersonRef[], signal?: AbortSignal): Promise<AskPlan> {
+export async function planAsk(
+  request: AskRequest,
+  senders: PersonRef[],
+  jev: Jev | null,
+  signal?: AbortSignal,
+): Promise<AskPlan> {
   if (request.forcedIntent) {
     const plan = forcePlan(request.question, request.forcedIntent, senders);
     return request.filter ? { ...plan, filter: request.filter } : plan;
   }
   const heuristic = heuristicPlan(request.question, senders);
-  if (!jevEnabled()) return heuristic;
+  if (!jev) return heuristic;
 
   const pool = senders.slice(0, SENDER_POOL);
   const questions: Questions = {
@@ -55,7 +60,7 @@ export async function planAsk(request: AskRequest, senders: PersonRef[], signal?
   }
 
   try {
-    const res = await getJevClient().systemOne({ state: { question: request.question }, questions }, { signal });
+    const res = await jev.client.systemOne({ state: { question: request.question }, questions }, { signal });
     const answers = res.answers as Record<string, LooseAnswer>;
     const intentAnswer = answers.intent!;
     const intent = (INTENTS as readonly string[]).includes(intentAnswer.choice ?? "")

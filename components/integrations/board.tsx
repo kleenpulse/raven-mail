@@ -307,7 +307,9 @@ export function IntegrationsBoard() {
 											tone={data.builtins.jev.configured ? (data.builtins.jev.lastCheck?.outcome === "error" ? "attention" : "ok") : "idle"}
 											status={data.builtins.jev.configured ? "Live" : "Heuristic"}
 											lines={[
-												data.builtins.jev.configured ? `Model ${data.builtins.jev.model}` : "Add TYPESAFE_API_KEY to turn it on",
+												data.builtins.jev.configured
+													? `Model ${data.builtins.jev.model} · ${data.builtins.jev.source === "user" ? "your key" : "server key"}`
+													: "Add your TypeSafe key to turn it on",
 												data.builtins.jev.lastCheck && now !== null
 													? `${data.builtins.jev.lastCheck.summary} · ${ago(data.builtins.jev.lastCheck.at, now)}`
 													: "Not checked yet",

@@ -2,9 +2,7 @@ import "server-only";
 import { choice, noul, score } from "@typesafe-ai/sdk";
 import type { TriageResult } from "@/lib/mail/types";
 import { heuristicTriage } from "@/lib/triage/heuristic";
-import { getJevClient, jevEnabled } from "@/lib/jev/client";
-
-export { jevEnabled };
+import type { Jev } from "@/lib/jev/client";
 
 export async function jevTriage(
   input: {
@@ -13,9 +11,9 @@ export async function jevTriage(
     from?: string;
     body?: string;
   },
-  { signal }: { signal?: AbortSignal } = {},
+  { jev, signal }: { jev: Jev | null; signal?: AbortSignal },
 ): Promise<TriageResult> {
-  if (!jevEnabled()) {
+  if (!jev) {
     return heuristicTriage(input);
   }
 
@@ -28,7 +26,7 @@ export async function jevTriage(
   };
 
   try {
-    const response = await getJevClient().systemOne(
+    const response = await jev.client.systemOne(
       {
         state,
         questions: {

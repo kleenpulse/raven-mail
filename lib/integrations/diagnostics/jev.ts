@@ -9,7 +9,8 @@ import {
 	RateLimitError,
 	type ModelCard,
 } from "@typesafe-ai/sdk";
-import { getJevClient, jevEnabled } from "@/lib/jev/client";
+import { jevFor } from "@/lib/jev/client";
+import type { MailSession } from "@/lib/session";
 import { IntegrationError } from "../errors";
 import { warn, type Step } from "../steps";
 
@@ -41,8 +42,9 @@ type Ctx = { models?: ModelCard[] };
  * Free checks only: listing models proves the key and the network path; a
  * paid decision call would add nothing the list doesn't already show.
  */
-export function jevDiagnostics(): { steps: Step<Ctx>[]; ctx: Ctx } {
+export function jevDiagnostics(session: MailSession): { steps: Step<Ctx>[]; ctx: Ctx } {
 	const model = pinnedModel();
+	const jev = jevFor(session);
 	return {
 		ctx: {},
 		steps: [
@@ -50,8 +52,8 @@ export function jevDiagnostics(): { steps: Step<Ctx>[]; ctx: Ctx } {
 				id: "key",
 				label: "API key",
 				run: async () => {
-					if (!jevEnabled()) throw new IntegrationError("jev_no_key");
-					return "TYPESAFE_API_KEY is set";
+					if (!jev) throw new IntegrationError("jev_no_key");
+					return jev.source === "user" ? "Using your own key" : "Using the server's key (TYPESAFE_API_KEY)";
 				},
 			},
 			{
@@ -59,7 +61,7 @@ export function jevDiagnostics(): { steps: Step<Ctx>[]; ctx: Ctx } {
 				label: "Reach Jev",
 				run: async (ctx, signal) => {
 					try {
-						ctx.models = await getJevClient().models.list({ signal, timeout: 5_000, retry: { maxRetries: 0 } });
+						ctx.models = await jev!.client.models.list({ signal, timeout: 5_000, retry: { maxRetries: 0 } });
 					} catch (err) {
 						throw classifyJevError(err);
 					}

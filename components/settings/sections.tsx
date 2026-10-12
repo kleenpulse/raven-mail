@@ -6,7 +6,8 @@ import { useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { Radio } from "@base-ui/react/radio";
 import { RadioGroup } from "@base-ui/react/radio-group";
-import { ExternalLink, LogOut, Paperclip } from "lucide-react";
+import { ExternalLink, KeyRound, LogOut, Paperclip } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +36,10 @@ import { stopPreloading } from "@/hooks/use-preload-in-view";
 import { requestChangelogOpen } from "@/components/whats-new/store";
 import { EntryList, useReleases } from "@/components/whats-new/whats-new";
 import { useSignOut } from "@/hooks/use-sign-out";
+import { useRefreshIntegrations } from "@/hooks/use-integrations";
+import { removeJevKeyAction, saveJevKeyAction } from "@/lib/actions/jev-key";
+import type { JevStatus } from "@/lib/jev/client";
+import { Input } from "@/components/ui/input";
 import { APP_VERSION } from "@/lib/changelog/seen";
 import { initials } from "@/lib/format";
 import { SOURCE_URL } from "@/lib/site";
@@ -360,6 +365,111 @@ function SignOutRow() {
 	);
 }
 
+function jevStatusLine(status: JevStatus): string {
+	if (status.source === "user") return `Jev uses your key ending in ${status.hint}.`;
+	if (status.source === "server") return "Jev uses this Raven's key. Add your own to use your TypeSafe account instead.";
+	return "Jev is off. Ask Jev uses free local rules until you add a key.";
+}
+
+function JevKeyRow() {
+	const account = useAccount();
+	const router = useRouter();
+	const refreshIntegrations = useRefreshIntegrations();
+	const [status, setStatus] = React.useState(account.jev);
+	const [key, setKey] = React.useState("");
+	const [error, setError] = React.useState<string | null>(null);
+	const [pending, startTransition] = React.useTransition();
+	const inputId = React.useId();
+	const errorId = React.useId();
+
+	function applied(next: JevStatus, message: string) {
+		setStatus(next);
+		setKey("");
+		setError(null);
+		toast.success(message);
+		void refreshIntegrations();
+		// Server-rendered parts (the Overview's live dot) read the session again.
+		router.refresh();
+	}
+
+	function save(event: React.FormEvent) {
+		event.preventDefault();
+		startTransition(async () => {
+			const result = await saveJevKeyAction(key);
+			if (result.ok) applied(result.data, "Key saved. Jev now uses your TypeSafe account.");
+			else setError(result.error);
+		});
+	}
+
+	function remove() {
+		startTransition(async () => {
+			const result = await removeJevKeyAction();
+			if (result.ok) applied(result.data, "Key removed from this device.");
+			else setError(result.error);
+		});
+	}
+
+	return (
+		<SettingRow id="jev-key" layout="stack">
+			{(labelId) => (
+				<div className="flex flex-col gap-3">
+					<p className="flex items-center gap-2 text-[13px] text-ink-2">
+						<KeyRound className="size-3.5 shrink-0" aria-hidden />
+						<span aria-live="polite">{jevStatusLine(status)}</span>
+					</p>
+					<form onSubmit={save} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+						<label htmlFor={inputId} className="sr-only">
+							TypeSafe API key
+						</label>
+						<Input
+							id={inputId}
+							type="password"
+							value={key}
+							onChange={(e) => {
+								setKey(e.target.value);
+								setError(null);
+							}}
+							placeholder={status.source === "user" ? "Paste a new key to replace it" : "Paste your TypeSafe key"}
+							autoComplete="off"
+							spellCheck={false}
+							aria-describedby={error ? `${labelId} ${errorId}` : labelId}
+							aria-invalid={error ? true : undefined}
+							className="h-8 rounded-pill px-3.5 font-mono sm:max-w-sm"
+						/>
+						<div className="flex gap-2">
+							<Button type="submit" variant="surface" size="pill-sm" disabled={pending || !key.trim()}>
+								{pending ? "Checking…" : "Save key"}
+							</Button>
+							{status.source === "user" && (
+								<Button type="button" variant="destructive" size="pill-sm" disabled={pending} onClick={remove}>
+									Remove
+								</Button>
+							)}
+						</div>
+					</form>
+					{error && (
+						<p id={errorId} role="alert" className="text-[13px] text-destructive">
+							{error}
+						</p>
+					)}
+					<p className="text-[12px] text-ink-2">
+						Get a key at{" "}
+						<a
+							href="https://console.typesafe.ai/keys"
+							target="_blank"
+							rel="noreferrer"
+							className="text-signal-ink underline-offset-2 hover:underline dark:text-signal"
+						>
+							console.typesafe.ai
+						</a>
+						. Raven checks it once with a free call before saving.
+					</p>
+				</div>
+			)}
+		</SettingRow>
+	);
+}
+
 /** Fixed format, UTC: the same string on server and client. */
 function buildLabel(): string {
 	const stamp = Number(process.env.BUILD_STAMP);
@@ -552,6 +662,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	"tour-replay": TourReplayRow,
 	identity: IdentityRow,
 	"sign-out": SignOutRow,
+	"jev-key": JevKeyRow,
 	build: BuildRow,
 	"whats-new": WhatsNewRow,
 	source: SourceRow,

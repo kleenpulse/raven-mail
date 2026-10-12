@@ -3,7 +3,7 @@ import { createRateLimiter } from "@/lib/server/rate-limit";
 import { sessionKey } from "@/lib/server/session-key";
 import { getSnapshot } from "@/lib/mail/snapshot";
 import { mailError } from "@/lib/api/mail-read";
-import { jevEnabled } from "@/lib/jev/client";
+import { jevFor } from "@/lib/jev/client";
 import { jevTriage } from "@/lib/triage/jev";
 import type { TriageResult } from "@/lib/mail/types";
 
@@ -25,8 +25,9 @@ export type DeepTriageItem = { folder: string; uid: string; messageId?: string; 
 
 export const POST = route(async (request) => {
   const session = await requireApiSession();
-  if (!jevEnabled()) {
-    throw new HttpError(409, "Jev isn’t configured — add TYPESAFE_API_KEY to enable Deep triage.", "jev_disabled");
+  const jev = jevFor(session);
+  if (!jev) {
+    throw new HttpError(409, "Jev isn’t set up. Add your TypeSafe key in Settings → Account to turn on Deep triage.", "jev_disabled");
   }
   const allowed = limiter.take(sessionKey(session));
   if (!allowed.ok) throw new HttpError(429, "Deep triage is cooling down — try again shortly.", "rate_limited");
@@ -49,7 +50,7 @@ export const POST = route(async (request) => {
       if (!triage) {
         triage = await jevTriage(
           { subject: row.subject, snippet: row.preview, from: row.from.address },
-          { signal: request.signal },
+          { jev, signal: request.signal },
         );
         if (triage.source === "jev") {
           remember(key, triage);

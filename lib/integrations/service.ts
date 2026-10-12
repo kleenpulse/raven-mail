@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { isLoopbackHost } from "@/lib/auth/ip";
 import { dbConfigured, dbError } from "@/lib/db";
 import type { IntegrationRow } from "@/lib/db/schema";
-import { jevEnabled } from "@/lib/jev/client";
+import { jevStatus } from "@/lib/jev/client";
 import type { MailSession } from "@/lib/session";
 import { briefCard, emailCard } from "./cards";
 import { fingerprint, openTarget, sealTarget, tenantKey } from "./crypto";
@@ -73,7 +73,7 @@ export async function getOverview(session: MailSession): Promise<IntegrationsOve
 			smtp: { host: session.smtp.host, port: session.smtp.port, security: security(session.smtp) },
 			lastCheck: null,
 		},
-		jev: { configured: jevEnabled(), model: pinnedModel(), lastCheck: null },
+		jev: { configured: jevStatus(session).source !== null, source: jevStatus(session).source, model: pinnedModel(), lastCheck: null },
 	};
 	const base = { builtins, syncedAt: new Date().toISOString() };
 
@@ -321,7 +321,7 @@ async function* testConnectionFlow(session: MailSession, id: string, signal?: Ab
 
 async function* builtinCheckFlow(session: MailSession, target: "mail" | "jev", signal?: AbortSignal): AsyncGenerator<StepEvent<CheckResult>, void> {
 	const started = performance.now();
-	const run = target === "mail" ? mailDiagnostics(session) : { ...jevDiagnostics(), cleanup: () => {} };
+	const run = target === "mail" ? mailDiagnostics(session) : { ...jevDiagnostics(session), cleanup: () => {} };
 	const count = run.steps.length;
 	let end;
 	try {

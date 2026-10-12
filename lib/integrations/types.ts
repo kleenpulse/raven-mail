@@ -93,6 +93,8 @@ export type MailBuiltin = {
 
 export type JevBuiltin = {
 	configured: boolean;
+	/** "user" = a key saved in Settings, "server" = TYPESAFE_API_KEY. */
+	source: "user" | "server" | null;
 	model: string;
 	lastCheck: CheckSummary | null;
 };

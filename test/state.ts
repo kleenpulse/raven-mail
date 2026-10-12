@@ -22,11 +22,22 @@ const unexpected: SystemOne = async () => {
 };
 
 /** Stand-in for the Jev SDK client. Disabled unless a test turns it on. */
+const accepted: (key: string) => Promise<void> = async () => {};
+
+/**
+ * Stand-in for the Jev SDK client. Disabled unless a test turns it on; a
+ * session with its own `jevKey` gets it regardless (BYOK).
+ */
 export const fakeJev = {
 	enabled: false,
 	systemOne: mock(unexpected),
+	/** verifyJevKey: accepts every key unless a test makes it throw. */
+	verifyKey: mock(accepted),
+	/** What every fake Jev hands out as `client`; follows `systemOne` across resets. */
+	client: { systemOne: (...args: [unknown, unknown?]) => fakeJev.systemOne(...args) },
 	reset() {
 		this.enabled = false;
 		this.systemOne = mock(unexpected);
+		this.verifyKey = mock(accepted);
 	},
 };

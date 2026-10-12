@@ -31,7 +31,7 @@ A self-hosted mail client for Gmail, Outlook, Yahoo, iCloud, Fastmail, Proton (B
 3. **Rank** — for topic searches, Jev picks which candidate emails best answer the question; the probabilities become the ranking.
 4. **Answer** — a templated answer plus the cited emails. Low confidence shows "did you mean" chips instead of guessing.
 
-Email text only ever reaches Jev as data to choose between, and Jev can't take actions, so a hostile email can at worst rank itself higher. Without `TYPESAFE_API_KEY`, a keyword planner does the same job for free. **Deep triage** (a button, never automatic) asks Jev to re-score your last 48 hours.
+Email text only ever reaches Jev as data to choose between, and Jev can't take actions, so a hostile email can at worst rank itself higher. Each user can bring their own TypeSafe key in **Settings → Account** (it is checked once, then kept only inside the encrypted session cookie, and wins over the server key). With no key at all, a keyword planner does the same job for free. **Deep triage** (a button, never automatic) asks Jev to re-score your last 48 hours.
 
 An LLM "narrator" can be plugged in later at `lib/jev/ask/narrate.ts`; none ships today.
 

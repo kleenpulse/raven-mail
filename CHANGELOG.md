@@ -15,6 +15,10 @@ as you work — it ships inside the app.
 
 - Raven is now open source under the AGPL-3.0 license. Find the code
   from Settings → About or the link at the bottom of the home page.
+- Use your own TypeSafe key for Jev. Paste it in Settings → Account and
+  Ask Jev and Deep triage run on your TypeSafe account. Raven checks the
+  key before saving it, keeps it encrypted with your sign-in, and forgets
+  it when you sign out.
 - A Settings page. Open it from the gear in the side rail, the account
   menu, or `Ctrl`/`⌘` + `,`. Every change applies right away and is
   remembered on this device. Search it with `/`, and each changed

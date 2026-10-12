@@ -1,11 +1,14 @@
 "use client";
 
 import * as React from "react";
+import type { JevStatus } from "@/lib/jev/client";
 
 export type Account = {
 	email: string;
 	displayName: string;
 	provider: string;
+	/** Which TypeSafe key Jev uses for this session. Never the key itself. */
+	jev: JevStatus;
 };
 
 const AccountContext = React.createContext<Account | null>(null);

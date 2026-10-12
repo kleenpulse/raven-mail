@@ -241,3 +241,24 @@ describe("POST /api/jev/ask — Jev planning", () => {
 		expect(answer.plan.source).toBe("heuristic");
 	});
 });
+
+describe("POST /api/jev/ask — your own key", () => {
+	test("a session with its own key plans with Jev even with no server key", async () => {
+		fakeJev.systemOne.mockImplementation(async (input: unknown) => {
+			const questions = (input as { questions?: Record<string, unknown> }).questions ?? {};
+			if ("intent" in questions) {
+				return answers({
+					intent: { choice: "urgent", confidence: 0.9, probabilities: { urgent: 0.9 } },
+					timeframe: { choice: "any" },
+					scope: { choice: "all" },
+					unreadOnly: { noul: 0 },
+				});
+			}
+			throw new Error("rank not mocked");
+		});
+		const session = makeSession({ jevKey: "user-key-0123456789abcd" });
+		const { answer } = await answerOf(await ask({ question: "anything I should worry about?" }, { session }));
+		expect(fakeJev.enabled).toBe(false);
+		expect(answer.plan.source).toBe("jev");
+	});
+});
