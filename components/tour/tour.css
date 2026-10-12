@@ -1,0 +1,433 @@
+/* Tour popover — Raven skin over driver.js. All overrides scoped under
+   .driver-popover.tour-popover (+ the fixed .tour-element-overlay) so they only
+   touch the tour. Colors resolve through Raven's tokens, so Ember (light) and
+   Nebula (dark) both work with no dark: branches. rawstash's corner brackets
+   are gone: they belong to square skins, and Raven's surfaces are round. */
+
+/* Layering: driver.js sets the overlay SVG's z-index to 10000 as an INLINE
+   style, so the tour rides driver's own tier: overlay 10000 < element overlay
+   999999 < popover 1000000000 (driver.css default). The whole stack sits above
+   app chrome (tab bar, compose dock, banners) while a tour holds the stage. */
+.tour-element-overlay {
+	z-index: 999999;
+}
+
+.driver-popover.tour-popover {
+	box-sizing: border-box;
+	min-width: 288px;
+	max-width: 368px;
+	padding: 0;
+	border-radius: 22px;
+	overflow: visible;
+	border: 1px solid var(--border);
+	background: var(--popover);
+	color: var(--popover-foreground);
+	box-shadow: var(--shadow-lift-value);
+	animation: tour-pop-in 240ms var(--ease-out-quint, cubic-bezier(0.23, 1, 0.32, 1)) both;
+}
+.dark .driver-popover.tour-popover {
+	border-color: var(--glass-border);
+}
+
+@keyframes tour-pop-in {
+	0% {
+		opacity: 0;
+		transform: translateY(8px) scale(0.97);
+	}
+	100% {
+		opacity: 1;
+		transform: translateY(0) scale(1);
+	}
+}
+
+.driver-popover.tour-popover .driver-popover-title {
+	font-family: var(--font-display), ui-sans-serif, system-ui, sans-serif;
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 1.3;
+	letter-spacing: -0.01em;
+	color: inherit;
+	margin: 0;
+	padding: 1.125rem 3.25rem 0 1.25rem; /* right-padded to clear the mute toggle */
+	background: transparent;
+	text-shadow: none;
+}
+
+/* Mute toggle — top-right corner (wired by the narration layer) */
+.driver-popover.tour-popover .tour-mute-btn {
+	position: absolute;
+	top: 0.875rem;
+	right: 0.875rem;
+	z-index: 3;
+	width: 30px;
+	height: 30px;
+	padding: 0;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border: 0;
+	border-radius: 9999px;
+	background: transparent;
+	color: var(--ink-2);
+	cursor: pointer;
+	transition:
+		background-color 140ms ease,
+		color 140ms ease,
+		opacity 140ms ease;
+}
+.driver-popover.tour-popover .tour-mute-btn:hover {
+	background: var(--card-nested);
+	color: var(--foreground);
+}
+.driver-popover.tour-popover .tour-mute-btn:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+.driver-popover.tour-popover .tour-mute-btn[data-muted="true"] {
+	color: var(--critical);
+	opacity: 0.85;
+}
+.driver-popover.tour-popover .tour-mute-btn[data-tts-loading="true"] {
+	color: var(--signal-ink);
+	animation: tour-tts-pulse 900ms ease-in-out infinite;
+}
+@keyframes tour-tts-pulse {
+	0%,
+	100% {
+		opacity: 0.55;
+	}
+	50% {
+		opacity: 1;
+	}
+}
+.driver-popover.tour-popover .tour-mute-btn svg {
+	width: 17px;
+	height: 17px;
+}
+
+.driver-popover.tour-popover .driver-popover-description {
+	font-family: var(--font-sans), system-ui, sans-serif;
+	font-size: 14px;
+	font-weight: 400;
+	line-height: 1.55;
+	color: var(--ink-2);
+	margin: 0.5rem 0 1rem;
+	padding: 0 1.25rem;
+	background: transparent;
+	text-wrap: pretty;
+}
+
+/* Narrated typewriter — per-char spans, opacity-only reveal (no reflow:
+   spans reserve their full layout from the start). */
+.driver-popover.tour-popover .tour-char {
+	opacity: 0;
+	transition: opacity 120ms ease;
+}
+.driver-popover.tour-popover .tour-char.is-shown {
+	opacity: 1;
+}
+
+/* Accent switch — welcome step only */
+.driver-popover.tour-popover .tour-voice-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	margin: 0 1.25rem 0.875rem;
+}
+.driver-popover.tour-popover .tour-voice-label {
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--ink-2);
+}
+.driver-popover.tour-popover .tour-voice-group {
+	display: inline-flex;
+	gap: 2px;
+	padding: 3px;
+	border-radius: 9999px;
+	background: var(--sheet);
+	box-shadow: inset 0 0 0 1px var(--border);
+}
+.dark .driver-popover.tour-popover .tour-voice-group {
+	background: rgb(0 0 0 / 0.25);
+	box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.driver-popover.tour-popover .tour-voice-btn {
+	height: 28px;
+	padding: 0 12px;
+	border: 0;
+	border-radius: 9999px;
+	background: transparent;
+	color: var(--ink-2);
+	font-family: var(--font-sans), system-ui, sans-serif;
+	font-size: 12.5px;
+	font-weight: 500;
+	cursor: pointer;
+	transition:
+		background-color 160ms ease,
+		color 160ms ease,
+		transform 100ms ease;
+}
+.driver-popover.tour-popover .tour-voice-btn:hover {
+	color: var(--foreground);
+}
+.driver-popover.tour-popover .tour-voice-btn:active {
+	transform: scale(0.97);
+}
+.driver-popover.tour-popover .tour-voice-btn[aria-checked="true"] {
+	background: var(--inverse);
+	color: var(--inverse-foreground);
+}
+.dark .driver-popover.tour-popover .tour-voice-btn[aria-checked="true"] {
+	background: var(--signal-soft);
+	color: var(--signal);
+}
+.driver-popover.tour-popover .tour-voice-btn:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 1px;
+}
+
+/* Transition loader — replaces description content during route navigation */
+.driver-popover.tour-popover .tour-loading {
+	display: inline-flex;
+	align-items: center;
+	gap: 10px;
+}
+.driver-popover.tour-popover .tour-loading-spinner {
+	width: 14px;
+	height: 14px;
+	border-radius: 9999px;
+	border: 2px solid color-mix(in oklab, var(--signal) 20%, transparent);
+	border-top-color: var(--signal);
+	animation: tour-spin 600ms linear infinite;
+}
+.driver-popover.tour-popover .tour-loading-text {
+	font-size: 13px;
+	color: var(--ink-2);
+}
+@keyframes tour-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+/* Dim chrome while loading so the spinner reads as the active state. */
+.driver-popover.tour-popover[data-tour-loading="true"] .driver-popover-footer,
+.driver-popover.tour-popover[data-tour-loading="true"] .tour-progress-strip,
+.driver-popover.tour-popover[data-tour-loading="true"] .tour-voice-row {
+	opacity: 0.4;
+	pointer-events: none;
+	transition: opacity 120ms ease;
+}
+
+/* Hide driver.js native chrome — we render our own */
+.driver-popover.tour-popover .driver-popover-close-btn,
+.driver-popover.tour-popover .driver-popover-navigation-btns,
+.driver-popover.tour-popover .driver-popover-progress-text {
+	display: none !important;
+}
+
+.driver-popover.tour-popover .driver-popover-footer {
+	margin: 0;
+	padding: 0.875rem 1rem 1rem 1.25rem;
+	background: transparent;
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	gap: 0;
+}
+
+.driver-popover.tour-popover .tour-popover-actions {
+	display: flex;
+	align-items: center;
+	justify-content: flex-end;
+	gap: 0.5rem;
+	margin-top: 0;
+}
+
+/* Explicit .tour-btn classes (not Tailwind utilities) because driver.css's
+   `.driver-popover-footer button { all: unset; … }` wins on specificity. */
+.driver-popover.tour-popover .tour-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	height: 32px;
+	padding: 0 14px;
+	border: 1px solid transparent;
+	border-radius: 9999px;
+	font-family: var(--font-sans), system-ui, sans-serif;
+	font-size: 13px;
+	font-weight: 500;
+	line-height: 1;
+	white-space: nowrap;
+	cursor: pointer;
+	text-shadow: none;
+	transition:
+		background-color 140ms ease,
+		border-color 140ms ease,
+		color 140ms ease,
+		transform 100ms ease;
+}
+.driver-popover.tour-popover .tour-btn:active {
+	transform: scale(0.97);
+}
+.driver-popover.tour-popover .tour-btn:focus-visible {
+	outline: 2px solid var(--ring);
+	outline-offset: 2px;
+}
+
+/* Primary — Next/Done */
+.driver-popover.tour-popover .tour-btn-primary {
+	background: var(--primary);
+	color: var(--primary-foreground);
+	border-color: var(--primary);
+}
+.driver-popover.tour-popover .tour-btn-primary:hover {
+	background: color-mix(in oklab, var(--primary) 88%, var(--foreground));
+}
+
+/* Outline — Back */
+.driver-popover.tour-popover .tour-btn-outline {
+	background: transparent;
+	color: var(--foreground);
+	border-color: var(--border);
+}
+.dark .driver-popover.tour-popover .tour-btn-outline {
+	border-color: var(--glass-border);
+}
+.driver-popover.tour-popover .tour-btn-outline:hover {
+	background: var(--card-nested);
+}
+
+/* Ghost — Skip / Cancel */
+.driver-popover.tour-popover .tour-btn-ghost {
+	background: transparent;
+	color: var(--ink-2);
+}
+.driver-popover.tour-popover .tour-btn-ghost:hover {
+	background: var(--card-nested);
+	color: var(--foreground);
+}
+
+.driver-popover.tour-popover .tour-confirm-prompt {
+	margin-right: auto;
+	font-family: var(--font-sans), system-ui, sans-serif;
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--foreground);
+}
+
+/* Destructive — Skip confirm */
+.driver-popover.tour-popover .tour-btn-destructive {
+	background: color-mix(in oklab, var(--critical) 12%, transparent);
+	color: var(--critical);
+	border-color: color-mix(in oklab, var(--critical) 25%, transparent);
+}
+.driver-popover.tour-popover .tour-btn-destructive:hover {
+	background: color-mix(in oklab, var(--critical) 20%, transparent);
+}
+
+/* Progress strip — injected by use-tour onPopoverRender */
+.driver-popover.tour-popover .tour-progress-strip {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	padding: 0 1.25rem;
+}
+.driver-popover.tour-popover .tour-progress-row {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+.driver-popover.tour-popover .tour-progress-label {
+	font-family: var(--font-mono), ui-monospace, monospace;
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.04em;
+	color: var(--ink-2);
+	font-variant-numeric: tabular-nums;
+}
+.driver-popover.tour-popover .tour-progress-track {
+	position: relative;
+	width: 100%;
+	height: 4px;
+	border-radius: 9999px;
+	background: var(--card-nested);
+	box-shadow: inset 0 0 0 1px var(--border);
+	overflow: hidden;
+}
+.dark .driver-popover.tour-popover .tour-progress-track {
+	box-shadow: inset 0 0 0 1px var(--glass-border);
+}
+.driver-popover.tour-popover .tour-progress-fill {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	border-radius: 9999px;
+	background: var(--signal);
+	/* Clipped, not resized: no layout per frame, and the rounded end survives. */
+	clip-path: inset(0 var(--tour-rest, 100%) 0 0 round 9999px);
+	transition: clip-path 280ms var(--ease-out-quint, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+/* Arrow recolor — popover material on every side. */
+.driver-popover.tour-popover .driver-popover-arrow-side-left {
+	border-left-color: var(--popover);
+}
+.driver-popover.tour-popover .driver-popover-arrow-side-right {
+	border-right-color: var(--popover);
+}
+.driver-popover.tour-popover .driver-popover-arrow-side-top {
+	border-top-color: var(--popover);
+}
+.driver-popover.tour-popover .driver-popover-arrow-side-bottom {
+	border-bottom-color: var(--popover);
+}
+
+/* Stacking inside the card */
+.driver-popover.tour-popover .driver-popover-title,
+.driver-popover.tour-popover .driver-popover-description,
+.driver-popover.tour-popover .tour-voice-row,
+.driver-popover.tour-popover .tour-progress-strip,
+.driver-popover.tour-popover .driver-popover-footer {
+	position: relative;
+	z-index: 2;
+}
+
+/* Highlighted-element ring — position:fixed on body so overflow:hidden
+   ancestors never clip it. Sits just outside the element, like a focus ring. */
+.tour-element-overlay {
+	position: fixed;
+	pointer-events: none;
+	box-shadow:
+		0 0 0 2px var(--signal),
+		0 0 0 7px color-mix(in oklab, var(--signal) 22%, transparent);
+	animation: tour-ring-in 320ms var(--ease-out-quint, cubic-bezier(0.23, 1, 0.32, 1)) both;
+}
+@keyframes tour-ring-in {
+	from {
+		opacity: 0;
+		transform: scale(1.04);
+	}
+	to {
+		opacity: 1;
+		transform: scale(1);
+	}
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.driver-popover.tour-popover,
+	.tour-element-overlay,
+	.driver-popover.tour-popover .tour-mute-btn[data-tts-loading="true"] {
+		animation: none;
+	}
+	.driver-popover.tour-popover .tour-char {
+		transition: none;
+	}
+}
+html[data-motion="reduce"] .driver-popover.tour-popover,
+html[data-motion="reduce"] .tour-element-overlay {
+	animation: none;
+}

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Questions and ideas
+    url: https://github.com/kleenpulse/raven-mail/discussions
+    about: Ask a question or share an idea in Discussions.
+  - name: Report a security vulnerability
+    url: https://github.com/kleenpulse/raven-mail/security/advisories/new
+    about: Please report security bugs privately, not in a public issue.

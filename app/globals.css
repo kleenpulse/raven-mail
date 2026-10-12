@@ -1,0 +1,717 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Two skins, one token vocabulary.
+ *   Ember  (:root)  — warm paper bento, coral signal (Dribbble "Financial Dashboard").
+ *   Nebula (.dark)  — deep-teal glass, gold + cyan light (Fuselab "Control AI").
+ * Components only ever reference tokens; a new skin is one more block.
+ */
+
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+	--font-mono: var(--font-geist-mono), ui-monospace, monospace;
+	--font-display:
+		var(--font-instrument-sans), var(--font-geist-sans), ui-sans-serif,
+		sans-serif;
+	--font-heading: var(--font-display);
+	--color-sidebar-ring: var(--sidebar-ring);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar: var(--sidebar);
+	--color-chart-5: var(--chart-5);
+	--color-chart-4: var(--chart-4);
+	--color-chart-3: var(--chart-3);
+	--color-chart-2: var(--chart-2);
+	--color-chart-1: var(--chart-1);
+	--color-ring: var(--ring);
+	--color-input: var(--input);
+	--color-border: var(--border);
+	--color-destructive: var(--destructive);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-accent: var(--accent);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-muted: var(--muted);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-secondary: var(--secondary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-primary: var(--primary);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-popover: var(--popover);
+	--color-card-foreground: var(--card-foreground);
+	--color-card: var(--card);
+
+	/* skin surfaces + signal colors */
+	--color-band: var(--band);
+	--color-sheet: var(--sheet);
+	--color-card-nested: var(--card-nested);
+	--color-ink: var(--foreground);
+	--color-ink-2: var(--ink-2);
+	--color-ink-3: var(--ink-3);
+	--color-signal: var(--signal);
+	--color-signal-ink: var(--signal-ink);
+	--color-signal-soft: var(--signal-soft);
+	--color-signal-2: var(--signal-2);
+	--color-inverse: var(--inverse);
+	--color-inverse-foreground: var(--inverse-foreground);
+	--color-glass: var(--glass);
+	--color-glass-border: var(--glass-border);
+	--color-glow: var(--glow);
+	--color-critical: var(--critical);
+	--color-orb-1: var(--orb-1);
+	--color-orb-2: var(--orb-2);
+	--color-orb-3: var(--orb-3);
+	--color-orb-4: var(--orb-4);
+	--color-beam-1: var(--beam-1);
+	--color-beam-2: var(--beam-2);
+	--color-beam-3: var(--beam-3);
+	--color-warn: var(--warn);
+	--color-ok: var(--ok);
+	--color-em-scroll: var(--em-scroll);
+
+	--radius-sm: calc(var(--radius) * 0.6);
+	--radius-md: calc(var(--radius) * 0.8);
+	--radius-lg: var(--radius);
+	--radius-xl: calc(var(--radius) * 1.4);
+	--radius-2xl: calc(var(--radius) * 1.8);
+	--radius-3xl: calc(var(--radius) * 2.2);
+	--radius-4xl: calc(var(--radius) * 2.6);
+	--radius-card: var(--radius-card-size);
+	--radius-frame: var(--radius-frame-size);
+	--radius-pill: 9999px;
+
+	--shadow-card: var(--shadow-card-value);
+	--shadow-lift: var(--shadow-lift-value);
+	--shadow-glow: var(--shadow-glow-value);
+}
+
+@theme {
+	--text-hero: 2.75rem;
+	--text-hero--line-height: 1.04;
+	--text-hero--letter-spacing: -0.025em;
+	--text-kpi: 2.5rem;
+	--text-kpi--line-height: 1;
+	--text-kpi--letter-spacing: -0.03em;
+	--text-kpi-sm: 1.625rem;
+	--text-kpi-sm--line-height: 1.05;
+	--text-kpi-sm--letter-spacing: -0.02em;
+	--text-micro: 0.6875rem;
+	--text-micro--line-height: 1.2;
+
+	--ease-out-quint: cubic-bezier(0.23, 1, 0.32, 1);
+
+	/* Between xl (1280) and 2xl (1536): where the Threads radar fits three columns. */
+	--breakpoint-wide: 87.5rem;
+
+	--animate-rise-in: rise-in 320ms var(--ease-out-quint) backwards;
+	--animate-bloom: bloom 700ms var(--ease-out-quint) both;
+	--animate-pulse-once: pulse-once 900ms var(--ease-out-quint) 1 both;
+	--animate-glow-sweep: glow-sweep 3.2s linear infinite;
+
+	@keyframes rise-in {
+		from {
+			opacity: 0;
+			transform: translateY(8px);
+		}
+		to {
+			opacity: 1;
+			transform: none;
+		}
+	}
+	@keyframes bloom {
+		from {
+			opacity: 0;
+			transform: scale(0.6);
+		}
+		60% {
+			opacity: 1;
+			transform: scale(1.03);
+		}
+		to {
+			opacity: 1;
+			transform: scale(1);
+		}
+	}
+	@keyframes pulse-once {
+		from {
+			opacity: 0.7;
+			transform: scale(1);
+		}
+		to {
+			opacity: 0;
+			transform: scale(2.8);
+		}
+	}
+	@keyframes glow-sweep {
+		to {
+			--sweep-angle: 360deg;
+		}
+	}
+	@keyframes wave {
+		0%,
+		100% {
+			transform: rotate(0);
+		}
+		15%,
+		45% {
+			transform: rotate(14deg);
+		}
+		30% {
+			transform: rotate(-8deg);
+		}
+		60% {
+			transform: rotate(-4deg);
+		}
+		75% {
+			transform: rotate(9deg);
+		}
+	}
+}
+
+@property --sweep-angle {
+	syntax: "<angle>";
+	inherits: false;
+	initial-value: 0deg;
+}
+
+/* ─── Ember ─────────────────────────────────────────────────────────── */
+:root {
+	--radius: 0.875rem;
+	--radius-card-size: 28px;
+	--radius-frame-size: 40px;
+
+	--band: #f3f3f1;
+	--sheet: #ffffff;
+	--card-nested: #ffffff;
+	--ink-2: #6b6b6b;
+	--ink-3: #a3a3a3;
+
+	/* coral: fills, marks, big numerals. Text uses --signal-ink (≥5:1). */
+	--signal: #e8603c;
+	--signal-ink: #b4461f;
+	--signal-soft: #fbe3da;
+	--signal-2: #111111;
+	--inverse: #111111;
+	--inverse-foreground: #ffffff;
+	--glass: rgb(255 255 255 / 0.86);
+	--glass-thin: rgb(255 255 255 / 0.55);
+	--glass-border: rgb(17 17 17 / 0.07);
+	--glow: rgb(232 96 60 / 0.32);
+	--critical: #d93b2b;
+	--orb-1: #e8603c;
+	--orb-2: #111111;
+	--orb-3: #f4b59f;
+	--orb-4: #9a9a95;
+	--beam-1: #e8603c;
+	--beam-2: #111111;
+	--beam-3: #d6d6d1;
+	--warn: #b76a00;
+	--ok: #2f8f5b;
+	--em-scroll: #cfcfca;
+
+	--shadow-card-value: none;
+	--shadow-lift-value: 0 14px 34px -16px rgb(17 17 17 / 0.22);
+	--shadow-glow-value:
+		0 0 0 1px rgb(232 96 60 / 0.28), 0 10px 30px -10px rgb(232 96 60 / 0.5);
+
+	--background: #f3f3f1;
+	--foreground: #111111;
+	--card: #f6f6f4;
+	--card-foreground: #111111;
+	--popover: #ffffff;
+	--popover-foreground: #111111;
+	/* burnt coral keeps white labels at 4.6:1 */
+	--primary: #c84e2a;
+	--primary-foreground: #ffffff;
+	--secondary: #ecece8;
+	--secondary-foreground: #111111;
+	--muted: #efefec;
+	--muted-foreground: #6b6b6b;
+	--accent: #ecece8;
+	--accent-foreground: #111111;
+	--destructive: #d93b2b;
+	--border: #e6e6e1;
+	--input: #e2e2dd;
+	--ring: #c84e2a;
+	--chart-1: #e8603c;
+	--chart-2: #111111;
+	--chart-3: #f4b59f;
+	--chart-4: #9a9a95;
+	--chart-5: #f9d9ce;
+	--sidebar: #f3f3f1;
+	--sidebar-foreground: #111111;
+	--sidebar-primary: #111111;
+	--sidebar-primary-foreground: #ffffff;
+	--sidebar-accent: #ffffff;
+	--sidebar-accent-foreground: #111111;
+	--sidebar-border: #e6e6e1;
+	--sidebar-ring: #c84e2a;
+	color-scheme: light;
+}
+
+/* ─── Nebula ────────────────────────────────────────────────────────── */
+.dark {
+	--band: transparent;
+	--sheet: rgb(8 18 19 / 0.48);
+	--card-nested: rgb(234 242 241 / 0.045);
+	--ink-2: #9fb3b1;
+	--ink-3: #5f7573;
+
+	--signal: #e6c27a;
+	--signal-ink: #e6c27a;
+	--signal-soft: rgb(230 194 122 / 0.14);
+	--signal-2: #5ee1d9;
+	--inverse: #eaf2f1;
+	--inverse-foreground: #0b1616;
+	--glass: rgb(13 30 31 / 0.8);
+	--glass-thin: rgb(13 30 31 / 0.52);
+	--glass-border: rgb(160 220 215 / 0.14);
+	--glow: rgb(94 225 217 / 0.35);
+	--critical: #f0604d;
+	--orb-1: #e6c27a;
+	--orb-2: #a99bff;
+	--orb-3: #f08bb0;
+	--orb-4: #5fd3a6;
+	--beam-1: #e6c27a;
+	--beam-2: #5ee1d9;
+	--beam-3: rgb(234 242 241 / 0.22);
+	--warn: #f2b35b;
+	--ok: #5fd3a6;
+	--em-scroll: #2a3d3d;
+
+	--shadow-card-value:
+		inset 0 1px 0 rgb(255 255 255 / 0.05), 0 24px 60px -32px rgb(0 0 0 / 0.75);
+	--shadow-lift-value:
+		inset 0 1px 0 rgb(255 255 255 / 0.07), 0 26px 50px -24px rgb(0 0 0 / 0.85);
+	--shadow-glow-value:
+		0 0 0 1px rgb(230 194 122 / 0.5), 0 0 34px -6px rgb(230 194 122 / 0.45);
+
+	--background: #050a0b;
+	--foreground: #eaf2f1;
+	/* Semi-opaque fill instead of backdrop-filter: blur over a static gradient is invisible. */
+	--card: rgb(20 44 44 / 0.5);
+	--card-foreground: #eaf2f1;
+	--popover: #0d1d1e;
+	--popover-foreground: #eaf2f1;
+	--primary: #e6c27a;
+	--primary-foreground: #1a1408;
+	--secondary: rgb(234 242 241 / 0.07);
+	--secondary-foreground: #eaf2f1;
+	--muted: rgb(234 242 241 / 0.05);
+	--muted-foreground: #9fb3b1;
+	--accent: rgb(94 225 217 / 0.09);
+	--accent-foreground: #eaf2f1;
+	--destructive: #f0604d;
+	--border: rgb(160 220 215 / 0.1);
+	--input: rgb(160 220 215 / 0.15);
+	--ring: #5ee1d9;
+	--chart-1: #e6c27a;
+	--chart-2: #5ee1d9;
+	--chart-3: #a99bff;
+	--chart-4: #f08bb0;
+	--chart-5: #5fd3a6;
+	--sidebar: rgb(6 13 14 / 0.55);
+	--sidebar-foreground: #eaf2f1;
+	--sidebar-primary: #e6c27a;
+	--sidebar-primary-foreground: #1a1408;
+	--sidebar-accent: rgb(94 225 217 / 0.1);
+	--sidebar-accent-foreground: #eaf2f1;
+	--sidebar-border: rgb(160 220 215 / 0.08);
+	--sidebar-ring: #5ee1d9;
+	color-scheme: dark;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+	.dark {
+		--sheet: #081213;
+		--card: #102425;
+		--glass: #0d1d1e;
+		--glass-thin: #0d1d1e;
+		--sidebar: #060d0e;
+	}
+	:root:not(.dark) {
+		--glass: #ffffff;
+		--glass-thin: #ffffff;
+	}
+}
+
+/* Reduce Transparency setting (Settings → Appearance): the media query above
+   only exists in Chromium, so the in-app switch carries the same overrides. */
+html[data-transparency="reduce"].dark {
+	--sheet: #081213;
+	--card: #102425;
+	--glass: #0d1d1e;
+	--glass-thin: #0d1d1e;
+	--sidebar: #060d0e;
+}
+html[data-transparency="reduce"]:not(.dark) {
+	--glass: #ffffff;
+	--glass-thin: #ffffff;
+}
+
+@layer base {
+	* {
+		@apply border-border outline-ring/50;
+		scrollbar-width: thin;
+		scrollbar-color: var(--em-scroll) transparent;
+	}
+	::-webkit-scrollbar {
+		width: 6px;
+		height: 6px;
+	}
+	::-webkit-scrollbar-track {
+		background: transparent;
+	}
+	::-webkit-scrollbar-thumb {
+		background: color-mix(in oklab, var(--em-scroll) 70%, transparent);
+		border-radius: 9999px;
+	}
+	html {
+		@apply font-sans;
+		height: 100%;
+		font-feature-settings: "cv11", "ss01";
+	}
+	body {
+		@apply bg-background text-foreground;
+		height: 100%;
+	}
+	.dark body {
+		background:
+			radial-gradient(1100px 760px at 72% -12%, #1e423c 0%, transparent 62%),
+			radial-gradient(900px 700px at -6% 108%, #10302c 0%, transparent 58%),
+			radial-gradient(
+				900px 620px at 52% 42%,
+				rgb(94 225 217 / 0.07),
+				transparent 70%
+			),
+			#050a0b;
+		background-attachment: fixed;
+	}
+	.dark body::before {
+		content: "";
+		position: fixed;
+		inset: 0;
+		pointer-events: none;
+		box-shadow: inset 0 0 220px rgb(0 0 0 / 0.55);
+		/* below content, above the propagated canvas gradient */
+		z-index: -1;
+	}
+	::selection {
+		background: color-mix(in oklab, var(--signal) 30%, transparent);
+	}
+	:focus-visible {
+		outline-offset: 2px;
+	}
+}
+
+@utility font-display {
+	font-family: var(--font-display);
+}
+
+@utility readout {
+	font-family: var(--font-mono);
+	font-size: 0.6875rem;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+	color: var(--muted-foreground);
+}
+
+@utility tabular {
+	font-variant-numeric: tabular-nums;
+	font-feature-settings: "tnum";
+}
+
+@utility hairline {
+	border-color: var(--border);
+}
+
+@utility scrollbar-thin {
+	scrollbar-width: thin;
+}
+
+@utility scrollbar-none {
+	scrollbar-width: none;
+}
+
+/* Bento card: flat paper in Ember, lit glass in Nebula. */
+@utility bento {
+	border-radius: var(--radius-card);
+	background: var(--card);
+	color: var(--card-foreground);
+	box-shadow: var(--shadow-card);
+	border: 1px solid transparent;
+	.dark & {
+		border-color: var(--border);
+		background-image: linear-gradient(
+			160deg,
+			rgb(255 255 255 / 0.035),
+			transparent 42%
+		);
+	}
+}
+
+/* Real frosted glass — overlays only (tray, panels, tooltips). */
+@utility glass {
+	background: var(--glass);
+	border: 1px solid var(--glass-border);
+	/* Standard property only: Lightning CSS merges prefixes, and a trailing
+	   -webkit- line would win and leave Chrome without blur. */
+	backdrop-filter: blur(20px) saturate(125%);
+}
+
+/* Lighter glass for cards floating over Orbit: the constellation should read through. */
+@utility glass-thin {
+	background: var(--glass-thin);
+	border: 1px solid var(--glass-border);
+	backdrop-filter: blur(10px) saturate(140%);
+}
+
+/* Rotating conic border for critical / attention states. */
+@utility glow-sweep {
+	border: 1px solid transparent;
+	background:
+		linear-gradient(
+				var(--card-sweep-fill, var(--popover)),
+				var(--card-sweep-fill, var(--popover))
+			)
+			padding-box,
+		conic-gradient(
+				from var(--sweep-angle),
+				transparent 0 62%,
+				var(--critical) 80%,
+				transparent 92%
+			)
+			border-box;
+	animation: var(--animate-glow-sweep);
+}
+
+/* Hover lift only for real pointers; press settles. */
+@utility lift {
+	transition:
+		transform 180ms var(--ease-out-quint),
+		box-shadow 180ms var(--ease-out-quint);
+	@media (hover: hover) and (pointer: fine) {
+		&:hover {
+			transform: translateY(-2px);
+			box-shadow: var(--shadow-lift);
+		}
+	}
+	&:active {
+		transform: scale(0.985);
+	}
+}
+
+/* Landing's demo surfaces (Overview sheet, Ask panel): shrink to fit one laptop
+   viewport. zoom (not a transform) lays out at the smaller size, so text stays
+   crisp. Later blocks win, so the short-screen steps override the width ones. */
+@utility demo-fit {
+	@media (width >= 64rem) {
+		zoom: 0.78;
+	}
+	/* 1280–1399px: Threads radar's own breakpoints stack it taller here. */
+	@media (width >= 80rem) {
+		zoom: 0.74;
+	}
+	@media (width >= 87.5rem) {
+		zoom: 0.86;
+	}
+	@media (width >= 64rem) and (height <= 820px) {
+		zoom: 0.76;
+	}
+	@media (width >= 64rem) and (height <= 720px) {
+		zoom: 0.68;
+	}
+}
+
+/* Entrance choreography: stagger via inline --i. Plays once per session (see use-intro-gate). */
+@utility entrance {
+	/*
+	 * backwards, not both: the end frame is the natural style anyway, and an
+	 * opacity animation left filling forever makes Chrome treat the element as
+	 * a backdrop root, so backdrop-filter blur inside it stops working.
+	 */
+	animation: rise-in 320ms var(--ease-out-quint) backwards;
+	animation-delay: calc(var(--i, 0) * 55ms + 60ms);
+}
+
+/* SVG draw-on: pair with pathLength="1". */
+@utility draw-on {
+	stroke-dasharray: 1;
+	stroke-dashoffset: 1;
+	animation: draw 700ms var(--ease-out-quint) forwards;
+	animation-delay: var(--draw-delay, 380ms);
+}
+
+/* Left-to-right reveal for stretched SVGs (preserveAspectRatio="none"), where
+   pathLength dashes break under non-scaling-stroke. Overdraws 8px for caps. */
+@utility wipe-in {
+	animation: wipe-in 700ms var(--ease-out-quint) both;
+	animation-delay: var(--draw-delay, 380ms);
+}
+/* Daily Brief autoplay: the active dot fills like a story bar; its animationend advances. */
+@keyframes brief-progress {
+	from {
+		transform: scaleX(0);
+	}
+	to {
+		transform: scaleX(1);
+	}
+}
+
+@keyframes wipe-in {
+	from {
+		clip-path: inset(-8px 100% -8px -8px);
+	}
+	to {
+		clip-path: inset(-8px);
+	}
+}
+
+/* Radial ring from 12 o'clock: circle pathLength="100", style stroke-dashoffset = 100 - value. */
+@utility ring-sweep {
+	stroke-dasharray: 100;
+	animation: ring-sweep 900ms var(--ease-out-quint) both;
+	animation-delay: var(--draw-delay, 260ms);
+}
+
+@keyframes draw {
+	to {
+		stroke-dashoffset: 0;
+	}
+}
+@keyframes ring-sweep {
+	from {
+		stroke-dashoffset: 100;
+	}
+}
+
+[data-intro="off"] :is(.entrance, .animate-bloom) {
+	animation: none;
+}
+[data-intro="off"] :is(.draw-on, .ring-sweep, .wipe-in) {
+	animation-duration: 1ms;
+	animation-delay: 0ms;
+}
+
+/* Auto-hiding scrollbar: transparent until hover or active scroll (md+).
+   Pair with AutoScroll's data-scrolling or use on hoverable panes alone. */
+@utility auto-scroll {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+.auto-scroll::-webkit-scrollbar {
+	width: 6px;
+	height: 6px;
+}
+.auto-scroll::-webkit-scrollbar-track {
+	background: transparent;
+}
+.auto-scroll::-webkit-scrollbar-thumb {
+	background: transparent;
+	border-radius: 9999px;
+	transition: background-color 150ms ease;
+}
+.auto-scroll:hover,
+.auto-scroll[data-scrolling="true"] {
+	scrollbar-color: var(--em-scroll) transparent;
+}
+.auto-scroll:hover::-webkit-scrollbar-thumb,
+.auto-scroll[data-scrolling="true"]::-webkit-scrollbar-thumb {
+	background: var(--em-scroll);
+}
+@media (max-width: 767.98px) {
+	.auto-scroll {
+		scrollbar-width: none;
+	}
+	.auto-scroll::-webkit-scrollbar {
+		display: none;
+	}
+}
+
+/* Skin switch: circular reveal from the toggle (see theme-toggle.tsx). */
+::view-transition-old(root),
+::view-transition-new(root) {
+	animation: none;
+	mix-blend-mode: normal;
+}
+::view-transition-new(root) {
+	animation: skin-reveal 640ms var(--ease-out-quint);
+}
+@keyframes skin-reveal {
+	from {
+		clip-path: circle(0 at var(--reveal-x, 50%) var(--reveal-y, 50%));
+	}
+	to {
+		clip-path: circle(
+			var(--reveal-r, 150vmax) at var(--reveal-x, 50%) var(--reveal-y, 50%)
+		);
+	}
+}
+
+/* Side toasts (remote-images.tsx): fade in from the right instead of sonner's
+   vertical drop. !important because sonner injects its own unlayered CSS. */
+[data-sonner-toast].toast-from-right {
+	transition-timing-function: var(--ease-out-quint);
+	transition-duration: 480ms;
+}
+[data-sonner-toast].toast-from-right[data-mounted="false"],
+[data-sonner-toast].toast-from-right[data-removed="true"][data-swipe-out="false"] {
+	--y: translateX(3rem) !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	*,
+	*::before,
+	*::after {
+		animation-duration: 1ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 1ms !important;
+		transition-delay: 0ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+/* Reduce Motion setting: same clamp, chosen in-app instead of by the OS. */
+html[data-motion="reduce"] :is(*, *::before, *::after) {
+	animation-duration: 1ms !important;
+	animation-iteration-count: 1 !important;
+	transition-duration: 1ms !important;
+	transition-delay: 0ms !important;
+	scroll-behavior: auto !important;
+}
+
+/* Interface Size: most type is fixed px, so the app frame zooms. Not <body>:
+   portaled popups must stay outside the zoom or Floating UI misplaces them.
+   The frame divides its viewport height back out (see workspace-frame.tsx). */
+html {
+	--ui-zoom: 1;
+}
+html[data-ui-size="large"] {
+	--ui-zoom: 1.08;
+}
+html[data-ui-size="larger"] {
+	--ui-zoom: 1.16;
+}
+html[data-ui-size] [data-ui-zoom] {
+	zoom: var(--ui-zoom);
+}
+
+/* Mail Density: row padding and rhythm in the message list (mail-row.tsx). */
+html {
+	--row-py: 0.75rem;
+	--row-py-wide: 0.625rem;
+	--row-gap: 0.375rem;
+}
+html[data-density="compact"] {
+	--row-py: 0.4375rem;
+	--row-py-wide: 0.3125rem;
+	--row-gap: 0.125rem;
+}

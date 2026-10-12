@@ -1,0 +1,45 @@
+name: Feature request
+description: Suggest an idea or an improvement for Raven.
+title: "feat: "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. For open-ended questions, [Discussions](https://github.com/kleenpulse/raven-mail/discussions) may be a better fit.
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem does this solve?
+      description: Tell us what you are trying to do and what gets in the way today.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: What would you like to happen?
+      description: Describe the change. Sketches or screenshots are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Other options you considered
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Overview
+        - Ask Jev
+        - Mail
+        - Integrations
+        - Settings
+        - Self-hosting / deploy
+        - Other
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Help
+      options:
+        - label: I'd like to work on this myself.

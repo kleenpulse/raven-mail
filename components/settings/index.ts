@@ -1,0 +1,277 @@
+import type { PrefKey } from "@/lib/prefs/schema";
+
+export const SECTION_IDS = ["appearance", "mail", "notifications", "sync", "keyboard", "tour", "account", "about"] as const;
+export type SectionId = (typeof SECTION_IDS)[number];
+
+export const SECTIONS: Record<SectionId, { label: string; blurb: string; group: "Preferences" | "You" }> = {
+	appearance: { label: "Appearance", blurb: "Change the theme, the size and the animations.", group: "Preferences" },
+	mail: { label: "Mail", blurb: "How you read and delete mail.", group: "Preferences" },
+	notifications: { label: "Notifications", blurb: "How Raven tells you about new mail.", group: "Preferences" },
+	sync: { label: "Sync & Storage", blurb: "How often Raven checks for mail, and what it saves on this device.", group: "Preferences" },
+	keyboard: { label: "Keyboard", blurb: "Use keys instead of the mouse.", group: "Preferences" },
+	tour: { label: "Tour & Voice", blurb: "The welcome tour and the voice that reads it.", group: "Preferences" },
+	account: { label: "Account", blurb: "The mailbox you're signed in to.", group: "You" },
+	about: { label: "About", blurb: "The app version, what changed, and a way to start over.", group: "You" },
+};
+
+export type SettingEntry = {
+	id: string;
+	section: SectionId;
+	/** Card title the row sits under. */
+	card: string;
+	label: string;
+	description?: string;
+	keywords?: string;
+	/** Prefs this row owns: drives the modified dot and per-row reset. */
+	prefs?: PrefKey[];
+	/** Control sits under the label instead of beside it. */
+	stack?: boolean;
+};
+
+/** Every row, in display order. Search and the section pages both read this. */
+export const SETTINGS: SettingEntry[] = [
+	{
+		id: "theme",
+		section: "appearance",
+		card: "Colors",
+		label: "Theme",
+		description: "Ember is light and warm. Nebula is dark teal. System matches your device.",
+		keywords: "dark light mode color scheme",
+	},
+	{
+		id: "ui-size",
+		section: "appearance",
+		card: "Display",
+		label: "Size",
+		description: "Makes everything bigger: text, buttons and spacing.",
+		keywords: "interface zoom scale font text bigger larger accessibility",
+		prefs: ["appearance.uiSize"],
+	},
+	{
+		id: "density",
+		section: "appearance",
+		card: "Display",
+		label: "Message Spacing",
+		description: "How much space each message gets in the list.",
+		keywords: "density compact comfortable rows",
+		prefs: ["appearance.density"],
+	},
+	{
+		id: "motion",
+		section: "appearance",
+		card: "Accessibility",
+		label: "Reduce Motion",
+		description: "Turn off sliding and bouncing animations. System matches your device.",
+		keywords: "animation accessibility vestibular",
+		prefs: ["appearance.motion"],
+	},
+	{
+		id: "transparency",
+		section: "appearance",
+		card: "Accessibility",
+		label: "Reduce Transparency",
+		description: "Use solid backgrounds instead of see-through glass in menus and panels.",
+		keywords: "blur glass contrast accessibility",
+		prefs: ["appearance.reduceTransparency"],
+	},
+	{
+		id: "remote-images",
+		section: "mail",
+		card: "Reading",
+		label: "Load Images Automatically",
+		description: "Show pictures from the sender's server without asking. Senders can sometimes tell when you open their mail.",
+		keywords: "remote privacy tracking pixels",
+		prefs: ["mail.remoteImages"],
+	},
+	{
+		id: "preload",
+		section: "mail",
+		card: "Reading",
+		label: "Load Messages Early",
+		description: "Download the messages you can see ahead of time, so they open right away.",
+		keywords: "preload prefetch speed performance data bandwidth",
+		prefs: ["mail.preload"],
+	},
+	{
+		id: "undo",
+		section: "mail",
+		card: "Deleting",
+		label: "Undo Time",
+		description: "How long you have to undo a delete.",
+		keywords: "delete trash grace timer",
+		prefs: ["mail.undoMs"],
+	},
+	{
+		id: "mail-layout",
+		section: "mail",
+		card: "Layout",
+		label: "Mail Layout",
+		description: "Set the message list back to its normal width.",
+		keywords: "reset split pane reading pane width wide reader",
+	},
+	{
+		id: "banner-position",
+		section: "notifications",
+		card: "New mail",
+		label: "Pop-up Position",
+		description: "Pick the corner for the new mail pop-up. It shows when unread mail reaches your Inbox, on any page, and hides after 8 seconds.",
+		keywords: "banner toast popup alert corner arrival",
+		prefs: ["notify.bannerPosition"],
+	},
+	{
+		id: "focus-refetch",
+		section: "sync",
+		card: "Checking for mail",
+		label: "Check When You Return",
+		description: "Check for new mail when you switch back to this tab.",
+		keywords: "focus refresh sync window tab reload",
+		prefs: ["sync.focusRefetch"],
+	},
+	{
+		id: "freshness",
+		section: "sync",
+		card: "Checking for mail",
+		label: "How Often to Check",
+		description: "Live checks most often. Saver checks less, to save data and battery.",
+		keywords: "freshness frequency sync interval polling network battery data stale",
+		prefs: ["sync.freshness"],
+	},
+	{
+		id: "offline-cache",
+		section: "sync",
+		card: "On this device",
+		label: "Save Mail on This Device",
+		description: "Keep a copy of your inbox, folders and overview here, so Raven opens fast after a reload.",
+		keywords: "offline cache storage indexeddb persist",
+		prefs: ["sync.offlineCache"],
+	},
+	{
+		id: "clear-cache",
+		section: "sync",
+		card: "On this device",
+		label: "Clear Saved Mail",
+		description: "Delete the copy on this device and download your mail again.",
+		keywords: "local cache forget delete storage reset",
+	},
+	{
+		id: "single-key",
+		section: "keyboard",
+		card: "Shortcuts",
+		label: "One-Key Shortcuts",
+		description: "Keys like C, J and / work without Ctrl or ⌘. Turn this off if you use a screen reader or press them by accident.",
+		keywords: "single hotkeys character keys accessibility",
+		prefs: ["keyboard.singleKey"],
+	},
+	{
+		id: "shortcut-list",
+		section: "keyboard",
+		card: "Shortcuts",
+		label: "All Shortcuts",
+		keywords: "hotkeys keys keyboard list compose search next previous",
+		stack: true,
+	},
+	{
+		id: "tour-voice",
+		section: "tour",
+		card: "Narration",
+		label: "Voice",
+		description: "The accent that reads the tour. It's the same on all your devices.",
+		keywords: "accent british american english gb us narrator speech tts",
+	},
+	{
+		id: "tour-narration",
+		section: "tour",
+		card: "Narration",
+		label: "Read Steps Aloud",
+		description: "Turn this off to read the tour in silence. This only changes this device.",
+		keywords: "mute sound audio narration voice speech",
+		prefs: ["tour.narration"],
+	},
+	{
+		id: "tour-replay",
+		section: "tour",
+		card: "Welcome Tour",
+		label: "Take the Tour",
+		description: "A short walk through Raven. It takes about a minute, and you can skip it anytime.",
+		keywords: "onboarding intro guide walkthrough help replay restart resume",
+	},
+	{
+		id: "identity",
+		section: "account",
+		card: "Signed in",
+		label: "Mailbox",
+		keywords: "email address provider account",
+	},
+	{
+		id: "sign-out",
+		section: "account",
+		card: "Signed in",
+		label: "Sign Out",
+		description: "Sign out and remove your mail from this device.",
+		keywords: "log out logout",
+	},
+	{
+		id: "build",
+		section: "about",
+		card: "Raven",
+		label: "Version",
+		keywords: "build release",
+	},
+	{
+		id: "whats-new",
+		section: "about",
+		card: "Raven",
+		label: "What's New",
+		description: "The latest changes to Raven.",
+		keywords: "changelog release notes updates history",
+		stack: true,
+	},
+	{
+		id: "source",
+		section: "about",
+		card: "Raven",
+		label: "Source Code",
+		description: "Raven is open source under the AGPL-3.0 license.",
+		keywords: "github repository open source license agpl code",
+	},
+	{
+		id: "reset-all",
+		section: "about",
+		card: "Raven",
+		label: "Reset All Settings",
+		description: "Set every setting back to its default. Your theme and your mail stay as they are.",
+		keywords: "defaults restore clear",
+	},
+];
+
+export const SETTINGS_BY_ID = new Map(SETTINGS.map((s) => [s.id, s]));
+
+export function sectionEntries(section: SectionId): SettingEntry[] {
+	return SETTINGS.filter((s) => s.section === section);
+}
+
+export function sectionPrefs(section: SectionId): PrefKey[] {
+	return sectionEntries(section).flatMap((s) => s.prefs ?? []);
+}
+
+/** Every word must appear somewhere in the row's label, description, keywords or section. */
+export function searchSettings(query: string): SettingEntry[] {
+	const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+	if (terms.length === 0) return [];
+	return SETTINGS.filter((s) => {
+		const hay = `${s.label} ${s.description ?? ""} ${s.keywords ?? ""} ${SECTIONS[s.section].label}`.toLowerCase();
+		return terms.every((t) => hay.includes(t));
+	});
+}
+
+/** Splits `text` into plain and matched runs for <mark>. */
+export function highlightParts(text: string, query: string): { text: string; match: boolean }[] {
+	const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
+	if (terms.length === 0) return [{ text, match: false }];
+	const escaped = terms.map((t) => t.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
+	const re = new RegExp(`(${escaped.join("|")})`, "gi");
+	return text
+		.split(re)
+		.filter(Boolean)
+		.map((part) => ({ text: part, match: terms.includes(part.toLowerCase()) }));
+}

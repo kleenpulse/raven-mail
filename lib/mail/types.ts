@@ -1,0 +1,106 @@
+export type AttachmentMeta = {
+  filename: string;
+  contentType: string;
+  size: number;
+  contentId?: string;
+};
+
+export type MailAddress = {
+  name?: string;
+  address: string;
+};
+
+export type MailFolder = {
+  path: string;
+  name: string;
+  delimiter: string;
+  specialUse?: "\\Inbox" | "\\Sent" | "\\Drafts" | "\\Trash" | "\\Junk" | "\\Archive";
+  unread: number;
+  total: number;
+  isParent?: boolean;
+};
+
+export type MailFlags = {
+  seen: boolean;
+  flagged: boolean;
+  answered: boolean;
+  draft: boolean;
+};
+
+export type MailSummary = {
+  uid: string;
+  folder: string;
+  subject: string;
+  from: MailAddress;
+  to: MailAddress[];
+  preview: string;
+  date: string;
+  flags: MailFlags;
+  hasAttachments: boolean;
+  messageId?: string;
+  references?: string[];
+  inReplyTo?: string;
+};
+
+export type MailMessage = {
+  uid: string;
+  folder: string;
+  subject: string;
+  from: MailAddress;
+  to: MailAddress[];
+  cc: MailAddress[];
+  bcc: MailAddress[];
+  replyTo?: MailAddress;
+  date: string;
+  flags: MailFlags;
+  text: string;
+  html: string;
+  attachments: AttachmentMeta[];
+  messageId?: string;
+  inReplyTo?: string;
+  references?: string[];
+  headers: Record<string, string>;
+  /** True when the HTML references remote (http/https) images or CSS. */
+  remoteContent?: boolean;
+};
+
+export type ComposeDraft = {
+  to: string;
+  cc?: string;
+  bcc?: string;
+  subject: string;
+  text: string;
+  html?: string;
+  inReplyTo?: string;
+  references?: string[];
+  /** Message being replied to — flagged \Answered after a successful send. */
+  source?: { folder: string; uid: string };
+  /** The original being replied to / forwarded, kept out of `text` until send (see draftBody). */
+  quote?: { kind: "reply" | "forward"; header: string; body: string };
+  attachments?: {
+    filename: string;
+    contentType: string;
+    contentBase64: string;
+  }[];
+};
+
+export type TriageCategory =
+  | "primary"
+  | "updates"
+  | "receipts"
+  | "promotions"
+  | "newsletters"
+  | "social"
+  | "other";
+
+export type TriageResult = {
+  category: TriageCategory;
+  urgency: number;
+  needsReply: boolean;
+  confidence: number;
+  source: "jev" | "heuristic";
+};
+
+export type ActionResult<T = unknown> =
+  | { ok: true; data: T }
+  | { ok: false; error: string };

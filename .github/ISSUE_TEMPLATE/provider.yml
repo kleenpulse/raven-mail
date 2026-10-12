@@ -1,0 +1,76 @@
+name: Mail provider problem
+description: Raven can't connect to, read from or send through an IMAP/SMTP provider.
+title: "provider: "
+labels: ["provider"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Mail servers all have their quirks. These details help us match yours.
+
+        **Never paste passwords, app passwords or session cookies here.** Hide your email address if you like.
+  - type: input
+    id: provider
+    attributes:
+      label: Provider
+      placeholder: "Gmail, Outlook, Fastmail, a self-hosted Dovecot, ..."
+    validations:
+      required: true
+  - type: input
+    id: host
+    attributes:
+      label: IMAP and SMTP hosts
+      placeholder: "imap.example.com / smtp.example.com"
+    validations:
+      required: true
+  - type: input
+    id: ports
+    attributes:
+      label: Ports and TLS
+      description: For example, IMAP 993 with TLS, SMTP 587 with STARTTLS.
+      placeholder: "IMAP 993 TLS, SMTP 587 STARTTLS"
+    validations:
+      required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: Error shown
+      description: The exact message Raven shows, and the step it failed on if you ran the check in Integrations. Screenshots are fine.
+    validations:
+      required: true
+  - type: dropdown
+    id: other-client
+    attributes:
+      label: Does the same account work in another mail client?
+      options:
+        - "Yes"
+        - "No"
+        - Haven't tried
+    validations:
+      required: true
+  - type: input
+    id: other-client-name
+    attributes:
+      label: Which client?
+      placeholder: "Thunderbird, Apple Mail, ..."
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: How is Raven hosted?
+      options:
+        - Vercel
+        - Docker
+        - bun dev (local)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Raven version
+      description: Find it in Settings → About.
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: App password or normal password, 2FA on or off, Proton Bridge, self-signed certificate, and so on.

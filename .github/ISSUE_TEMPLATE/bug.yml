@@ -1,0 +1,81 @@
+name: Bug report
+description: Something in Raven is broken or behaves wrong.
+title: "bug: "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting. **Never paste passwords, app passwords, session cookies or API keys here.** Remove real email addresses and message content from logs and screenshots.
+
+        Security bug? Don't file it here. Report it privately: https://github.com/kleenpulse/raven-mail/security/advisories/new
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Tell us what went wrong. Error messages and screenshots help.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Raven version
+      description: Find it in Settings → About.
+      placeholder: "0.1.0"
+    validations:
+      required: true
+  - type: dropdown
+    id: hosting
+    attributes:
+      label: How is Raven hosted?
+      options:
+        - Vercel
+        - Docker
+        - bun dev (local)
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and OS
+      placeholder: "Firefox 140 on macOS 15"
+    validations:
+      required: true
+  - type: dropdown
+    id: provider
+    attributes:
+      label: Mail provider
+      options:
+        - Gmail
+        - Outlook
+        - Yahoo
+        - iCloud
+        - Fastmail
+        - Proton (Bridge)
+        - Custom IMAP/SMTP
+        - Dev mode (seeded mailbox)
+        - Not related to a provider
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, theme (Ember or Nebula), or anything that helps. No passwords.

@@ -1,0 +1,487 @@
+import "server-only";
+import {
+  ImapFlow,
+  type FetchMessageObject,
+  type FetchQueryObject,
+  type ListResponse,
+  type SearchObject,
+} from "imapflow";
+import { simpleParser, type AddressObject, type Attachment } from "mailparser";
+import type { MailSession } from "@/lib/session";
+import type {
+  AttachmentMeta,
+  MailAddress,
+  MailFolder,
+  MailFlags,
+  MailMessage,
+  MailSummary,
+} from "@/lib/mail/types";
+import { labelSpecialUse, resolveSpecialFolder, shortFolderName } from "@/lib/mail/folders";
+import { hasRemoteContent, sanitizeBody } from "@/lib/mail/sanitize";
+import { hasAttachments } from "@/lib/mail/mime";
+import { fetchPreviews } from "@/lib/mail/preview";
+import { planPreload, type PreloadResult } from "@/lib/mail/preload";
+import { isLoopbackHost } from "@/lib/auth/ip";
+import { sessionKey } from "@/lib/server/session-key";
+import { createKeyedSemaphore } from "@/lib/server/semaphore";
+import { createTtlCache } from "@/lib/server/cache";
+import { acceptTerms, neededTerms, parseQuery, termKey, type Term } from "@/lib/search/text";
+
+// Gmail allows ~15 concurrent IMAP connections per account; stay well under.
+const connections = createKeyedSemaphore(4);
+const folderIndex = createTtlCache<MailFolder[]>({ ttlMs: 5 * 60_000, maxEntries: 100 });
+
+function createClient(session: MailSession): ImapFlow {
+  const plain = !session.imap.secure;
+  return new ImapFlow({
+    host: session.imap.host,
+    port: session.imap.port,
+    secure: session.imap.secure,
+    // Non-TLS ports must upgrade; a stripped STARTTLS would leak the password.
+    doSTARTTLS: plain && !isLoopbackHost(session.imap.host) ? true : undefined,
+    auth: {
+      user: session.email,
+      pass: session.password,
+    },
+    logger: false,
+    disableAutoIdle: true,
+    tls: {
+      rejectUnauthorized: process.env.IMAP_REJECT_UNAUTHORIZED !== "false",
+    },
+    socketTimeout: 30_000,
+    greetingTimeout: 20_000,
+    connectionTimeout: 20_000,
+  });
+}
+
+export async function withClient<T>(session: MailSession, fn: (client: ImapFlow) => Promise<T>): Promise<T> {
+  return connections.run(sessionKey(session), async () => {
+    const client = createClient(session);
+    await client.connect();
+    try {
+      return await fn(client);
+    } finally {
+      client.logout().catch(() => client.close());
+    }
+  });
+}
+
+/**
+ * A client held open across several steps (diagnostics, streamed exports) that
+ * still counts against the per-mailbox connection cap. Always call `release()`.
+ * Connecting is left to the caller so each phase can be timed and classified.
+ */
+export async function acquireClient(session: MailSession): Promise<{ client: ImapFlow; release: () => void }> {
+  const free = await connections.acquire(sessionKey(session));
+  const client = createClient(session);
+  let released = false;
+  return {
+    client,
+    release: () => {
+      if (released) return;
+      released = true;
+      if (client.usable) client.logout().catch(() => client.close());
+      else client.close();
+      free();
+    },
+  };
+}
+
+export async function withMailbox<T>(
+  session: MailSession,
+  mailbox: string,
+  fn: (client: ImapFlow) => Promise<T>,
+  { readOnly = false }: { readOnly?: boolean } = {},
+): Promise<T> {
+  return withClient(session, async (client) => {
+    const lock = await client.getMailboxLock(mailbox, { readOnly });
+    try {
+      return await fn(client);
+    } finally {
+      lock.release();
+    }
+  });
+}
+
+export function toFolders(list: ListResponse[]): MailFolder[] {
+  const folders: MailFolder[] = [];
+  for (const entry of list) {
+    if (
+      entry.flags?.has("\\Noselect") ||
+      entry.flags?.has("\\NonExistent") ||
+      entry.flags?.has("\\Nonexistent")
+    ) {
+      continue;
+    }
+    const delimiter = entry.delimiter ?? ".";
+    folders.push({
+      path: entry.path,
+      name: shortFolderName(entry.path, delimiter),
+      delimiter,
+      specialUse: labelSpecialUse(entry.path, delimiter, entry.specialUse as string | undefined),
+      unread: entry.status?.unseen ?? 0,
+      total: entry.status?.messages ?? 0,
+      isParent: entry.flags?.has("\\HasChildren") ?? false,
+    });
+  }
+  const inbox = folders.find((f) => f.specialUse === "\\Inbox" || f.path.toUpperCase() === "INBOX");
+  if (inbox) {
+    folders.splice(folders.indexOf(inbox), 1);
+    folders.unshift(inbox);
+  }
+  return folders;
+}
+
+export async function listFolders(session: MailSession): Promise<MailFolder[]> {
+  return withClient(session, async (client) =>
+    toFolders(await client.list({ statusQuery: { messages: true, unseen: true } })),
+  );
+}
+
+/** Special-use path lookup for mutations — LIST only, cached; no per-folder STATUS. */
+export async function resolveSpecial(
+  session: MailSession,
+  role: NonNullable<MailFolder["specialUse"]>,
+): Promise<string | null> {
+  const folders = await folderIndex.get(sessionKey(session), () =>
+    withClient(session, async (client) => toFolders(await client.list({ listOnly: true }))),
+  );
+  return resolveSpecialFolder(folders, role);
+}
+
+function toIsoDate(value: Date | string | undefined): string {
+  if (!value) return new Date().toISOString();
+  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+}
+
+function addresses(value: AddressObject | AddressObject[] | undefined): MailAddress[] {
+  if (!value) return [];
+  const groups = Array.isArray(value) ? value : [value];
+  const result: MailAddress[] = [];
+  for (const group of groups) {
+    for (const a of group.value ?? []) {
+      if (a.address) result.push({ name: a.name || undefined, address: a.address });
+    }
+  }
+  return result;
+}
+
+function flagsOf(source: { flags?: Set<string> }): MailFlags {
+  const has = (flag: string) => source.flags?.has(flag) ?? false;
+  return {
+    seen: has("\\Seen"),
+    flagged: has("\\Flagged"),
+    answered: has("\\Answered"),
+    draft: has("\\Draft"),
+  };
+}
+
+const SUMMARY_QUERY: FetchQueryObject = {
+  uid: true,
+  envelope: true,
+  flags: true,
+  internalDate: true,
+  bodyStructure: true,
+  size: true,
+};
+
+function toSummary(msg: FetchMessageObject, folder: string, preview: string): MailSummary {
+  const envelope = msg.envelope;
+  const from = envelope?.from?.[0];
+  return {
+    uid: String(msg.uid),
+    folder,
+    subject: envelope?.subject || "(no subject)",
+    from: { name: from?.name || undefined, address: from?.address ?? "" },
+    to: (envelope?.to ?? []).map((a) => ({ name: a.name || undefined, address: a.address ?? "" })),
+    preview,
+    date: toIsoDate(msg.internalDate ?? envelope?.date),
+    flags: flagsOf(msg),
+    hasAttachments: hasAttachments(msg.bodyStructure),
+    messageId: envelope?.messageId,
+    inReplyTo: envelope?.inReplyTo,
+  };
+}
+
+const MAX_SEARCH_TERMS = 6;
+
+function termCriterion(t: Term, plainCriterion: (token: string) => SearchObject): SearchObject {
+  switch (t.field) {
+    case "from":
+      return { from: t.token };
+    case "to":
+      return { or: [{ to: t.token }, { cc: t.token }] };
+    case "subject":
+      return { subject: t.token };
+    default:
+      return plainCriterion(t.token);
+  }
+}
+
+/**
+ * Term-wise server search with the same acceptance policy as `searchText`
+ * (`acceptTerms`). imapflow can't AND repeated `or`/`text` keys in one query,
+ * so it's one SEARCH per term and the UID sets combine here. The server can't
+ * do fuzzy; SEARCH is already substring, so prefixes land while typing.
+ */
+export async function searchTerms(
+  client: ImapFlow,
+  query: string | string[],
+  plainCriterion: (token: string) => SearchObject,
+): Promise<number[]> {
+  const terms = parseQuery(query).slice(0, MAX_SEARCH_TERMS);
+  const sets = new Map<string, Set<number>>();
+  for (const t of neededTerms(terms)) {
+    const found = await client.search(termCriterion(t, plainCriterion), { uid: true });
+    sets.set(termKey(t), new Set(Array.isArray(found) ? found : []));
+  }
+  return acceptTerms(terms, (t) => sets.get(termKey(t)) ?? new Set<number>()).keys;
+}
+
+export async function listMessages(
+  session: MailSession,
+  folder: string,
+  opts: { limit?: number; before?: number; search?: string } = {},
+): Promise<{ messages: MailSummary[]; count: number }> {
+  const limit = Math.min(Math.max(opts.limit ?? 40, 1), 100);
+  return withMailbox(
+    session,
+    folder,
+    async (client) => {
+      const mailbox = client.mailbox;
+      const exists = mailbox ? mailbox.exists : 0;
+      const query = opts.search?.trim();
+      let fetched: FetchMessageObject[] = [];
+      let count = exists;
+
+      if (query || opts.before) {
+        const found = query
+          ? await searchTerms(client, query, (t) => ({ or: [{ subject: t }, { body: t }, { from: t }, { to: t }] }))
+          : await client.search({ uid: `1:${Math.max(1, opts.before! - 1)}` }, { uid: true });
+        const uids = (Array.isArray(found) ? found : []).sort((a, b) => b - a);
+        if (query) count = uids.length;
+        // `before` is the page cursor: the lowest UID the client already holds.
+        const before = opts.before;
+        const page = (before ? uids.filter((u) => u < before) : uids).slice(0, limit);
+        if (page.length) fetched = await client.fetchAll(page, SUMMARY_QUERY, { uid: true });
+      } else if (exists > 0) {
+        // Newest messages have the highest sequence numbers — no SEARCH ALL needed.
+        fetched = await client.fetchAll(`${Math.max(1, exists - limit + 1)}:${exists}`, SUMMARY_QUERY);
+      }
+
+      const scope = `${sessionKey(session)}:${folder}:${mailbox ? String(mailbox.uidValidity) : "0"}`;
+      const previews = await fetchPreviews(client, scope, fetched);
+      const messages = fetched
+        .map((m) => toSummary(m, folder, previews.get(m.uid) ?? ""))
+        .sort((a, b) => +new Date(b.date) - +new Date(a.date) || Number(b.uid) - Number(a.uid));
+      return { messages, count };
+    },
+    { readOnly: true },
+  );
+}
+
+const INLINE_IMAGE_LIMIT = 1_500_000;
+
+/** cid: references can't resolve inside a srcdoc iframe; inline small images as data: URLs. */
+function inlineCidImages(html: string, attachments: Attachment[]): string {
+  let out = html;
+  for (const a of attachments) {
+    if (!a.cid || !a.contentType.startsWith("image/") || !a.content || a.content.length > INLINE_IMAGE_LIMIT) {
+      continue;
+    }
+    const dataUrl = `data:${a.contentType};base64,${a.content.toString("base64")}`;
+    const cid = a.cid.replace(/[<>]/g, "");
+    out = out.split(`cid:${cid}`).join(dataUrl);
+  }
+  return out;
+}
+
+// `source` is BODY.PEEK[]: reading a message never marks it \Seen.
+const MESSAGE_QUERY: FetchQueryObject = { envelope: true, flags: true, uid: true, source: true, internalDate: true };
+
+/** Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox. */
+async function toMailMessage(msg: FetchMessageObject, source: Buffer, folder: string): Promise<MailMessage> {
+  const parsed = await simpleParser(source);
+  const envelope = msg.envelope;
+  const attachments: AttachmentMeta[] = (parsed.attachments ?? [])
+    .filter((a) => !a.cid || !/inline/i.test(a.contentDisposition ?? ""))
+    .map((a) => ({
+      filename: a.filename ?? "attachment",
+      contentType: a.contentType,
+      size: a.size ?? a.content?.length ?? 0,
+      contentId: a.cid,
+    }));
+
+  const rawHtml = typeof parsed.html === "string" ? parsed.html : "";
+  const html = rawHtml ? sanitizeBody(inlineCidImages(rawHtml, parsed.attachments ?? [])) : "";
+
+  const headers: Record<string, string> = {};
+  for (const [key, value] of parsed.headers) {
+    headers[key] = Array.isArray(value) ? value.join(", ") : String(value);
+  }
+
+  const parsedTo = addresses(parsed.to);
+  return {
+    uid: String(msg.uid),
+    folder,
+    subject: parsed.subject || envelope?.subject || "(no subject)",
+    from: {
+      name: parsed.from?.value?.[0]?.name || envelope?.from?.[0]?.name || undefined,
+      address: parsed.from?.value?.[0]?.address ?? envelope?.from?.[0]?.address ?? "",
+    },
+    to: parsedTo.length
+      ? parsedTo
+      : (envelope?.to ?? []).map((a) => ({ name: a.name || undefined, address: a.address ?? "" })),
+    cc: addresses(parsed.cc),
+    bcc: addresses(parsed.bcc),
+    replyTo: addresses(parsed.replyTo)[0],
+    date: toIsoDate(msg.internalDate ?? parsed.date),
+    flags: flagsOf(msg),
+    text: parsed.text ?? "",
+    html,
+    attachments,
+    messageId: parsed.messageId ?? envelope?.messageId,
+    inReplyTo: parsed.inReplyTo ?? envelope?.inReplyTo,
+    references: parsed.references
+      ? Array.isArray(parsed.references)
+        ? parsed.references
+        : String(parsed.references).split(/\s+/).filter(Boolean)
+      : undefined,
+    headers,
+    remoteContent: hasRemoteContent(html),
+  };
+}
+
+export async function getMessage(session: MailSession, folder: string, uid: string): Promise<MailMessage> {
+  const msg = await withMailbox(session, folder, (client) => client.fetchOne(uid, MESSAGE_QUERY, { uid: true }), {
+    readOnly: true,
+  });
+  if (!msg || !msg.source) {
+    throw new Error("Message not found");
+  }
+  return toMailMessage(msg, msg.source, folder);
+}
+
+/**
+ * Bodies for the list rows in view, over one connection. Sizes come first so
+ * an oversized message is never downloaded.
+ */
+export async function getMessages(
+  session: MailSession,
+  folder: string,
+  uids: number[],
+  signal?: AbortSignal,
+): Promise<PreloadResult> {
+  const { fetched, skipped } = await withMailbox(
+    session,
+    folder,
+    async (client) => {
+      const sized = await client.fetchAll(uids, { uid: true, size: true }, { uid: true });
+      const found = new Set(sized.map((m) => m.uid));
+      const { take, tooBig } = planPreload(sized.map((m) => ({ uid: m.uid, size: m.size ?? Infinity })));
+      const skipped = [...uids.filter((uid) => !found.has(uid)), ...tooBig];
+      if (take.length === 0 || signal?.aborted) return { fetched: [], skipped };
+      return { fetched: await client.fetchAll(take, MESSAGE_QUERY, { uid: true }), skipped };
+    },
+    { readOnly: true },
+  );
+
+  const messages: MailMessage[] = [];
+  for (const msg of fetched) {
+    if (signal?.aborted) break;
+    try {
+      if (!msg.source) throw new Error("Message not found");
+      messages.push(await toMailMessage(msg, msg.source, folder));
+    } catch {
+      skipped.push(msg.uid);
+    }
+  }
+  return { messages, skipped: skipped.map(String) };
+}
+
+/** Deep links carry the Message-ID so a UIDVALIDITY reset can't strand them. */
+export async function findUidByMessageId(
+  session: MailSession,
+  folder: string,
+  messageId: string,
+): Promise<string | null> {
+  return withMailbox(
+    session,
+    folder,
+    async (client) => {
+      const found = await client.search({ header: { "message-id": messageId } }, { uid: true });
+      const uid = (Array.isArray(found) ? found : []).sort((a, b) => b - a)[0];
+      return uid ? String(uid) : null;
+    },
+    { readOnly: true },
+  );
+}
+
+export async function setFlags(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  changes: { add?: string[]; remove?: string[] },
+): Promise<void> {
+  if (uids.length === 0) return;
+  await withMailbox(session, folder, async (client) => {
+    if (changes.add?.length) {
+      await client.messageFlagsAdd(uids.join(","), changes.add, { uid: true });
+    }
+    if (changes.remove?.length) {
+      await client.messageFlagsRemove(uids.join(","), changes.remove, { uid: true });
+    }
+  });
+}
+
+export async function moveMessages(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  destination: string,
+): Promise<void> {
+  if (uids.length === 0) return;
+  await withMailbox(session, folder, async (client) => {
+    if (client.capabilities.has("MOVE")) {
+      await client.messageMove(uids.join(","), destination, { uid: true });
+    } else {
+      await client.messageCopy(uids.join(","), destination, { uid: true });
+      await client.messageFlagsAdd(uids.join(","), ["\\Deleted"], { uid: true });
+      await client.messageDelete(uids.join(","), { uid: true });
+    }
+  });
+}
+
+export async function deleteMessages(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  trashFolder: string | null,
+): Promise<void> {
+  if (uids.length === 0) return;
+  if (trashFolder && trashFolder !== folder) {
+    await moveMessages(session, folder, uids, trashFolder);
+    return;
+  }
+  await withMailbox(session, folder, async (client) => {
+    await client.messageFlagsAdd(uids.join(","), ["\\Deleted"], { uid: true });
+    await client.messageDelete(uids.join(","), { uid: true });
+  });
+}
+
+export async function appendRaw(
+  session: MailSession,
+  mailbox: string,
+  raw: Buffer,
+  flags: string[] = ["\\Seen"],
+): Promise<void> {
+  await withClient(session, async (client) => {
+    await client.append(mailbox, raw, flags);
+  });
+}
+
+export async function verifyCredentials(session: MailSession): Promise<void> {
+  await withClient(session, async (client) => {
+    await client.noop();
+  });
+}

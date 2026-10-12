@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuites name="bun test" tests="5" assertions="2" failures="2" skipped="2" time="0.0441198">
+  <testsuite name="lib\dev\__fixtures__\zz_sample.test.ts" file="lib\dev\__fixtures__\zz_sample.test.ts" tests="5" assertions="2" failures="2" skipped="2" time="0.0331947" hostname="">
+    <testsuite name="outer" file="lib\dev\__fixtures__\zz_sample.test.ts" line="2" tests="4" assertions="2" failures="1" skipped="2" time="0" hostname="">
+      <testsuite name="inner" file="lib\dev\__fixtures__\zz_sample.test.ts" line="3" tests="2" assertions="2" failures="1" skipped="0" time="0" hostname="">
+        <testcase name="passes" classname="inner &gt; outer" time="0.00027" file="lib\dev\__fixtures__\zz_sample.test.ts" line="4" assertions="1" />
+        <testcase name="fails" classname="inner &gt; outer" time="0.000446" file="lib\dev\__fixtures__\zz_sample.test.ts" line="5" assertions="1">
+          <failure type="AssertionError" message="expect(received).toEqual(expected)&#10;&#10;  {&#10;-   &quot;a&quot;: 2,&#10;+   &quot;a&quot;: 1,&#10;  }&#10;&#10;- Expected  - 1&#10;+ Received  + 1&#10;">AssertionError: expect(received).toEqual(expected)&#10;&#10;  {&#10;-   &quot;a&quot;: 2,&#10;+   &quot;a&quot;: 1,&#10;  }&#10;&#10;- Expected  - 1&#10;+ Received  + 1&#10;&#10;</failure>
+        </testcase>
+      </testsuite>
+      <testcase name="skipped" classname="outer" time="0" file="lib\dev\__fixtures__\zz_sample.test.ts" line="7" assertions="0">
+        <skipped />
+      </testcase>
+      <testcase name="later" classname="outer" time="0" file="lib\dev\__fixtures__\zz_sample.test.ts" line="8" assertions="0">
+        <skipped message="TODO" />
+      </testcase>
+    </testsuite>
+    <testcase name="top-level throw" classname="" time="0.000239" file="lib\dev\__fixtures__\zz_sample.test.ts" line="10" assertions="0">
+      <failure type="Error" message="boom &lt;x&gt; &amp; &quot;q&quot;">Error: boom &lt;x&gt; &amp; &quot;q&quot;&#10;      at lib/dev/__fixtures__/zz_sample.test.ts:10:67&#10;</failure>
+    </testcase>
+  </testsuite>
+</testsuites>
