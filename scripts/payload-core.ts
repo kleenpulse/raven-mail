@@ -4,13 +4,23 @@
  */
 const MARKERS = [
 	["4738", "-2"],
-	["global['", "!']"],
-	["global['", "_t_s']"],
-	["global.i", " = 'A"],
-	["/*RS", "260605*/"],
+	["3379", "-6"],
+	["A11", "--#"],
+	["RS", "260605"],
+	["_t", "_s"],
 	["193.247", ".144"],
+	["166.88", ".134"],
 	["node ", "api.js"],
 ].map((parts) => parts.join(""));
+
+/**
+ * The loader key comes in many spellings (bracket or dot, any quote, global or
+ * globalThis, `!` or `i = 'A…'`), so match the shape, never one spelling.
+ */
+const LOADER_KEYS = [
+	/global(This)?\s*(\[\s*['"`]!|\.\s*!)/,
+	/global(This)?\s*(\.\s*i|\[\s*['"`]i['"`]\s*\])\s*=\s*['"`]A/,
+];
 
 const FONT_EXT = /\.(woff2?|ttf|otf)$/i;
 /** wOF2, wOFF, TrueType 1.0, OTTO, true: anything else is not a font. */
@@ -39,6 +49,9 @@ export function scanFile(path: string, bytes: Uint8Array): Finding[] {
 
 	for (const marker of MARKERS) {
 		if (text.includes(marker)) found.push({ file, reason: `contains worm marker "${marker}"` });
+	}
+	if (LOADER_KEYS.some((pattern) => pattern.test(text))) {
+		found.push({ file, reason: "sets the worm's loader key on global" });
 	}
 	if (CONFIG_FILE.test(file) && HIDDEN_TAIL.test(text)) {
 		found.push({ file, reason: "code hidden after a long run of whitespace" });

@@ -13,6 +13,21 @@ describe("scanFile", () => {
 		expect(reasons("postcss.config.mjs", `x = "A8-${"4738"}-2"`)[0]).toMatch(/worm marker/);
 	});
 
+	it.each([
+		[`global['${"!"}'] = 1`],
+		[`global["${"!"}"]=1`],
+		[`global.${"!"}x`],
+		[`globalThis[ '${"!"}' ] = 1`],
+		[`global.i = '${"A"}8-x'`],
+		[`globalThis["i"]="${"A"}11"`],
+	])("flags every loader key spelling (%#)", (text) => {
+		expect(reasons("postcss.config.mjs", text)).toContain("sets the worm's loader key on global");
+	});
+
+	it("leaves ordinary uses of global alone", () => {
+		expect(scanFile("lib/a.ts", bytes(`globalThis.fetch = f; const g = global.process; if (!globalThis.x) {}`))).toEqual([]);
+	});
+
 	it("flags code hidden after whitespace in a config file", () => {
 		const text = `export default {};${"\t".repeat(200)}eval(x)`;
 		expect(reasons("postcss.config.mjs", text)).toContain("code hidden after a long run of whitespace");
