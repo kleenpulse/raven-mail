@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Security
+
+- Raven now runs on Next.js 16.4.0, which fixes seven security issues in
+  older versions. Two of them could let a visitor poison the cached home
+  page on a self-hosted copy. If you host Raven yourself, update and
+  redeploy.
+
 ## [0.2.0] - 2026-10-13
 
 ### Added
