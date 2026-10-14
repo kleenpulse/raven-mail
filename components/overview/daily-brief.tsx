@@ -59,7 +59,7 @@ function BriefSlide({
 					</span>
 				)}
 			</p>
-			<p className="mt-1.5 line-clamp-2 font-display text-[19px] leading-snug tracking-[-0.01em]">{item.subject}</p>
+			<p className="mt-1.5 line-clamp-2 font-display text-[19px] [overflow-wrap:anywhere] leading-snug tracking-[-0.01em]">{item.subject}</p>
 			{item.preview && <p className="mt-1.5 line-clamp-2 text-[12px] text-ink-2">{item.preview}</p>}
 			<ul className="mt-3 flex flex-wrap gap-1.5">
 				{item.why.map((w) => (
@@ -68,7 +68,7 @@ function BriefSlide({
 					</li>
 				))}
 			</ul>
-			<div className="mt-auto flex items-center justify-between gap-2 pt-4">
+			<div className="mt-auto flex flex-wrap items-center justify-between gap-2 pt-4">
 				<Link
 					href={mailLink(item)}
 					className="inline-flex h-9 items-center gap-1.5 rounded-pill bg-inverse px-4 text-[13px] text-inverse-foreground transition-transform active:scale-[0.98]"
@@ -200,7 +200,7 @@ export function DailyBrief({
 				if (Math.abs(dx) >= SWIPE_PX) move(dx < 0 ? 1 : -1);
 			}}
 		>
-			<div className="flex items-center gap-2">
+			<div className="flex flex-wrap items-center gap-2">
 				<div className="flex items-center" role="tablist" aria-label="Brief items">
 					{ranked.map((item, idx) => {
 						const active = idx === pos;
@@ -274,8 +274,9 @@ export function DailyBrief({
 			  Every item is laid out invisibly in the same grid cell, so the card always
 			  takes the tallest one's height — sliding never resizes the card (or its row).
 			  clip-path (not overflow) trims the slide-in with room left for button rings.
+			  clip-path doesn't clip layout, so the column must never outgrow the card.
 			*/}
-			<div className="mt-4 grid flex-1 [clip-path:inset(-12px)]" aria-live={playing ? "off" : "polite"}>
+			<div className="mt-4 grid flex-1 grid-cols-[minmax(0,1fr)] [clip-path:inset(-12px)]" aria-live={playing ? "off" : "polite"}>
 				{ranked.map((item) => (
 					<div
 						key={`size:${item.folder}:${item.uid}`}

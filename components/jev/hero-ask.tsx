@@ -60,7 +60,8 @@ export function HeroAsk({
 						👋
 					</span>
 				</p>
-				<div className="relative mt-1">
+				{/* The typed placeholder is nowrap; long suggestions would widen the page. */}
+				<div className="relative mt-1 overflow-hidden">
 					<input
 						ref={inputRef}
 						id="hero-ask"
