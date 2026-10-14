@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { allowSingleKey } from "@/lib/keyboard";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
+import { SponsorButton } from "@/components/shell/sponsor-button";
 
 /** Mail-only toolbar: folder drawer + folder search. Account/theme live in the rail. */
 export function Topbar({
@@ -73,6 +74,8 @@ export function Topbar({
 					<Kbd className="absolute top-1/2 right-4 hidden -translate-y-1/2 sm:inline-flex">/</Kbd>
 				)}
 			</div>
+
+			<SponsorButton className="ml-auto" />
 		</header>
 	);
 }

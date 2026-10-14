@@ -11,6 +11,19 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- A "buy me a coffee" button now sits in the top-right corner of the
+  Overview and Mail top bars, if you'd like to support Raven.
+
+### Fixed
+
+- The Overview no longer scrolls sideways on wide screens. The Daily
+  brief's "Deep triage" button, a long subject, or a long suggestion
+  typing out in the "need help?" box could push the page wider than
+  the window. Long subjects now wrap and the buttons stack when the card
+  is narrow.
+
 ### Security
 
 - Raven now runs on Next.js 16.4.0, which fixes seven security issues in

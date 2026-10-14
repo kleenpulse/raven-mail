@@ -17,6 +17,7 @@ import { HygieneCard } from "@/components/overview/hygiene-card";
 import { RhythmCard } from "@/components/overview/rhythm-card";
 import { OrbitCard } from "@/components/overview/orbit-card";
 import { OverviewSearch } from "@/components/overview/overview-search";
+import { SponsorButton } from "@/components/shell/sponsor-button";
 import { useAccount } from "@/components/providers/account-provider";
 import { useAsk, type AskOptions } from "@/components/jev/use-ask";
 import { useOverview } from "@/hooks/use-overview";
@@ -95,6 +96,7 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 								<p className="text-xs text-ink-2">{account.provider}</p>
 							</div>
 						</div>
+						<SponsorButton />
 					</div>
 				</header>
 
