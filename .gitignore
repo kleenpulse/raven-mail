@@ -44,7 +44,7 @@ next-env.d.ts
 .neon
 
 # brag launch video output
-brag-output/
+/brag-output*/
 
 # local agent tooling (not part of the app)
 /.claude/
