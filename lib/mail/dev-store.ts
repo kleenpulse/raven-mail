@@ -523,9 +523,11 @@ export function devSendMessage(
   return { messageId: message.messageId ?? "" };
 }
 
-export function devSaveDraft(draft: ComposeDraft, from: MailAddress): { uid: string } {
+/** Like IMAP: append the new copy first, then drop the one it replaces. */
+export function devSaveDraft(draft: ComposeDraft, from: MailAddress, replaces?: string): { uid: string } {
   const db = getDb();
   const message = draftToMessage("Drafts", draft, from, { seen: true, draft: true });
   db.messages.unshift(message);
+  if (replaces && replaces !== message.uid) devDeleteMessages("Drafts", [replaces], null);
   return { uid: message.uid };
 }

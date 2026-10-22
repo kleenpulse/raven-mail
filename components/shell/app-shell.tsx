@@ -9,7 +9,9 @@ import { MailList } from "@/components/mail/mail-list";
 import { MailReader, type ReaderNav } from "@/components/mail/mail-reader";
 import { ListSplitter } from "@/components/mail/list-splitter";
 import { useComposeStore } from "@/lib/store/compose";
-import { useMessages, usePrefetchNeighbours } from "@/hooks/use-mail";
+import { useFolders, useMessages, usePrefetchNeighbours } from "@/hooks/use-mail";
+import { useResumeDraft } from "@/hooks/use-resume-draft";
+import { folderSpecialUse } from "@/lib/mail/folders";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useAccount } from "@/components/providers/account-provider";
@@ -42,7 +44,16 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 	const desktop = useMediaQuery("(min-width: 48rem)");
 
 	const activeFolder = folder || "INBOX";
-	const selectedUid = uid || null;
+	const { data: folders } = useFolders();
+	// Drafts open in compose, never the reader: however a uid got here (click, j/k, a link).
+	const inDrafts = folderSpecialUse(folders, activeFolder) === "\\Drafts";
+	const resumeDraft = useResumeDraft();
+	React.useEffect(() => {
+		if (!inDrafts || !uid) return;
+		void setUid(null);
+		void resumeDraft(activeFolder, uid);
+	}, [inDrafts, uid, activeFolder, setUid, resumeDraft]);
+	const selectedUid = (!inDrafts && uid) || null;
 	// One IMAP search per pause in typing, not per keystroke.
 	const querySearch = useDebouncedValue(search, 300);
 	const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessages(activeFolder, querySearch || undefined);

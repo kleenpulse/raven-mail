@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { buildReplyDraft, draftBody, prefixSubject, replyOptions } from "@/lib/mail/reply";
+import { buildReplyDraft, draftBody, draftFromMessage, prefixSubject, replyOptions } from "@/lib/mail/reply";
 import type { ComposeDraft, MailMessage } from "@/lib/mail/types";
 
 const message: MailMessage = {
@@ -101,5 +101,44 @@ describe("replyOptions", () => {
     expect(replyOptions(group, "me@raven.dev").preferReplyAll).toBe(true);
     const ccOnly = { ...message, to: [{ address: "sam@northwind.example" }] };
     expect(replyOptions(ccOnly, "me@raven.dev").preferReplyAll).toBe(true);
+  });
+});
+
+describe("draftFromMessage", () => {
+  const saved: MailMessage = {
+    ...message,
+    folder: "Drafts",
+    subject: "Re: Q3 roadmap",
+    to: [{ name: "Maya Chen", address: "maya@northwind.example" }],
+    cc: [{ name: "Okafor, Sam", address: "sam@northwind.example" }, { address: "lead@northwind.example" }],
+    bcc: [{ name: 'The "Boss"', address: "boss@northwind.example" }],
+    text: "Looks good.\r\n\r\nOn Tue, Maya wrote:\r\n> Need sign-off.\r\n",
+    inReplyTo: "<m1@northwind>",
+    references: ["<m0@northwind>", "<m1@northwind>"],
+  };
+
+  test("fills every field compose has, threading included", () => {
+    expect(draftFromMessage(saved)).toEqual({
+      to: "Maya Chen <maya@northwind.example>",
+      cc: "sam@northwind.example, lead@northwind.example",
+      bcc: "boss@northwind.example",
+      subject: "Re: Q3 roadmap",
+      text: "Looks good.\n\nOn Tue, Maya wrote:\n> Need sign-off.",
+      inReplyTo: "<m1@northwind>",
+      references: ["<m0@northwind>", "<m1@northwind>"],
+    });
+  });
+
+  test("names that would split the address list keep only the address", () => {
+    const cc = draftFromMessage(saved).cc!;
+    expect(cc.split(/[,;]/).map((s) => s.trim())).toEqual(["sam@northwind.example", "lead@northwind.example"]);
+  });
+
+  test("the empty-subject placeholder comes back empty", () => {
+    expect(draftFromMessage({ ...saved, subject: "(no subject)" }).subject).toBe("");
+  });
+
+  test("an HTML-only draft falls back to its text", () => {
+    expect(draftFromMessage({ ...saved, text: "", html: "<p>Hi <b>there</b></p>" }).text).toBe("Hi  there");
   });
 });

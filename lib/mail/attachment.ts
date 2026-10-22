@@ -65,3 +65,13 @@ export function attachmentHeaders(file: { filename?: string; contentType?: strin
   if (file.size !== undefined) headers.set("Content-Length", String(file.size));
   return headers;
 }
+
+/** btoa over a byte string, in chunks so large files don't overflow the call stack. */
+export function bytesToBase64(buffer: ArrayBuffer | Uint8Array): string {
+  const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += 0x8000) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  }
+  return btoa(binary);
+}

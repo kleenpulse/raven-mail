@@ -543,9 +543,11 @@ export async function appendRaw(
   mailbox: string,
   raw: Buffer,
   flags: string[] = ["\\Seen"],
-): Promise<void> {
-  await withClient(session, async (client) => {
-    await client.append(mailbox, raw, flags);
+): Promise<{ uid?: string }> {
+  return withClient(session, async (client) => {
+    const res = await client.append(mailbox, raw, flags);
+    // UIDPLUS servers answer with APPENDUID; others leave the caller to search.
+    return res && res.uid ? { uid: String(res.uid) } : {};
   });
 }
 

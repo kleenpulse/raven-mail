@@ -20,15 +20,24 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Kbd } from "@/components/ui/kbd";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
-import { saveDraftAction, sendMessageAction } from "@/lib/actions/mail";
-import { useComposeStore } from "@/lib/store/compose";
+import { discardDraftAction, saveDraftAction, sendMessageAction } from "@/lib/actions/mail";
+import { useComposeStore, type ComposeAttachment } from "@/lib/store/compose";
 import { useMounted } from "@/hooks/use-mounted";
+import { useFolders, useInvalidateMail } from "@/hooks/use-mail";
 import { formatBytes } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { draftBody } from "@/lib/mail/reply";
+import { bytesToBase64 } from "@/lib/mail/attachment";
+import { resolveSpecialFolder } from "@/lib/mail/folders";
 import type { ComposeDraft } from "@/lib/mail/types";
 
 const AUTOSAVE_KEY = "em-compose-local";
+
+const toPayload = ({ filename, contentType, contentBase64 }: ComposeAttachment) => ({
+  filename,
+  contentType,
+  contentBase64,
+});
 
 /**
  * The message being answered, kept under the text box instead of in it:
@@ -146,6 +155,12 @@ export function ComposeDock() {
     restore,
     toggleMaximize,
     setDraft,
+    draftUid,
+    setDraftUid,
+    attachments,
+    attachmentsLoading,
+    addAttachments,
+    removeAttachment,
   } = useComposeStore();
 
   // The store rehydrates from localStorage on the client; rendering before
@@ -154,9 +169,8 @@ export function ComposeDock() {
   const fieldId = React.useId();
   const [showCc, setShowCc] = React.useState(false);
   const [busy, setBusy] = React.useState<"send" | "draft" | null>(null);
-  const [attachments, setAttachments] = React.useState<
-    { filename: string; contentType: string; contentBase64: string; size: number }[]
-  >([]);
+  const { data: folders } = useFolders();
+  const { invalidateMessages, invalidateFolders } = useInvalidateMail();
   const fileRef = React.useRef<HTMLInputElement>(null);
   const savedRef = React.useRef<string>("");
 
@@ -192,6 +206,26 @@ export function ComposeDock() {
 
   if (!open || !mounted) return null;
 
+  const draftsFolder = resolveSpecialFolder(folders ?? [], "\\Drafts");
+  const refreshDrafts = () => {
+    void invalidateMessages(draftsFolder ?? undefined);
+    void invalidateFolders();
+  };
+  // Every file a reopened draft had must be back before its server copy is replaced.
+  const blocked = busy !== null || attachmentsLoading;
+  const outgoing = () => ({
+    draft: { ...draft, text: draftBody(draft), quote: undefined, attachments: attachments.map(toPayload) },
+    draftUid,
+  });
+
+  function forgetLocalCopy() {
+    try {
+      localStorage.removeItem(AUTOSAVE_KEY);
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function handleSend() {
     if (!draft.to.trim()) {
       toast.error("Add at least one recipient.");
@@ -199,18 +233,12 @@ export function ComposeDock() {
     }
     setBusy("send");
     try {
-      const res = await sendMessageAction({
-        draft: { ...draft, text: draftBody(draft), quote: undefined, attachments },
-      });
+      const res = await sendMessageAction(outgoing());
       if (!res.ok) throw new Error(res.error);
       toast.success("Message sent");
-      try {
-        localStorage.removeItem(AUTOSAVE_KEY);
-      } catch {
-        /* ignore */
-      }
+      forgetLocalCopy();
+      if (draftUid) refreshDrafts();
       closeCompose();
-      setAttachments([]);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Send failed");
     } finally {
@@ -221,10 +249,11 @@ export function ComposeDock() {
   async function handleSaveDraft() {
     setBusy("draft");
     try {
-      const res = await saveDraftAction({
-        draft: { ...draft, text: draftBody(draft), quote: undefined, attachments },
-      });
+      const res = await saveDraftAction(outgoing());
       if (!res.ok) throw new Error(res.error);
+      // Without a uid (no UIDPLUS, lookup missed) the next save adds a copy rather than guess.
+      setDraftUid(res.data.uid);
+      refreshDrafts();
       toast.success("Saved to Drafts");
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not save draft");
@@ -233,28 +262,48 @@ export function ComposeDock() {
     }
   }
 
+  function handleDiscard() {
+    const snapshot = { mode, draft, attachments };
+    const saved = draftUid;
+    closeCompose();
+    forgetLocalCopy();
+    const hasContent = Boolean(draft.to.trim() || draft.subject.trim() || draft.text.trim() || attachments.length);
+    if (saved) {
+      void discardDraftAction({ draftUid: saved }).then((res) => {
+        if (!res.ok) toast.error(res.error);
+        refreshDrafts();
+      });
+    }
+    if (!hasContent && !saved) return;
+    // The server copy is gone, but this tab still holds everything: Undo reopens it unsaved.
+    toast("Draft discarded", {
+      action: {
+        label: "Undo",
+        onClick: () => {
+          const store = useComposeStore.getState();
+          store.openCompose(snapshot.mode, snapshot.draft);
+          store.addAttachments(snapshot.attachments);
+        },
+      },
+    });
+  }
+
   async function handleFiles(files: FileList | null) {
     if (!files?.length) return;
     const next = await Promise.all(
-      Array.from(files).map(async (file) => {
-        const buf = await file.arrayBuffer();
-        const base64 = btoa(
-          new Uint8Array(buf).reduce((acc, byte) => acc + String.fromCharCode(byte), ""),
-        );
-        return {
-          filename: file.name,
-          contentType: file.type || "application/octet-stream",
-          contentBase64: base64,
-          size: file.size,
-        };
-      }),
+      Array.from(files).map(async (file) => ({
+        filename: file.name,
+        contentType: file.type || "application/octet-stream",
+        contentBase64: bytesToBase64(await file.arrayBuffer()),
+        size: file.size,
+      })),
     );
-    setAttachments((prev) => [...prev, ...next]);
+    addAttachments(next);
   }
 
   // The footer has always advertised mod+Enter; this makes it true.
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && busy === null) {
+    if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !blocked) {
       e.preventDefault();
       void handleSend();
     }
@@ -392,6 +441,16 @@ export function ComposeDock() {
           />
         )}
 
+        {attachmentsLoading && (
+          <p
+            role="status"
+            className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3 text-[12px] text-ink-2 dark:border-glass-border"
+          >
+            <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+            Loading the files in this draft…
+          </p>
+        )}
+
         {attachments.length > 0 && (
           <ul className="flex shrink-0 flex-wrap gap-1.5 border-t border-border px-4 py-3 dark:border-glass-border">
             {attachments.map((a, i) => (
@@ -403,7 +462,7 @@ export function ComposeDock() {
                 <span className="font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(a.size)}</span>
                 <button
                   type="button"
-                  onClick={() => setAttachments((prev) => prev.filter((_, idx) => idx !== i))}
+                  onClick={() => removeAttachment(i)}
                   className="grid size-6 place-items-center rounded-full text-ink-2 outline-none transition-colors hover:bg-foreground/5 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label={`Remove ${a.filename}`}
                 >
@@ -416,7 +475,7 @@ export function ComposeDock() {
 
         <TooltipGroup>
           <div className="flex h-16 shrink-0 items-center gap-1.5 border-t border-border px-3 dark:border-glass-border">
-            <Button size="pill" onClick={handleSend} disabled={busy !== null} className="pl-4">
+            <Button size="pill" onClick={handleSend} disabled={blocked} className="pl-4">
               {busy === "send" ? <LoaderCircle className="animate-spin" /> : <Send />}
               Send
             </Button>
@@ -430,7 +489,7 @@ export function ComposeDock() {
               className="hidden"
               onChange={(e) => handleFiles(e.target.files)}
             />
-            <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={busy !== null}>
+            <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={blocked}>
               {busy === "draft" ? <LoaderCircle className="animate-spin" /> : <FilePen />}
             </IconCircle>
             <div className="ml-auto flex items-center gap-2">
@@ -439,14 +498,7 @@ export function ComposeDock() {
                 <Kbd>↵</Kbd>
                 <span className="ml-0.5">to send</span>
               </span>
-              <IconCircle
-                label="Discard"
-                onClick={() => {
-                  closeCompose();
-                  setAttachments([]);
-                }}
-                className="hover:text-destructive"
-              >
+              <IconCircle label="Discard" onClick={handleDiscard} className="hover:text-destructive">
                 <Trash2 />
               </IconCircle>
             </div>

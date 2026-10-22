@@ -18,13 +18,19 @@ as you work — it ships inside the app.
 - You can now download attachments straight from Raven. Click a file
   under the message header to save it. Files always download and never
   open inside Raven, so a harmful file can't run in your mailbox.
+- Open a message in your Drafts folder to pick up where you left off. It
+  opens in the compose window with its recipients, subject, text and
+  files, ready to edit and send.
+- Discarding a draft now offers Undo, in case you clicked by mistake.
 
 ### Fixed
 
 - A message with another email attached to it now shows the paperclip
   and counts toward attachment storage on the Overview. Before, an
   attached email that held only text was missed.
-
+- Saving a draft more than once no longer fills your Drafts folder with
+  copies. Each save replaces the last one. Sending or discarding a saved
+  draft removes it from Drafts, and Bcc is kept when you save.
 - The Overview no longer scrolls sideways on wide screens. The Daily
   brief's "Deep triage" button, a long subject, or a long suggestion
   typing out in the "need help?" box could push the page wider than

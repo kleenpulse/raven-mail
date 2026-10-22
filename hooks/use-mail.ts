@@ -106,7 +106,7 @@ export function useMessages(folder: string, search?: string) {
   });
 }
 
-function messageQuery(email: string, folder: string, uid: string, mid?: string | null) {
+export function messageQuery(email: string, folder: string, uid: string, mid?: string | null) {
   return {
     queryKey: qk.message(email, folder, uid),
     queryFn: ({ signal }: { signal: AbortSignal }) => {

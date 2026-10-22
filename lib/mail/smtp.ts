@@ -31,10 +31,12 @@ function parseAddressList(raw: string): string[] {
     .filter(Boolean);
 }
 
+/** `keepBcc` is for saved drafts only: sent mail must never carry the Bcc header. */
 export async function buildRawMessage(
   session: MailSession,
   draft: ComposeDraft,
-): Promise<{ raw: Buffer; envelope: { from: string; to: string[] } }> {
+  { keepBcc = false }: { keepBcc?: boolean } = {},
+): Promise<{ raw: Buffer; envelope: { from: string; to: string[] }; messageId: string }> {
   const from = session.displayName
     ? { name: session.displayName, address: session.email }
     : session.email;
@@ -56,6 +58,8 @@ export async function buildRawMessage(
     })),
     date: new Date(),
   }).compile();
+  mail.keepBcc = keepBcc;
+  const messageId = mail.messageId();
 
   const raw = await new Promise<Buffer>((resolve, reject) => {
     mail.build((err: Error | null, message: Buffer) => {
@@ -69,6 +73,7 @@ export async function buildRawMessage(
   return {
     raw,
     envelope: { from: fromAddress, to: envelope.to ?? [] },
+    messageId,
   };
 }
 

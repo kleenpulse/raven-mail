@@ -318,4 +318,25 @@ describe("devSaveDraft", () => {
 		expect(m.to).toEqual([]);
 		expect(folderCounts("Drafts").total).toBe(before + 1);
 	});
+
+	test("replacing: the new copy lands before the old one goes, and the count holds", () => {
+		const first = devSaveDraft(draft({ text: "v1" }), me).uid;
+		const before = folderCounts("Drafts").total;
+		const second = devSaveDraft(draft({ text: "v2" }), me, first).uid;
+		expect(second).not.toBe(first);
+		expect(folderCounts("Drafts").total).toBe(before);
+		expect(devGetMessage("Drafts", second).text).toBe("v2");
+		expect(() => devGetMessage("Drafts", first)).toThrow("Message not found");
+	});
+
+	test("replacing only ever removes from Drafts", () => {
+		const inboxUid = inFolder("INBOX")[0]!.uid;
+		devSaveDraft(draft(), me, inboxUid);
+		expect(devGetMessage("INBOX", inboxUid)).toBeDefined();
+	});
+
+	test("Bcc is kept on the saved copy", () => {
+		const { uid } = devSaveDraft(draft({ bcc: "hidden@x.com" }), me);
+		expect(devGetMessage("Drafts", uid).bcc).toEqual([{ address: "hidden@x.com" }]);
+	});
 });

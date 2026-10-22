@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/actions/auth";
 import {
   appendRaw,
   deleteMessages,
+  findUidByMessageId,
   moveMessages,
   resolveSpecial,
   setFlags,
@@ -34,6 +35,7 @@ const folderSchema = z
 const uidSchema = z.string().regex(/^\d{1,10}$/, "Invalid message id.");
 // Unvalidated uids were joined straight into an IMAP sequence set — "1:*" hit a whole folder.
 const uidsSchema = z.array(uidSchema).min(1).max(500);
+const draftUidSchema = uidSchema.optional();
 
 const setFlagsSchema = z.object({
   folder: folderSchema,
@@ -145,10 +147,14 @@ export async function deleteMessagesAction(input: z.input<typeof deleteSchema>):
 
 export async function sendMessageAction(input: {
   draft: ComposeDraft;
+  /** The saved draft this message came from; its server copy goes once sent. */
+  draftUid?: string;
 }): Promise<ActionResult<{ messageId: string }>> {
   const session = await requireSession();
   const parsed = draftSchema.safeParse(input.draft);
   if (!parsed.success) return invalid(parsed.error);
+  const fromDraft = draftUidSchema.safeParse(input.draftUid);
+  if (!fromDraft.success) return invalid(fromDraft.error);
   const draft = parsed.data;
   if (!draft.to.trim()) {
     return { ok: false, error: "Add at least one recipient." };
@@ -158,6 +164,7 @@ export async function sendMessageAction(input: {
     if (isDevSession(session)) {
       const { messageId } = devSendMessage(draft, devFrom(session));
       if (draft.source) devSetFlags(draft.source.folder, [draft.source.uid], { answered: true });
+      if (fromDraft.data) await removeDraftCopy(session, fromDraft.data);
       return { ok: true, data: { messageId } };
     }
 
@@ -174,6 +181,7 @@ export async function sendMessageAction(input: {
       draft.source
         ? setFlags(session, draft.source.folder, [draft.source.uid], { add: ["\\Answered"] })
         : Promise.resolve(),
+      fromDraft.data ? removeDraftCopy(session, fromDraft.data) : Promise.resolve(),
     ]);
     invalidateSnapshot(session);
 
@@ -183,6 +191,10 @@ export async function sendMessageAction(input: {
   }
 }
 
+/**
+ * Saves a new server copy, then deletes the one it replaces (`draftUid`). In
+ * that order, a failure part way leaves an extra copy, never no copy.
+ */
 export async function saveDraftAction(input: {
   draft: ComposeDraft;
   draftUid?: string;
@@ -190,11 +202,14 @@ export async function saveDraftAction(input: {
   const session = await requireSession();
   const parsed = draftSchema.safeParse(input.draft);
   if (!parsed.success) return invalid(parsed.error);
+  const previous = draftUidSchema.safeParse(input.draftUid);
+  if (!previous.success) return invalid(previous.error);
   const draft = { ...parsed.data, subject: parsed.data.subject || "(no subject)" };
+  const replaces = previous.data;
 
   try {
     if (isDevSession(session)) {
-      const { uid } = devSaveDraft(draft, devFrom(session));
+      const { uid } = devSaveDraft(draft, devFrom(session), replaces);
       return { ok: true, data: { uid } };
     }
 
@@ -203,9 +218,38 @@ export async function saveDraftAction(input: {
       return { ok: false, error: "No Drafts folder found on this account." };
     }
 
-    const { raw } = await buildRawMessage(session, draft);
-    await appendRaw(session, draftsFolder, raw, ["\\Draft", "\\Seen"]);
-    return { ok: true, data: {} };
+    const { raw, messageId } = await buildRawMessage(session, draft, { keepBcc: true });
+    const appended = await appendRaw(session, draftsFolder, raw, ["\\Draft", "\\Seen"]);
+    const uid =
+      appended.uid ?? (await findUidByMessageId(session, draftsFolder, messageId).catch(() => null)) ?? undefined;
+    if (replaces && replaces !== uid) {
+      // The new copy is safe on the server; a stale one left behind is only clutter.
+      await deleteMessages(session, draftsFolder, [replaces], null).catch(() => {});
+    }
+    return { ok: true, data: { uid } };
+  } catch (err) {
+    return fail(err);
+  }
+}
+
+/** Deletes a draft's server copy for good (discard, or after it was sent). */
+async function removeDraftCopy(session: MailSession, draftUid: string): Promise<void> {
+  if (isDevSession(session)) {
+    const drafts = resolveSpecialFolder(devListFolders(), "\\Drafts");
+    if (drafts) devDeleteMessages(drafts, [draftUid], null);
+    return;
+  }
+  const drafts = await resolveSpecial(session, "\\Drafts");
+  if (drafts) await deleteMessages(session, drafts, [draftUid], null);
+}
+
+export async function discardDraftAction(input: { draftUid: string }): Promise<ActionResult> {
+  const session = await requireSession();
+  const parsed = uidSchema.safeParse(input.draftUid);
+  if (!parsed.success) return invalid(parsed.error);
+  try {
+    await removeDraftCopy(session, parsed.data);
+    return { ok: true, data: null };
   } catch (err) {
     return fail(err);
   }

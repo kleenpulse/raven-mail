@@ -1,5 +1,12 @@
 import { describe, expect, test } from "bun:test";
-import { attachmentHeaders, attachmentHref, contentDisposition, safeContentType, SECTION_RE } from "@/lib/mail/attachment";
+import {
+  attachmentHeaders,
+  attachmentHref,
+  bytesToBase64,
+  contentDisposition,
+  safeContentType,
+  SECTION_RE,
+} from "@/lib/mail/attachment";
 
 /** The RFC 5987 value, decoded the way a browser would. */
 const extName = (header: string) => decodeURIComponent(header.split("filename*=UTF-8''")[1]!);
@@ -119,5 +126,17 @@ describe("links", () => {
     for (const bad of ["", "TEXT", "1.MIME", "2.", ".2", "1..2", "-1", "2 1", "1".repeat(5)]) {
       expect(SECTION_RE.test(bad)).toBe(false);
     }
+  });
+});
+
+describe("bytesToBase64", () => {
+  test("matches Buffer for every byte value, across the chunk boundary", () => {
+    const bytes = Uint8Array.from({ length: 0x8000 * 2 + 7 }, (_, i) => (i * 31) % 256);
+    expect(bytesToBase64(bytes)).toBe(Buffer.from(bytes).toString("base64"));
+    expect(bytesToBase64(bytes.buffer)).toBe(Buffer.from(bytes).toString("base64"));
+  });
+
+  test("empty input", () => {
+    expect(bytesToBase64(new Uint8Array())).toBe("");
   });
 });

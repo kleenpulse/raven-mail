@@ -136,3 +136,22 @@ export function draftBody(draft: Pick<ComposeDraft, "text" | "quote">): string {
       : `${header}\n\n${body}`;
   return lead ? `${lead}\n\n${block}` : block;
 }
+
+// The To/Cc split on "," and ";" (see smtp.ts), so a name holding either would cut the address in two.
+const safeAddress = (a: MailAddress) => (a.name && !/[,;"<>]/.test(a.name) ? formatAddress(a) : a.address);
+
+/** A saved draft back into compose fields, so reopening it carries on where it was left. */
+export function draftFromMessage(message: MailMessage): Partial<ComposeDraft> {
+  const list = (as: MailAddress[]) => as.map(safeAddress).join(", ");
+  const text = message.text.trim() ? message.text : htmlToText(message.html).trim();
+  return {
+    to: list(message.to),
+    cc: list(message.cc),
+    bcc: list(message.bcc),
+    // Saving fills an empty subject with this placeholder; don't hand it back as typed text.
+    subject: message.subject === "(no subject)" ? "" : message.subject,
+    text: text.replace(/\r\n/g, "\n").replace(/\s+$/, ""),
+    inReplyTo: message.inReplyTo,
+    references: message.references,
+  };
+}
