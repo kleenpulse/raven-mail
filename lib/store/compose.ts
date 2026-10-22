@@ -3,6 +3,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { ComposeDraft } from "@/lib/mail/types";
+import { withSignature } from "@/lib/mail/signature";
+import { getPref } from "@/lib/prefs/store";
 
 export type ComposeMode = "new" | "reply" | "replyAll" | "forward";
 
@@ -13,6 +15,8 @@ type OpenOptions = {
   draftUid?: string;
   /** Files are still being fetched (a reopened draft); saving or sending now would drop them. */
   attachmentsLoading?: boolean;
+  /** Add the user's signature (default). False for a draft being reopened as it was. */
+  signature?: boolean;
 };
 
 type ComposeState = {
@@ -56,16 +60,19 @@ export const useComposeStore = create<ComposeState>()(
       draftUid: undefined,
       attachments: [],
       attachmentsLoading: false,
-      openCompose: (mode = "new", draft, options = {}) =>
+      openCompose: (mode = "new", draft, options = {}) => {
+        const next = { ...emptyDraft(), ...draft };
+        if (options.signature !== false) next.text = withSignature(next.text, getPref("mail.signature"));
         set({
           open: true,
           minimized: false,
           mode,
-          draft: { ...emptyDraft(), ...draft },
+          draft: next,
           draftUid: options.draftUid,
           attachments: [],
           attachmentsLoading: options.attachmentsLoading ?? false,
-        }),
+        });
+      },
       closeCompose: () =>
         set({
           open: false,

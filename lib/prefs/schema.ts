@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { SIGNATURE_MAX } from "@/lib/mail/signature";
 
 /**
  * Every tunable in one flat map. Keys are a stable contract: never reuse one
@@ -14,6 +15,8 @@ export const PREF_SCHEMAS = {
 	"mail.undoMs": z.union([z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
 	/** How long Send waits so it can be undone; 0 sends at once. */
 	"mail.undoSend": z.union([z.literal(0), z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
+	/** Plain text added under new mail and above the quote in replies. */
+	"mail.signature": z.string().max(SIGNATURE_MAX),
 	"mail.preload": z.boolean(),
 	/** Group the list into conversations and show the rest of each one in the reader. */
 	"mail.threading": z.boolean(),
@@ -40,6 +43,7 @@ export const DEFAULTS: Prefs = {
 	"mail.remoteImages": false,
 	"mail.undoMs": 5000,
 	"mail.undoSend": 10_000,
+	"mail.signature": "",
 	"mail.preload": true,
 	"mail.threading": true,
 	"sync.focusRefetch": true,

@@ -75,7 +75,8 @@ export function HygieneCard({ overview, i = 0, id }: { overview: Overview; i?: n
 										type="button"
 										onClick={() => {
 											const { to, subject } = parseMailto(list.unsubscribe!.mailto!);
-											openCompose("new", { to, subject, text: "unsubscribe" });
+											// Read by a machine: no signature.
+											openCompose("new", { to, subject, text: "unsubscribe" }, { signature: false });
 										}}
 										className="inline-flex h-8 shrink-0 items-center gap-1 rounded-pill px-3 text-[12px] ring-1 ring-border transition-colors hover:bg-signal-soft dark:ring-glass-border"
 									>

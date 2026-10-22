@@ -21,6 +21,8 @@ import {
 	DialogTrigger,
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Textarea } from "@/components/ui/textarea";
+import { SIGNATURE_MAX } from "@/lib/mail/signature";
 import { useAccount } from "@/components/providers/account-provider";
 import { centerOf, revealTheme, type ThemeChoice } from "@/components/shell/theme-toggle";
 import { sectionEntries, type SectionId, type SettingEntry } from "@/components/settings";
@@ -174,6 +176,25 @@ function UndoSendRow() {
 					options={UNDO_SEND_OPTIONS}
 					onChange={(next) => setPref("mail.undoSend", Number(next) as 0 | 5000 | 10_000 | 20_000 | 30_000)}
 					labelledBy={labelId}
+				/>
+			)}
+		</SettingRow>
+	);
+}
+
+function SignatureRow() {
+	const value = usePref("mail.signature");
+	return (
+		<SettingRow id="signature" layout="stack">
+			{(labelId) => (
+				<Textarea
+					aria-labelledby={labelId}
+					value={value}
+					onChange={(e) => setPref("mail.signature", e.target.value.slice(0, SIGNATURE_MAX))}
+					maxLength={SIGNATURE_MAX}
+					rows={4}
+					placeholder={"Sam Rivera\nRaven"}
+					className="min-h-24 resize-y font-mono text-[13px]"
 				/>
 			)}
 		</SettingRow>
@@ -665,6 +686,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	threading: () => <PrefSwitchRow id="threading" pref="mail.threading" />,
 	undo: UndoRow,
 	"undo-send": UndoSendRow,
+	signature: SignatureRow,
 	"mail-layout": MailLayoutRow,
 	"banner-position": BannerPositionRow,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,

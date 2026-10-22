@@ -120,6 +120,15 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["mail.undoSend"],
 	},
 	{
+		id: "signature",
+		section: "mail",
+		card: "Sending",
+		label: "Signature",
+		description: "Added under new messages, and above the quote when you reply or forward. Saved on this device only.",
+		keywords: "signature sign off footer name title",
+		prefs: ["mail.signature"],
+	},
+	{
 		id: "mail-layout",
 		section: "mail",
 		card: "Layout",

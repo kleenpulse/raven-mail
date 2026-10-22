@@ -49,6 +49,11 @@ as you work — it ships inside the app.
   away. If you try to leave while a message is waiting, Raven
   asks first. If you close the tab anyway, the message isn't sent, and
   it opens again in compose the next time you visit.
+- Signatures: write one in Settings → Mail and Raven adds it under each
+  new message, and above the quoted message when you reply or forward.
+  You start typing above it. A draft you open again keeps the one it
+  has, so you never get two. Your signature is saved on this device
+  only.
 - A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
   any folder or page, open a settings section, switch between Ember and
   Nebula, search your mail, or act on the open message. Each action

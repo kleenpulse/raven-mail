@@ -46,6 +46,7 @@ export function useResumeDraft() {
 			store.openCompose(message.inReplyTo ? "reply" : "new", draftFromMessage(message), {
 				draftUid: uid,
 				attachmentsLoading: files.length > 0,
+				signature: false,
 			});
 			if (files.length === 0) return;
 

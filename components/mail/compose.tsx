@@ -28,6 +28,7 @@ import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/
 import { formatBytes } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { bytesToBase64 } from "@/lib/mail/attachment";
+import { onlySignature } from "@/lib/mail/signature";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 import type { ComposeDraft } from "@/lib/mail/types";
 
@@ -253,7 +254,7 @@ export function ComposeDock() {
         label: "Undo",
         onClick: () => {
           const store = useComposeStore.getState();
-          store.openCompose(snapshot.mode, snapshot.draft);
+          store.openCompose(snapshot.mode, snapshot.draft, { signature: false });
           store.addAttachments(snapshot.attachments);
         },
       },
@@ -405,6 +406,13 @@ export function ComposeDock() {
           placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
           aria-label="Message body"
           autoFocus={!focusTo}
+          onFocus={(e) => {
+            // React leaves the caret after the value: start above the signature instead.
+            const el = e.currentTarget;
+            if (onlySignature(el.value) && el.selectionStart === el.value.length) {
+              requestAnimationFrame(() => el.setSelectionRange(0, 0));
+            }
+          }}
           className="auto-scroll min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-5 py-4 text-[14.5px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
         />
 
