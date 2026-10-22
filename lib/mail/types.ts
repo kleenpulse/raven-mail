@@ -3,6 +3,8 @@ export type AttachmentMeta = {
   contentType: string;
   size: number;
   contentId?: string;
+  /** IMAP section to download. Missing when the part couldn't be located. */
+  part?: string;
 };
 
 export type MailAddress = {

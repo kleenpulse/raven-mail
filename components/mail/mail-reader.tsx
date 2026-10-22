@@ -7,6 +7,7 @@ import {
 	ChevronDown,
 	ChevronLeft,
 	ChevronRight,
+	Download,
 	Forward,
 	ImageOff,
 	Inbox,
@@ -40,6 +41,7 @@ import { deleteMessagesAction, moveMessagesAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
+import { attachmentHref } from "@/lib/mail/attachment";
 
 function firstAddressLine(list: { name?: string; address: string }[]): string {
 	if (list.length === 0) return "";
@@ -52,6 +54,47 @@ function fileKind(file: AttachmentMeta): string {
 	const ext = file.filename.includes(".") ? file.filename.split(".").pop() : "";
 	const kind = ext || file.contentType.split("/").pop() || "";
 	return kind.length > 0 && kind.length <= 4 ? kind : "file";
+}
+
+/** A download link when the part is known; a plain label otherwise. */
+function AttachmentPill({ file, folder, uid }: { file: AttachmentMeta; folder: string; uid: string }) {
+	const body = (
+		<>
+			<span
+				aria-hidden
+				className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-card px-1.5 font-mono text-[9.5px] font-semibold tracking-wide text-ink-2 uppercase dark:bg-accent"
+			>
+				{fileKind(file)}
+			</span>
+			<span className="min-w-0 leading-tight">
+				<span className="block max-w-56 truncate text-[13px] font-medium text-foreground">{file.filename}</span>
+				<span className="block font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(file.size)}</span>
+			</span>
+		</>
+	);
+	const pill =
+		"inline-flex h-11 max-w-full items-center gap-2.5 rounded-pill bg-card-nested pl-1.5 ring-1 ring-border dark:ring-glass-border";
+	if (!file.part) {
+		return (
+			<span title={file.filename} className={cn(pill, "pr-4")}>
+				{body}
+			</span>
+		);
+	}
+	return (
+		<a
+			href={attachmentHref(folder, uid, file.part)}
+			download={file.filename}
+			title={`Download ${file.filename}`}
+			className={cn(pill, "group pr-3.5 transition-colors hover:bg-foreground/5")}
+		>
+			{body}
+			<Download
+				aria-hidden
+				className="size-3.5 shrink-0 text-ink-2 transition-colors group-hover:text-foreground"
+			/>
+		</a>
+	);
 }
 
 /** Prev/next through the list while the reader covers it. */
@@ -488,33 +531,13 @@ function MailReaderInner({
 
 						{attachmentCount > 0 && (
 							<div className="px-3 pb-3.5">
-								<p className="mb-2 flex flex-wrap items-baseline gap-x-2">
-									<span className="readout">
-										{attachmentCount} attachment{attachmentCount > 1 ? "s" : ""}
-									</span>
-									<span className="text-[11px] text-ink-2">Download from your provider</span>
+								<p className="readout mb-2">
+									{attachmentCount} attachment{attachmentCount > 1 ? "s" : ""}
 								</p>
 								<ul className="flex flex-wrap gap-2">
 									{message.attachments.map((a, i) => (
-										<li
-											key={`${a.filename}-${i}`}
-											title={a.filename}
-											className="inline-flex h-11 max-w-full items-center gap-2.5 rounded-pill bg-card-nested pr-4 pl-1.5 ring-1 ring-border dark:ring-glass-border"
-										>
-											<span
-												aria-hidden
-												className="grid h-8 min-w-8 shrink-0 place-items-center rounded-full bg-card px-1.5 font-mono text-[9.5px] font-semibold tracking-wide text-ink-2 uppercase dark:bg-accent"
-											>
-												{fileKind(a)}
-											</span>
-											<span className="min-w-0 leading-tight">
-												<span className="block max-w-56 truncate text-[13px] font-medium text-foreground">
-													{a.filename}
-												</span>
-												<span className="block font-mono text-[10.5px] text-ink-2 tabular">
-													{formatBytes(a.size)}
-												</span>
-											</span>
+										<li key={`${a.filename}-${i}`} className="max-w-full">
+											<AttachmentPill file={a} folder={message.folder} uid={message.uid} />
 										</li>
 									))}
 								</ul>

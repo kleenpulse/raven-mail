@@ -1,5 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
+  attachmentBytes,
+  attachmentSections,
   decodeCharset,
   decodeTransfer,
   hasAttachments,
@@ -60,6 +62,114 @@ describe("structure", () => {
     expect(pickTextPart(invoice)?.type).toBe("text/html");
     expect(pickTextPart({ type: "text/plain", encoding: "8bit" })?.key).toBe("1");
     expect(pickTextPart({ type: "image/png", parameters: { name: "x.png" } })).toBeNull();
+  });
+});
+
+describe("attached messages", () => {
+  // imapflow nests the inner message's body under the message/rfc822 node.
+  const forwarded: MimeNode = {
+    type: "multipart/mixed",
+    childNodes: [
+      { part: "1", type: "text/plain", encoding: "7bit" },
+      {
+        part: "2",
+        type: "message/rfc822",
+        disposition: "attachment",
+        size: 4_000,
+        childNodes: [{ part: "2", type: "text/plain", encoding: "7bit" }],
+      },
+    ],
+  };
+
+  test("an attached message is an attachment, even with only text inside", () => {
+    expect(hasAttachments(forwarded)).toBe(true);
+    expect(attachmentBytes(forwarded)).toBe(4_000);
+  });
+
+  test("its inner body is never picked as the preview", () => {
+    expect(pickTextPart(forwarded)?.key).toBe("1");
+    const onlyForward: MimeNode = { ...forwarded, childNodes: [forwarded.childNodes![1]!] };
+    expect(pickTextPart(onlyForward)).toBeNull();
+  });
+
+  test("an inline embedded message is body, as mailparser shows it", () => {
+    const inline: MimeNode = {
+      ...forwarded,
+      childNodes: [{ ...forwarded.childNodes![1]!, disposition: "inline" }],
+    };
+    expect(hasAttachments(inline)).toBe(false);
+  });
+});
+
+describe("attachmentSections", () => {
+  const mixed: MimeNode = {
+    type: "multipart/mixed",
+    childNodes: [
+      {
+        part: "1",
+        type: "multipart/related",
+        childNodes: [
+          {
+            part: "1.1",
+            type: "multipart/alternative",
+            childNodes: [
+              { part: "1.1.1", type: "text/plain" },
+              { part: "1.1.2", type: "text/html" },
+            ],
+          },
+          { part: "1.2", type: "image/png", id: "<logo@x>", parameters: { name: "logo.png" } },
+        ],
+      },
+      { part: "2", type: "application/pdf", disposition: "attachment", dispositionParameters: { filename: "a.pdf" } },
+      {
+        part: "3",
+        type: "application/octet-stream",
+        disposition: "attachment",
+        dispositionParameters: { filename: "notes.docx" },
+      },
+      { part: "4", type: "application/pdf", disposition: "attachment", dispositionParameters: { filename: "b.pdf" } },
+      { part: "5", type: "message/rfc822", childNodes: [{ part: "5", type: "text/plain" }] },
+    ],
+  };
+
+  test("pairs each parsed attachment with its section, nested ones included", () => {
+    const parsed = [
+      { contentType: "image/png", filename: "logo.png" },
+      { contentType: "application/pdf", filename: "a.pdf" },
+      // mailparser retypes octet-stream by extension
+      { contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename: "notes.docx" },
+      { contentType: "application/pdf", filename: "b.pdf" },
+      { contentType: "message/rfc822" },
+    ];
+    expect(attachmentSections(parsed, mixed)).toEqual(["1.2", "2", "3", "4", "5"]);
+  });
+
+  test("an unmatched attachment gets no section and doesn't shift the rest", () => {
+    const parsed = [
+      { contentType: "application/zip", filename: "ghost.zip" },
+      { contentType: "application/pdf", filename: "b.pdf" },
+    ];
+    expect(attachmentSections(parsed, mixed)).toEqual([undefined, "4"]);
+  });
+
+  test("never hands out the body text, even to a nameless text attachment", () => {
+    const tree: MimeNode = {
+      type: "multipart/mixed",
+      childNodes: [
+        { part: "1", type: "text/plain" },
+        { part: "2", type: "text/plain", disposition: "attachment" },
+      ],
+    };
+    expect(attachmentSections([{ contentType: "text/plain" }], tree)).toEqual(["2"]);
+  });
+
+  test("a single-part message is section 1", () => {
+    const single: MimeNode = { type: "application/pdf", disposition: "attachment", dispositionParameters: { filename: "x.pdf" } };
+    expect(attachmentSections([{ contentType: "application/pdf", filename: "x.pdf" }], single)).toEqual(["1"]);
+  });
+
+  test("no structure, no sections", () => {
+    expect(attachmentSections([{ contentType: "application/pdf" }], undefined)).toEqual([undefined]);
   });
 });
 

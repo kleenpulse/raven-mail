@@ -22,8 +22,13 @@ export type TextPartRef = {
   charset: string;
 };
 
+/** imapflow nests a whole message under message/rfc822; mailparser only unpacks it when inline. */
+const isAttachedMessage = (node: MimeNode) =>
+  node.type.toLowerCase() === "message/rfc822" && node.disposition?.toLowerCase() !== "inline";
+
+/** Document order. An attached message is one leaf. */
 function leaves(node: MimeNode, out: MimeNode[] = []): MimeNode[] {
-  if (node.childNodes?.length) {
+  if (node.childNodes?.length && !isAttachedMessage(node)) {
     for (const child of node.childNodes) leaves(child, out);
   } else {
     out.push(node);
@@ -35,12 +40,21 @@ function filenameOf(node: MimeNode): string | undefined {
   return node.dispositionParameters?.filename ?? node.parameters?.name;
 }
 
+function isBodyText(node: MimeNode): boolean {
+  const type = node.type.toLowerCase();
+  return (
+    (type === "text/plain" || type === "text/html") &&
+    node.disposition?.toLowerCase() !== "attachment" &&
+    !filenameOf(node)
+  );
+}
+
 export function isAttachmentNode(node: MimeNode): boolean {
+  if (isAttachedMessage(node)) return true;
   if (node.childNodes?.length) return false;
   const type = node.type.toLowerCase();
   const disposition = node.disposition?.toLowerCase();
   if (disposition === "attachment") return true;
-  if (type === "message/rfc822") return true;
   // cid-referenced images are part of the body, not attachments
   if (node.id && type.startsWith("image/")) return false;
   if ((type === "text/plain" || type === "text/html") && !filenameOf(node)) return false;
@@ -57,6 +71,44 @@ export function attachmentBytes(root: MimeNode | undefined): number {
   return leaves(root)
     .filter(isAttachmentNode)
     .reduce((sum, n) => sum + (n.size ?? 0), 0);
+}
+
+/**
+ * BODYSTRUCTURE section for each parsed attachment (mailparser's own partId
+ * miscounts sibling multiparts). Both lists are in document order, so this
+ * walks forward: same type and filename first, then filename alone (mailparser
+ * retypes octet-stream by extension), then type alone. A part nothing matches
+ * gets no section rather than shifting the rest.
+ */
+export function attachmentSections(
+  attachments: { contentType: string; filename?: string }[],
+  root: MimeNode | undefined,
+): (string | undefined)[] {
+  if (!root) return attachments.map(() => undefined);
+  const single = !root.childNodes?.length;
+  const parts = leaves(root)
+    .filter((n) => !isBodyText(n))
+    .map((n) => ({
+      section: single ? "1" : n.part,
+      type: n.type.toLowerCase(),
+      filename: filenameOf(n),
+    }));
+  let from = 0;
+  return attachments.map((a) => {
+    const type = a.contentType.toLowerCase();
+    const rules = [
+      (p: (typeof parts)[number]) => p.type === type && p.filename === a.filename,
+      (p: (typeof parts)[number]) => Boolean(a.filename) && p.filename === a.filename,
+      (p: (typeof parts)[number]) => p.type === type,
+    ];
+    for (const rule of rules) {
+      const at = parts.findIndex((p, i) => i >= from && rule(p));
+      if (at === -1) continue;
+      from = at + 1;
+      return parts[at]!.section;
+    }
+    return undefined;
+  });
 }
 
 export function hasCalendarInvite(root: MimeNode | undefined): boolean {

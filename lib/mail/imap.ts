@@ -1,4 +1,5 @@
 import "server-only";
+import { Readable } from "node:stream";
 import {
   ImapFlow,
   type FetchMessageObject,
@@ -18,7 +19,7 @@ import type {
 } from "@/lib/mail/types";
 import { labelSpecialUse, resolveSpecialFolder, shortFolderName } from "@/lib/mail/folders";
 import { hasRemoteContent, sanitizeBody } from "@/lib/mail/sanitize";
-import { hasAttachments } from "@/lib/mail/mime";
+import { attachmentSections, hasAttachments } from "@/lib/mail/mime";
 import { fetchPreviews } from "@/lib/mail/preview";
 import { planPreload, type PreloadResult } from "@/lib/mail/preload";
 import { isLoopbackHost } from "@/lib/auth/ip";
@@ -297,19 +298,31 @@ function inlineCidImages(html: string, attachments: Attachment[]): string {
 }
 
 // `source` is BODY.PEEK[]: reading a message never marks it \Seen.
-const MESSAGE_QUERY: FetchQueryObject = { envelope: true, flags: true, uid: true, source: true, internalDate: true };
+// bodyStructure gives each attachment its section number for download.
+const MESSAGE_QUERY: FetchQueryObject = {
+  envelope: true,
+  flags: true,
+  uid: true,
+  source: true,
+  internalDate: true,
+  bodyStructure: true,
+};
 
 /** Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox. */
 async function toMailMessage(msg: FetchMessageObject, source: Buffer, folder: string): Promise<MailMessage> {
   const parsed = await simpleParser(source);
   const envelope = msg.envelope;
-  const attachments: AttachmentMeta[] = (parsed.attachments ?? [])
-    .filter((a) => !a.cid || !/inline/i.test(a.contentDisposition ?? ""))
-    .map((a) => ({
+  const parsedAttachments = parsed.attachments ?? [];
+  const sections = attachmentSections(parsedAttachments, msg.bodyStructure);
+  const attachments: AttachmentMeta[] = parsedAttachments
+    .map((a, i) => ({ a, part: sections[i] }))
+    .filter(({ a }) => !a.cid || !/inline/i.test(a.contentDisposition ?? ""))
+    .map(({ a, part }) => ({
       filename: a.filename ?? "attachment",
       contentType: a.contentType,
       size: a.size ?? a.content?.length ?? 0,
       contentId: a.cid,
+      part,
     }));
 
   const rawHtml = typeof parsed.html === "string" ? parsed.html : "";
@@ -397,6 +410,54 @@ export async function getMessages(
     }
   }
   return { messages, skipped: skipped.map(String) };
+}
+
+export type AttachmentDownload = {
+  body: ReadableStream<Uint8Array>;
+  filename?: string;
+  contentType?: string;
+  charset?: string;
+};
+
+/**
+ * One decoded part as a stream. imapflow pulls it in 64 KB FETCH windows as
+ * the body is read, so the connection and mailbox lock stay held until the
+ * stream ends, errors or is cancelled.
+ */
+export async function downloadAttachment(
+  session: MailSession,
+  folder: string,
+  uid: string,
+  part: string,
+  signal?: AbortSignal,
+): Promise<AttachmentDownload> {
+  const { client, release } = await acquireClient(session);
+  let unlock: (() => void) | undefined;
+  const done = () => {
+    unlock?.();
+    unlock = undefined;
+    release();
+  };
+  try {
+    await client.connect();
+    const lock = await client.getMailboxLock(folder, { readOnly: true });
+    unlock = () => lock.release();
+    const { meta, content } = await client.download(uid, part, { uid: true });
+    if (!content) throw new Error("Attachment not found");
+    content.once("close", done);
+    content.once("error", done);
+    signal?.addEventListener("abort", () => content.destroy(), { once: true });
+    return {
+      // node:stream/web and the DOM lib type the same global ReadableStream separately.
+      body: Readable.toWeb(content) as unknown as ReadableStream<Uint8Array>,
+      filename: meta.filename || undefined,
+      contentType: meta.contentType || undefined,
+      charset: meta.charset || undefined,
+    };
+  } catch (err) {
+    done();
+    throw err;
+  }
 }
 
 /** Deep links carry the Message-ID so a UIDVALIDITY reset can't strand them. */

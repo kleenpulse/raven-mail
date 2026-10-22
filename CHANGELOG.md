@@ -15,8 +15,15 @@ as you work — it ships inside the app.
 
 - A "buy me a coffee" button now sits in the top-right corner of the
   Overview and Mail top bars, if you'd like to support Raven.
+- You can now download attachments straight from Raven. Click a file
+  under the message header to save it. Files always download and never
+  open inside Raven, so a harmful file can't run in your mailbox.
 
 ### Fixed
+
+- A message with another email attached to it now shows the paperclip
+  and counts toward attachment storage on the Overview. Before, an
+  attached email that held only text was missed.
 
 - The Overview no longer scrolls sideways on wide screens. The Daily
   brief's "Deep triage" button, a long subject, or a long suggestion

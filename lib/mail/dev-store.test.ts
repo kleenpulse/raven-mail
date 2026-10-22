@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, setSystemTime, test } from "bu
 import {
 	devAllMessages,
 	devDeleteMessages,
+	devGetAttachment,
 	devGetMessage,
 	devListFolders,
 	devListMessages,
@@ -249,13 +250,61 @@ describe("devSendMessage", () => {
 			me,
 		);
 		const m = devGetMessage("Sent", devListMessages("Sent", { limit: 1 }).messages[0]!.uid);
-		expect(m.attachments).toEqual([{ filename: "a.txt", contentType: "text/plain", size: 12 }]);
+		expect(m.attachments).toEqual([{ filename: "a.txt", contentType: "text/plain", size: 12, part: "2" }]);
+	});
+
+	test("sent attachments download as the bytes that were uploaded, in Sent and the self copy", () => {
+		const file = { filename: "a.txt", contentType: "text/plain", contentBase64: "aGVsbG8gd29ybGQh" };
+		devSendMessage(draft({ to: me.address, attachments: [file] }), me);
+		for (const folder of ["Sent", "INBOX"]) {
+			const uid = devListMessages(folder, { limit: 1 }).messages[0]!.uid;
+			const { meta, bytes } = devGetAttachment(folder, uid, "2");
+			expect(meta.filename).toBe("a.txt");
+			expect(new TextDecoder().decode(bytes)).toBe("hello world!");
+		}
 	});
 
 	test.each(["", "   "])("refuses without recipients (%p)", (to) => {
 		const total = devAllMessages().length;
 		expect(() => devSendMessage(draft({ to }), me)).toThrow("Add at least one recipient.");
 		expect(devAllMessages()).toHaveLength(total);
+	});
+});
+
+describe("devGetAttachment", () => {
+	const seeded = () => devAllMessages().filter((m) => m.attachments.length > 0);
+
+	test("every seeded attachment has a section and real bytes", () => {
+		const all = seeded();
+		expect(all.length).toBeGreaterThan(5);
+		for (const m of all) {
+			for (const a of m.attachments) {
+				expect(a.part).toMatch(/^\d+$/);
+				expect(devGetAttachment(m.folder, m.uid, a.part!).bytes.byteLength).toBeGreaterThan(0);
+			}
+		}
+	});
+
+	test("fixtures open as their type", () => {
+		const find = (type: string) => {
+			const m = seeded().find((x) => x.attachments.some((a) => a.contentType === type))!;
+			const a = m.attachments.find((x) => x.contentType === type)!;
+			return devGetAttachment(m.folder, m.uid, a.part!).bytes;
+		};
+		const text = (b: Uint8Array) => new TextDecoder().decode(b);
+		const pdf = text(find("application/pdf"));
+		expect(pdf.startsWith("%PDF-1.4\n")).toBe(true);
+		// startxref must point at the xref table, or viewers have to repair the file
+		const at = Number(pdf.match(/startxref\n(\d+)/)![1]);
+		expect(pdf.slice(at, at + 4)).toBe("xref");
+		expect([...find("image/png").slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);
+		expect(text(find("text/calendar"))).toContain("BEGIN:VCALENDAR");
+	});
+
+	test("unknown parts and messages throw not found", () => {
+		const m = seeded()[0]!;
+		expect(() => devGetAttachment(m.folder, m.uid, "99")).toThrow("Attachment not found");
+		expect(() => devGetAttachment(m.folder, "999999", "2")).toThrow("Message not found");
 	});
 });
 

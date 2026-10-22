@@ -8,6 +8,7 @@ import type {
   MailSummary,
 } from "@/lib/mail/types";
 import { dateHeader, generateSyntheticMail } from "@/lib/mail/dev-seed";
+import { fixtureBytes } from "@/lib/mail/dev-fixtures";
 import { searchText } from "@/lib/search/text";
 
 export function isDevSession(session: { dev?: boolean }): boolean {
@@ -17,10 +18,17 @@ export function isDevSession(session: { dev?: boolean }): boolean {
 type DevDb = {
   nextUid: number;
   messages: MailMessage[];
+  /** Bytes of attachments sent or saved through compose, by `uid/part`. Seeds use fixtures. */
+  files: Map<string, Uint8Array>;
 };
 
 // Versioned so a running dev server (store lives on globalThis across HMR) picks up the synthetic seed.
-const STORE_KEY = "__em_dev_mail_store_v6__";
+const STORE_KEY = "__em_dev_mail_store_v7__";
+
+/** Section numbers like a multipart/mixed message: the body is part 1. */
+function withParts(attachments: AttachmentMeta[]): AttachmentMeta[] {
+  return attachments.map((a, i) => ({ ...a, part: String(i + 2) }));
+}
 
 function hoursAgo(now: number, h: number): string {
   return new Date(now - h * 3_600_000).toISOString();
@@ -134,6 +142,10 @@ function seed(now: number): DevDb {
       from: addr("sam.okafor@northwind.example", "Sam Okafor"),
       date: hoursAgo(now, 26),
       text: "Notes from Tuesday's critique:\n\n1. The list density feels right at 50 rows.\n2. Reader pane needs a clearer back affordance on mobile.\n3. Triage badges are noisy on newsletters.\n\nOpen question: do we want keyboard-first archive, or is the toolbar enough?",
+      attachments: [
+        { filename: "critique-board.svg", contentType: "image/svg+xml", size: 4_812 },
+        { filename: "Notes – Tuesday critique.txt", contentType: "text/plain", size: 1_204 },
+      ],
     }),
     seedMessage({
       uid: 97,
@@ -286,8 +298,11 @@ function seed(now: number): DevDb {
   // IMAP UIDs rise with arrival, and list paging relies on it (cursor = lowest UID held),
   // so renumber hand seeds + synthetic mail by date. Message-IDs were fixed at creation.
   messages.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
-  messages.forEach((m, i) => (m.uid = String(i + 1)));
-  return { nextUid: messages.length + 1, messages };
+  messages.forEach((m, i) => {
+    m.uid = String(i + 1);
+    m.attachments = withParts(m.attachments);
+  });
+  return { nextUid: messages.length + 1, messages, files: new Map() };
 }
 
 function getDb(): DevDb {
@@ -379,6 +394,17 @@ export function devGetMessage(folder: string, uid: string): MailMessage {
   return found;
 }
 
+/** An attachment's bytes: what compose uploaded, or a fixture for seeded mail. */
+export function devGetAttachment(
+  folder: string,
+  uid: string,
+  part: string,
+): { meta: AttachmentMeta; bytes: Uint8Array } {
+  const meta = devGetMessage(folder, uid).attachments.find((a) => a.part === part);
+  if (!meta) throw new Error("Attachment not found");
+  return { meta, bytes: getDb().files.get(`${uid}/${part}`) ?? fixtureBytes(meta) };
+}
+
 export function devSetFlags(
   folder: string,
   uids: string[],
@@ -442,6 +468,16 @@ function draftToMessage(
   const uid = String(db.nextUid++);
   const now = new Date().toISOString();
   const text = draft.text;
+  const attachments = withParts(
+    (draft.attachments ?? []).map((a) => ({
+      filename: a.filename,
+      contentType: a.contentType,
+      size: Math.floor((a.contentBase64.length * 3) / 4),
+    })),
+  );
+  (draft.attachments ?? []).forEach((a, i) => {
+    db.files.set(`${uid}/${attachments[i]!.part}`, Uint8Array.from(Buffer.from(a.contentBase64, "base64")));
+  });
   return {
     uid,
     folder,
@@ -459,11 +495,7 @@ function draftToMessage(
     },
     text,
     html: `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
-    attachments: (draft.attachments ?? []).map((a) => ({
-      filename: a.filename,
-      contentType: a.contentType,
-      size: Math.floor((a.contentBase64.length * 3) / 4),
-    })),
+    attachments,
     messageId: `<dev-${uid}@localhost>`,
     inReplyTo: draft.inReplyTo,
     references: draft.references,

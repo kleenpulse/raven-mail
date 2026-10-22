@@ -3,6 +3,9 @@ import { GET as FOLDERS } from "@/app/api/mail/folders/route";
 import { GET as MESSAGES } from "@/app/api/mail/messages/route";
 import { GET as MESSAGE } from "@/app/api/mail/message/route";
 import { GET as PRELOAD } from "@/app/api/mail/preload/route";
+import { GET as ATTACHMENT } from "@/app/api/mail/attachment/route";
+import { devAllMessages } from "@/lib/mail/dev-store";
+import { attachmentHref } from "@/lib/mail/attachment";
 import { SESSION_COOKIE } from "@/lib/session";
 import type { MailFolder, MailMessage, MailSummary } from "@/lib/mail/types";
 import type { PreloadResult } from "@/lib/mail/preload";
@@ -33,6 +36,7 @@ const handlers = [
 	["messages", MESSAGES, "/api/mail/messages?folder=INBOX"],
 	["message", MESSAGE, "/api/mail/message?folder=INBOX&uid=1"],
 	["preload", PRELOAD, "/api/mail/preload?folder=INBOX&uids=1"],
+	["attachment", ATTACHMENT, "/api/mail/attachment?folder=INBOX&uid=1&part=2"],
 ] as const;
 
 describe("auth", () => {
@@ -245,5 +249,66 @@ describe("GET /api/mail/preload", () => {
 	test("missing uids → 400", async () => {
 		const res = await call(PRELOAD, req("/api/mail/preload?folder=INBOX"));
 		expect(res.status).toBe(400);
+	});
+});
+
+describe("GET /api/mail/attachment", () => {
+	const withFile = (filename: string) => {
+		const m = devAllMessages().find((x) => x.attachments.some((a) => a.filename === filename))!;
+		return { m, a: m.attachments.find((a) => a.filename === filename)! };
+	};
+	const get = (path: string) => call(ATTACHMENT, req(path));
+
+	test("dev path: streams fixture bytes as a download", async () => {
+		const { m, a } = withFile("invoice-1842.pdf");
+		const res = await get(attachmentHref(m.folder, m.uid, a.part!));
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toBe("application/pdf");
+		expect(res.headers.get("content-disposition")).toBe(
+			`attachment; filename="invoice-1842.pdf"; filename*=UTF-8''invoice-1842.pdf`,
+		);
+		expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+		expect(res.headers.get("cache-control")).toBe("private, no-store");
+		const bytes = new Uint8Array(await res.arrayBuffer());
+		expect(new TextDecoder().decode(bytes.slice(0, 5))).toBe("%PDF-");
+		expect(res.headers.get("content-length")).toBe(String(bytes.byteLength));
+	});
+
+	test("dev path: an SVG is never served as an image", async () => {
+		const { m, a } = withFile("critique-board.svg");
+		const res = await get(attachmentHref(m.folder, m.uid, a.part!));
+		expect(res.status).toBe(200);
+		expect(res.headers.get("content-type")).toBe("application/octet-stream");
+		expect(res.headers.get("content-disposition")!.startsWith("attachment;")).toBe(true);
+	});
+
+	test("dev path: a unicode name comes through RFC 5987", async () => {
+		const { m, a } = withFile("Notes – Tuesday critique.txt");
+		const res = await get(attachmentHref(m.folder, m.uid, a.part!));
+		const header = res.headers.get("content-disposition")!;
+		expect(decodeURIComponent(header.split("filename*=UTF-8''")[1]!)).toBe("Notes – Tuesday critique.txt");
+		expect(res.headers.get("content-type")).toBe("text/plain");
+	});
+
+	test("unknown part or message → 404", async () => {
+		const { m } = withFile("invoice-1842.pdf");
+		expect((await get(attachmentHref(m.folder, m.uid, "9"))).status).toBe(404);
+		expect((await get(attachmentHref("INBOX", "999999", "2"))).status).toBe(404);
+		expect((await get(attachmentHref("Trash", m.uid, "2"))).status).toBe(404);
+	});
+
+	test.each([
+		["missing part", "folder=INBOX&uid=1"],
+		["word part", "folder=INBOX&uid=1&part=TEXT"],
+		["header part", "folder=INBOX&uid=1&part=1.MIME"],
+		["trailing dot", "folder=INBOX&uid=1&part=2."],
+		["letters uid", "folder=INBOX&uid=abc&part=2"],
+		["missing uid", "folder=INBOX&part=2"],
+		["empty folder", "folder=&uid=1&part=2"],
+		["newline folder", "folder=IN%0D%0ABOX&uid=1&part=2"],
+	])("%s → 400", async (_name, query) => {
+		const res = await get(`/api/mail/attachment?${query}`);
+		expect(res.status).toBe(400);
+		expect((await readJson<Err>(res)).code).toBe("bad_request");
 	});
 });
