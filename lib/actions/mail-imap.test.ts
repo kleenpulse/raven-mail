@@ -31,7 +31,9 @@ mock.module(imap, () => ({
 	deleteMessages: async (_s: unknown, folder: string, uids: string[], trash: string | null) => {
 		calls.push(`delete ${folder} ${uids.join(",")} trash=${trash}`);
 	},
-	setFlags: async () => {},
+	setFlags: async (_s: unknown, folder: string, uids: string[], changes: { add?: string[] }) => {
+		calls.push(`flag ${folder} ${uids.join(",")} ${changes.add?.join(",")}`);
+	},
 }));
 
 const smtp = path.resolve(import.meta.dir, "../mail/smtp.ts");
@@ -104,5 +106,23 @@ describe("sendMessageAction over IMAP", () => {
 		const res = await sendMessageAction({ draft, draftUid: "41" });
 		expect(res.ok).toBe(true);
 		expect(calls).toEqual(["smtp send", "delete Drafts 41 trash=null"]);
+	});
+});
+
+describe("sendMessageAction over IMAP: \\Answered", () => {
+	test("with a source, flags it directly", async () => {
+		await sendMessageAction({ draft: { ...draft, source: { folder: "Work", uid: "9" } } });
+		expect(calls).toContain("flag Work 9 \\Answered");
+	});
+
+	test("without one, finds the original in INBOX by In-Reply-To", async () => {
+		searchUid = "55";
+		await sendMessageAction({ draft: { ...draft, inReplyTo: "<orig@x>" } });
+		expect(calls).toEqual(["smtp send", "search INBOX <mid>", "flag INBOX 55 \\Answered"]);
+	});
+
+	test("nothing found, nothing flagged", async () => {
+		await sendMessageAction({ draft: { ...draft, inReplyTo: "<orig@x>" } });
+		expect(calls.some((c) => c.startsWith("flag"))).toBe(false);
 	});
 });

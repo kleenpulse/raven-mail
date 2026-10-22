@@ -14,6 +14,7 @@ import { buildRawMessage, sendRaw, serverSavesSentCopy } from "@/lib/mail/smtp";
 import { invalidateSnapshot } from "@/lib/mail/snapshot";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 import {
+  devAllMessages,
   devDeleteMessages,
   devListFolders,
   devMoveMessages,
@@ -145,6 +146,26 @@ export async function deleteMessagesAction(input: z.input<typeof deleteSchema>):
   }
 }
 
+/** The Message-ID a reply answers, when it looks like one. */
+function answersTo(draft: ComposeDraft): string | undefined {
+  return draft.inReplyTo && /^<[^<>\s]+>$/.test(draft.inReplyTo) ? draft.inReplyTo : undefined;
+}
+
+/**
+ * \Answered on the original. A reply reopened from Drafts has no `source`, so
+ * it's found by In-Reply-To in the Inbox.
+ */
+async function markAnswered(session: MailSession, draft: ComposeDraft): Promise<void> {
+  if (draft.source) {
+    await setFlags(session, draft.source.folder, [draft.source.uid], { add: ["\\Answered"] });
+    return;
+  }
+  const messageId = answersTo(draft);
+  if (!messageId) return;
+  const uid = await findUidByMessageId(session, "INBOX", messageId);
+  if (uid) await setFlags(session, "INBOX", [uid], { add: ["\\Answered"] });
+}
+
 export async function sendMessageAction(input: {
   draft: ComposeDraft;
   /** The saved draft this message came from; its server copy goes once sent. */
@@ -163,7 +184,10 @@ export async function sendMessageAction(input: {
   try {
     if (isDevSession(session)) {
       const { messageId } = devSendMessage(draft, devFrom(session));
-      if (draft.source) devSetFlags(draft.source.folder, [draft.source.uid], { answered: true });
+      const answers = answersTo(draft);
+      const original =
+        draft.source ?? (answers && devAllMessages().find((m) => m.folder === "INBOX" && m.messageId === answers));
+      if (original) devSetFlags(original.folder, [original.uid], { answered: true });
       if (fromDraft.data) await removeDraftCopy(session, fromDraft.data);
       return { ok: true, data: { messageId } };
     }
@@ -178,9 +202,7 @@ export async function sendMessageAction(input: {
         const sent = await resolveSpecial(session, "\\Sent");
         if (sent) await appendRaw(session, sent, raw, ["\\Seen"]);
       })(),
-      draft.source
-        ? setFlags(session, draft.source.folder, [draft.source.uid], { add: ["\\Answered"] })
-        : Promise.resolve(),
+      markAnswered(session, draft),
       fromDraft.data ? removeDraftCopy(session, fromDraft.data) : Promise.resolve(),
     ]);
     invalidateSnapshot(session);

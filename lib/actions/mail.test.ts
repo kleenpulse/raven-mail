@@ -114,3 +114,23 @@ describe("discardDraftAction", () => {
 		expect((await discardDraftAction({ draftUid: "1:*" })).ok).toBe(false);
 	});
 });
+
+describe("sendMessageAction: \\Answered", () => {
+	test("a reply reopened from Drafts (no source) still flags the original by In-Reply-To", async () => {
+		signIn();
+		const original = devAllMessages().find((m) => m.folder === "INBOX" && !m.flags.answered && m.messageId)!;
+		const res = await sendMessageAction({
+			draft: draft({ subject: `Re: ${original.subject}`, inReplyTo: original.messageId }),
+		});
+		expect(res.ok).toBe(true);
+		expect(devGetMessage("INBOX", original.uid).flags.answered).toBe(true);
+	});
+
+	test("a malformed In-Reply-To flags nothing", async () => {
+		signIn();
+		const answered = () => devAllMessages().filter((m) => m.flags.answered).length;
+		const before = answered();
+		await sendMessageAction({ draft: draft({ inReplyTo: "not an id" }) });
+		expect(answered()).toBe(before);
+	});
+});
