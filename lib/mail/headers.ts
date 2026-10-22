@@ -48,13 +48,65 @@ export function parseDateHeader(value: string | undefined): { epoch: number; off
   return { epoch, offsetMin: 0 };
 }
 
+const MAX_TARGET = 2048;
+
 /** List-Unsubscribe: `<https://…>, <mailto:…>` → first https + first mailto target. */
 export function parseListUnsubscribe(value: string | undefined): { https?: string; mailto?: string } | undefined {
   if (!value) return undefined;
-  const targets = [...value.matchAll(/<([^>]+)>/g)].map((m) => m[1]!.trim());
+  const targets = [...value.matchAll(/<([^>]+)>/g)]
+    .map((m) => m[1]!.trim())
+    .filter((t) => t.length <= MAX_TARGET && URL.canParse(t));
   const https = targets.find((t) => /^https:\/\//i.test(t));
   const mailto = targets.find((t) => /^mailto:/i.test(t));
   return https || mailto ? { https, mailto } : undefined;
+}
+
+export type UnsubscribeOptions = { https?: string; mailto?: string; oneClick: boolean };
+
+/**
+ * What an Unsubscribe button can do for a message. One-click (RFC 8058) needs
+ * an https target plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
+ */
+export function unsubscribeOptions(headers: Record<string, string | undefined>): UnsubscribeOptions | undefined {
+  const targets = parseListUnsubscribe(headers["list-unsubscribe"]);
+  if (!targets) return undefined;
+  const post = headers["list-unsubscribe-post"]?.trim() ?? "";
+  return { ...targets, oneClick: Boolean(targets.https) && /^List-Unsubscribe=One-Click$/i.test(post) };
+}
+
+/** `mailto:list@x.example?subject=…&body=…` → a prefilled draft. */
+export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
+  let url: URL;
+  let to: string;
+  try {
+    url = new URL(href);
+    to = decodeURIComponent(url.pathname);
+  } catch {
+    return undefined;
+  }
+  if (url.protocol !== "mailto:" || !to.includes("@")) return undefined;
+  return {
+    to,
+    subject: url.searchParams.get("subject") || "unsubscribe",
+    body: url.searchParams.get("body") || "unsubscribe",
+  };
+}
+
+/**
+ * mailparser folds every `List-*` header into one `list` object, so the raw
+ * values are read back from its header lines (`{ key, line }`).
+ */
+export function listHeaders(lines: readonly { key: string; line: string }[] | undefined): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const { key, line } of lines ?? []) {
+    const name = key.toLowerCase();
+    if (!name.startsWith("list-")) continue;
+    const idx = line.indexOf(":");
+    if (idx < 0) continue;
+    const value = line.slice(idx + 1).replace(/\r?\n[ \t]+/g, " ").trim();
+    out[name] = out[name] ? `${out[name]}, ${value}` : value;
+  }
+  return out;
 }
 
 export function parseReferences(value: string | undefined): string[] {

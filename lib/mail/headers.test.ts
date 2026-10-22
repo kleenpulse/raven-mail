@@ -1,5 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import { parseDateHeader, parseHeaderBlock, parseListUnsubscribe, parseReferences } from "@/lib/mail/headers";
+import {
+	listHeaders,
+	parseDateHeader,
+	parseHeaderBlock,
+	parseListUnsubscribe,
+	parseMailto,
+	parseReferences,
+	unsubscribeOptions,
+} from "@/lib/mail/headers";
 
 describe("parseHeaderBlock", () => {
 	test("lowercases keys, trims values, keeps colons inside values", () => {
@@ -109,5 +117,88 @@ describe("parseReferences", () => {
 
 	test.each([undefined, "", "no ids here"])("%p → []", (value) => {
 		expect(parseReferences(value)).toEqual([]);
+	});
+});
+
+describe("parseListUnsubscribe guards", () => {
+	test("skips targets that don't parse or run too long", () => {
+		const long = `https://x.example/${"a".repeat(2100)}`;
+		expect(parseListUnsubscribe(`<${long}>, <https://ok.example/u>`)).toEqual({ https: "https://ok.example/u", mailto: undefined });
+		expect(parseListUnsubscribe("<https://exa mple/u>")).toBeUndefined();
+	});
+});
+
+describe("unsubscribeOptions", () => {
+	const both = "<https://x.example/u/1>, <mailto:u@x.example?subject=stop>";
+
+	test("one-click needs the exact List-Unsubscribe-Post value", () => {
+		expect(unsubscribeOptions({ "list-unsubscribe": both, "list-unsubscribe-post": "List-Unsubscribe=One-Click" })).toEqual({
+			https: "https://x.example/u/1",
+			mailto: "mailto:u@x.example?subject=stop",
+			oneClick: true,
+		});
+		expect(unsubscribeOptions({ "list-unsubscribe": both, "list-unsubscribe-post": " list-unsubscribe=one-click " })?.oneClick).toBe(true);
+	});
+
+	test.each([
+		["no Post header", undefined],
+		["another Post value", "List-Unsubscribe=Yes"],
+		["a value with extras", "List-Unsubscribe=One-Click&evil=1"],
+	])("%s → not one-click", (_, post) => {
+		expect(unsubscribeOptions({ "list-unsubscribe": both, "list-unsubscribe-post": post })?.oneClick).toBe(false);
+	});
+
+	test("one-click is never offered on a mailto-only header", () => {
+		expect(
+			unsubscribeOptions({ "list-unsubscribe": "<mailto:u@x.example>", "list-unsubscribe-post": "List-Unsubscribe=One-Click" }),
+		).toEqual({ https: undefined, mailto: "mailto:u@x.example", oneClick: false });
+	});
+
+	test("no usable target → undefined", () => {
+		expect(unsubscribeOptions({})).toBeUndefined();
+		expect(unsubscribeOptions({ "list-unsubscribe": "<http://x.example/u>" })).toBeUndefined();
+	});
+});
+
+describe("parseMailto", () => {
+	test("reads the address, subject and body", () => {
+		expect(parseMailto("mailto:leave%2Bnews@x.example?subject=Remove%20me&body=please")).toEqual({
+			to: "leave+news@x.example",
+			subject: "Remove me",
+			body: "please",
+		});
+	});
+
+	test("falls back to 'unsubscribe' for a missing subject and body", () => {
+		expect(parseMailto("mailto:u@x.example")).toEqual({ to: "u@x.example", subject: "unsubscribe", body: "unsubscribe" });
+	});
+
+	test.each([
+		["not mailto", "https://x.example/u"],
+		["no address", "mailto:?subject=x"],
+		["bad escape", "mailto:%E0%A4%A@x.example"],
+		["not a URL", "nope"],
+	])("%s → undefined", (_, href) => {
+		expect(parseMailto(href)).toBeUndefined();
+	});
+});
+
+describe("listHeaders", () => {
+	test("reads raw List-* values from mailparser's header lines, unfolded", () => {
+		const lines = [
+			{ key: "from", line: "From: a@x.example" },
+			{ key: "list-unsubscribe", line: "List-Unsubscribe: <https://x.example/u/1>,\r\n <mailto:u@x.example>" },
+			{ key: "list-unsubscribe-post", line: "List-Unsubscribe-Post: List-Unsubscribe=One-Click" },
+			{ key: "list-id", line: "List-ID: Weekly <x.list>" },
+		];
+		expect(listHeaders(lines)).toEqual({
+			"list-unsubscribe": "<https://x.example/u/1>, <mailto:u@x.example>",
+			"list-unsubscribe-post": "List-Unsubscribe=One-Click",
+			"list-id": "Weekly <x.list>",
+		});
+	});
+
+	test("nothing in, nothing out", () => {
+		expect(listHeaders(undefined)).toEqual({});
 	});
 });

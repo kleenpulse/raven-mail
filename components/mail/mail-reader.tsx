@@ -41,6 +41,7 @@ import type { DeferredKind } from "@/lib/mail/deferred-actions";
 import { messageKeyAction, type MessageKeyAction } from "@/lib/keyboard";
 import { registerMessageCommands } from "@/components/shell/palette-store";
 import { Conversation, useConversation } from "@/components/mail/conversation";
+import { UnsubscribeButton } from "@/components/mail/unsubscribe-button";
 import { conversationTargets } from "@/lib/mail/thread";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
@@ -455,6 +456,7 @@ function MailReaderInner({
 						</h1>
 						<div className="mt-3 flex flex-wrap items-center gap-2">
 							<TriageBadge result={triage} />
+							<UnsubscribeButton key={message.uid} message={message} />
 						</div>
 					</header>
 

@@ -26,7 +26,7 @@ type DevDb = {
 };
 
 // Versioned so a running dev server (store lives on globalThis across HMR) picks up the synthetic seed.
-const STORE_KEY = "__em_dev_mail_store_v8__";
+const STORE_KEY = "__em_dev_mail_store_v9__";
 
 /** Section numbers like a multipart/mixed message: the body is part 1. */
 function withParts(attachments: AttachmentMeta[]): AttachmentMeta[] {
@@ -64,6 +64,8 @@ type SeedInput = {
   messageId?: string;
   inReplyTo?: string;
   references?: string[];
+  /** Extra raw headers, lowercased (e.g. List-Unsubscribe). */
+  headers?: Record<string, string>;
   /** Like Gmail's X-GM-THRID: a server thread id, so dev runs that path too. */
   threadId?: string;
 };
@@ -103,6 +105,7 @@ function seedMessage(input: SeedInput): MailMessage {
     headers: {
       from: `${input.from.name ? `${input.from.name} <` : ""}${input.from.address}${input.from.name ? ">" : ""}`,
       date: dateHeader(Date.parse(input.date)),
+      ...input.headers,
       "x-dev-mode": "true",
     },
   };
@@ -174,6 +177,8 @@ function seed(now: number): DevDb {
 <p style="margin:0;font-size:12px;color:#8a8375">You get this because you subscribed at reads.example. <a href="https://reads.example/u" style="color:#8a8375">Unsubscribe</a></p>
 <img src="https://t.reads.example/open.gif" width="1" height="1" alt="">
 </td></tr></table>`,
+      // A link but no one-click POST: the reader's Unsubscribe opens the page.
+      headers: { "list-unsubscribe": "<https://reads.example/u>" },
       seen: true,
     }),
     seedMessage({
@@ -218,6 +223,8 @@ function seed(now: number): DevDb {
       from: addr("deals@shop.example", "Shop Deals"),
       date: hoursAgo(now, 96),
       text: "Everything must go. 50% off sitewide. Use code SPRING50 at checkout. Unsubscribe",
+      // Mailto only: the reader's Unsubscribe writes the email.
+      headers: { "list-unsubscribe": "<mailto:leave@shop.example?subject=unsubscribe>" },
       seen: true,
     }),
     seedMessage({

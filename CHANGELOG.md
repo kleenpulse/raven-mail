@@ -76,6 +76,11 @@ as you work — it ships inside the app.
   any folder or page, open a settings section, switch between Ember and
   Nebula, search your mail, or act on the open message. Each action
   shows its key. Type a question and the top row asks Jev.
+- Unsubscribe from a mailing list right from the message. When a
+  newsletter supports it, an Unsubscribe button shows under the subject.
+  After you confirm, Raven asks the sender to take you off the list, with
+  no page to visit. If the sender only offers a web page or an email,
+  the button opens their page or writes the email for you.
 
 ### Changed
 

@@ -8,6 +8,7 @@ import { useComposeStore } from "@/lib/store/compose";
 import { formatBytes, mailLink } from "@/lib/jev/ask/format";
 import type { NewsletterStat, Overview } from "@/lib/insights/types";
 import { cn } from "@/lib/utils";
+import { parseMailto } from "@/lib/mail/headers";
 
 const GRADE_TONE: Record<NewsletterStat["grade"], string> = {
 	A: "bg-ok/15 text-ok",
@@ -16,11 +17,6 @@ const GRADE_TONE: Record<NewsletterStat["grade"], string> = {
 	D: "bg-signal-soft text-signal-ink dark:text-signal",
 	F: "bg-critical/15 text-critical",
 };
-
-function parseMailto(href: string): { to: string; subject: string } {
-	const url = new URL(href);
-	return { to: decodeURIComponent(url.pathname), subject: url.searchParams.get("subject") ?? "unsubscribe" };
-}
 
 /**
  * Newsletter ROI (opened-rate per list, A–F) and storage. Unsubscribe opens the
@@ -74,9 +70,10 @@ export function HygieneCard({ overview, i = 0, id }: { overview: Overview; i?: n
 									<button
 										type="button"
 										onClick={() => {
-											const { to, subject } = parseMailto(list.unsubscribe!.mailto!);
+											const mailto = parseMailto(list.unsubscribe!.mailto!);
+											if (!mailto) return;
 											// Read by a machine: no signature.
-											openCompose("new", { to, subject, text: "unsubscribe" }, { signature: false });
+											openCompose("new", { to: mailto.to, subject: mailto.subject, text: mailto.body }, { signature: false });
 										}}
 										className="inline-flex h-8 shrink-0 items-center gap-1 rounded-pill px-3 text-[12px] ring-1 ring-border transition-colors hover:bg-signal-soft dark:ring-glass-border"
 									>

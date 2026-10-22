@@ -7,6 +7,7 @@ import { GET as ATTACHMENT } from "@/app/api/mail/attachment/route";
 import { POST as ACTIONS } from "@/app/api/mail/actions/route";
 import { GET as THREAD } from "@/app/api/mail/thread/route";
 import { GET as CONTACTS } from "@/app/api/mail/contacts/route";
+import { POST as UNSUBSCRIBE } from "@/app/api/mail/unsubscribe/route";
 import { devAllMessages } from "@/lib/mail/dev-store";
 import { attachmentHref } from "@/lib/mail/attachment";
 import { SESSION_COOKIE } from "@/lib/session";
@@ -450,5 +451,47 @@ describe("GET /api/mail/contacts", () => {
 		const scores = contacts.map((c) => c.score);
 		expect(scores).toEqual([...scores].sort((a, b) => b - a));
 		expect(contacts.some((c) => c.name)).toBe(true);
+	});
+});
+
+describe("POST /api/mail/unsubscribe (dev)", () => {
+	const post = (json: unknown, opts: Parameters<typeof req>[1] = {}) =>
+		call(UNSUBSCRIBE, req("/api/mail/unsubscribe", { json, ...opts }));
+	const newsletter = () => devAllMessages().find((m) => m.headers["list-unsubscribe-post"])!;
+	const person = () => devAllMessages().find((m) => m.folder === "INBOX" && !m.headers["list-unsubscribe"])!;
+
+	test("one-click on a seeded newsletter", async () => {
+		const m = newsletter();
+		const res = await post({ folder: m.folder, uid: m.uid });
+		expect(res.status).toBe(200);
+		expect(await readJson(res)).toEqual({ ok: true, data: null });
+	});
+
+	test("400 no_one_click for mail without the headers", async () => {
+		const m = person();
+		const res = await post({ folder: m.folder, uid: m.uid });
+		expect(res.status).toBe(400);
+		expect((await readJson<Err>(res)).code).toBe("no_one_click");
+	});
+
+	test("404 for a message that isn't there", async () => {
+		expect((await post({ folder: "INBOX", uid: "999999" })).status).toBe(404);
+	});
+
+	test("401 without a session", async () => {
+		expect((await post({ folder: "INBOX", uid: "1" }, { session: null })).status).toBe(401);
+	});
+
+	test("403 cross-origin", async () => {
+		const m = newsletter();
+		expect((await post({ folder: m.folder, uid: m.uid }, { origin: "https://evil.example" })).status).toBe(403);
+	});
+
+	test.each([
+		["star range", { folder: "INBOX", uid: "1:*" }],
+		["no folder", { uid: "1" }],
+		["newline in folder", { folder: "INBOX\r\nA1 DELETE", uid: "1" }],
+	])("400: %s", async (_name, body) => {
+		expect((await post(body)).status).toBe(400);
 	});
 });

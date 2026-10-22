@@ -22,7 +22,7 @@ import { threadHeaderIds } from "@/lib/mail/thread";
 import { labelSpecialUse, resolveSpecialFolder, shortFolderName } from "@/lib/mail/folders";
 import { hasRemoteContent, sanitizeBody } from "@/lib/mail/sanitize";
 import { attachmentSections, hasAttachments } from "@/lib/mail/mime";
-import { parseHeaderBlock, parseReferences } from "@/lib/mail/headers";
+import { listHeaders, parseHeaderBlock, parseReferences } from "@/lib/mail/headers";
 import { fetchPreviews } from "@/lib/mail/preview";
 import { planPreload, type PreloadResult } from "@/lib/mail/preload";
 import { isLoopbackHost } from "@/lib/auth/ip";
@@ -342,8 +342,10 @@ async function toMailMessage(msg: FetchMessageObject, source: Buffer, folder: st
 
   const headers: Record<string, string> = {};
   for (const [key, value] of parsed.headers) {
+    if (key === "list") continue;
     headers[key] = Array.isArray(value) ? value.join(", ") : String(value);
   }
+  Object.assign(headers, listHeaders(parsed.headerLines));
 
   const parsedTo = addresses(parsed.to);
   return {
@@ -386,6 +388,18 @@ export async function getMessage(session: MailSession, folder: string, uid: stri
     throw new Error("Message not found");
   }
   return toMailMessage(msg, msg.source, folder);
+}
+
+/** Just the List-Unsubscribe pair, read fresh from the server (never trusted from the client). */
+export async function getUnsubscribeHeaders(session: MailSession, folder: string, uid: string): Promise<Record<string, string>> {
+  const msg = await withMailbox(
+    session,
+    folder,
+    (client) => client.fetchOne(uid, { uid: true, headers: ["list-unsubscribe", "list-unsubscribe-post"] }, { uid: true }),
+    { readOnly: true },
+  );
+  if (!msg) throw new Error("Message not found");
+  return Object.fromEntries(parseHeaderBlock(msg.headers));
 }
 
 /**
