@@ -1,12 +1,23 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, not, or, type SQL } from "drizzle-orm";
 import { withStore } from "@/lib/db/store";
 import { ruleEvents, type RuleEventRow } from "@/lib/db/schema";
 import { IntegrationError } from "@/lib/integrations/errors";
-import { RULE_ACTIONS, RULE_THRESHOLDS, STORED_SLACK } from "./types";
+import { RULE_ACTIONS, RULE_LIMIT, RULE_THRESHOLDS, RUN_RECENT, STORED_SLACK } from "./types";
 
-/** Recent activity keeps this many judgments per mailbox. */
-export const EVENTS_KEPT = 1000;
+/** Recent activity keeps this many notable judgments per mailbox. */
+export const NOTABLE_KEPT = 1000;
+/**
+ * Plain non-matches are kept only so a message isn't judged twice: enough for
+ * every rule over the whole window, twice over for mail that moved on.
+ */
+export const NON_MATCHES_KEPT = 2 * RUN_RECENT * RULE_LIMIT;
+
+/** `isNotable` in SQL. */
+const notable = or(
+	eq(ruleEvents.applied, true),
+	...RULE_ACTIONS.map((a) => and(eq(ruleEvents.action, a), gte(ruleEvents.probability, RULE_THRESHOLDS[a] - STORED_SLACK))),
+)!;
 
 /** Of these fingerprints, the ones some rule already judged. */
 export async function judgedFingerprints(accountKey: string, fingerprints: string[]): Promise<Set<string>> {
@@ -46,12 +57,8 @@ export async function settleEvent(accountKey: string, id: string, patch: { appli
 	);
 }
 
-/** The newest notable judgments (see `isNotable`, which this mirrors in SQL). */
+/** The newest notable judgments. */
 export function listEvents(accountKey: string, limit = 50): Promise<RuleEventRow[]> {
-	const notable = or(
-		eq(ruleEvents.applied, true),
-		...RULE_ACTIONS.map((a) => and(eq(ruleEvents.action, a), gte(ruleEvents.probability, RULE_THRESHOLDS[a] - STORED_SLACK))),
-	);
 	return withStore((db) =>
 		db
 			.select()
@@ -92,18 +99,22 @@ export async function releaseUndo(accountKey: string, id: string): Promise<void>
 	);
 }
 
-/** Keep the newest EVENTS_KEPT per mailbox. */
+/** Keep the newest of each kind per mailbox, so non-matches never push out what rules did. */
 export async function pruneEvents(accountKey: string): Promise<void> {
 	await withStore(async (db) => {
-		const [cutoff] = await db
-			.select({ createdAt: ruleEvents.createdAt })
-			.from(ruleEvents)
-			.where(eq(ruleEvents.accountKey, accountKey))
-			.orderBy(desc(ruleEvents.createdAt))
-			.offset(EVENTS_KEPT)
-			.limit(1);
-		if (cutoff) {
-			await db.delete(ruleEvents).where(and(eq(ruleEvents.accountKey, accountKey), lte(ruleEvents.createdAt, cutoff.createdAt)));
-		}
+		const keep = async (kind: SQL, kept: number) => {
+			const [cutoff] = await db
+				.select({ createdAt: ruleEvents.createdAt })
+				.from(ruleEvents)
+				.where(and(eq(ruleEvents.accountKey, accountKey), kind))
+				.orderBy(desc(ruleEvents.createdAt))
+				.offset(kept)
+				.limit(1);
+			if (cutoff) {
+				await db.delete(ruleEvents).where(and(eq(ruleEvents.accountKey, accountKey), kind, lte(ruleEvents.createdAt, cutoff.createdAt)));
+			}
+		};
+		await keep(notable, NOTABLE_KEPT);
+		await keep(not(notable), NON_MATCHES_KEPT);
 	});
 }

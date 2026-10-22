@@ -58,7 +58,8 @@ mock.module(path.resolve(import.meta.dir, "../../lib/rules/repo.ts"), () => ({
 }));
 
 mock.module(path.resolve(import.meta.dir, "../../lib/rules/events-repo.ts"), () => ({
-	EVENTS_KEPT: 1000,
+	NOTABLE_KEPT: 1000,
+	NON_MATCHES_KEPT: 5000,
 	judgedFingerprints: async (key: string, fps: string[]) =>
 		new Set(events.filter((e) => e.accountKey === key && fps.includes(e.fingerprint)).map((e) => e.fingerprint)),
 	// The unique (rule_id, fingerprint) index: the second insert gets nothing back.
