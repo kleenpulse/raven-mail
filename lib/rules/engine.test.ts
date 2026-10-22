@@ -111,6 +111,13 @@ describe("previewDecision: a rule judged among the others", () => {
 		expect(even).toMatchObject({ outcome: "outranked", why: 'Fits, but it overlaps "newsletters"' });
 	});
 
+	test("the rival named is one from the rule's own chunk, the one that took its mass", () => {
+		const first = Array.from({ length: RULES_PER_CALL }, (_, i) => rule(`f${i}`));
+		const p = new Map([["f0", 0.65], ["n", 0.4], ["a", 0.45]]);
+		const d = previewDecision([...first, news, acme], p, "a", opts);
+		expect(d).toEqual({ probability: 0.45, outcome: "outranked", why: 'Fits, but it overlaps "newsletters"' });
+	});
+
 	test("an earlier rule that acts is named", () => {
 		const d = previewDecision([rule("s", "star", "from my boss"), acme], new Map([["s", 0.9], ["a", 0.9]]), "a", opts);
 		expect(d).toEqual({ probability: 0.9, outcome: "earlier", why: 'Fits at 90%, but "from my boss" comes first' });

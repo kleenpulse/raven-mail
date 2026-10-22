@@ -119,15 +119,20 @@ export function decideMessage(
  * way, so the preview needs no second engine call.
  */
 export function aloneProbability(rules: RuleInput[], probabilities: Map<string, number>, ruleId: string): number {
-	const at = rules.findIndex((r) => r.id === ruleId);
+	const chunk = chunkOf(rules, ruleId);
 	const p = probabilities.get(ruleId);
-	if (at < 0 || p === undefined) return 0;
-	const start = at - (at % RULES_PER_CALL);
-	const rivals = rules
-		.slice(start, start + RULES_PER_CALL)
-		.reduce((sum, r) => sum + (r.id === ruleId ? 0 : (probabilities.get(r.id) ?? 0)), 0);
+	if (chunk.length === 0 || p === undefined) return 0;
+	const rivals = chunk.reduce((sum, r) => sum + (r.id === ruleId ? 0 : (probabilities.get(r.id) ?? 0)), 0);
 	const rest = 1 - rivals;
 	return rest > 0 ? clamp(p / rest) : 0;
+}
+
+/** The rules asked in the same request as `ruleId` (see ruleRequests). */
+function chunkOf(rules: RuleInput[], ruleId: string): RuleInput[] {
+	const at = rules.findIndex((r) => r.id === ruleId);
+	if (at < 0) return [];
+	const start = at - (at % RULES_PER_CALL);
+	return rules.slice(start, start + RULES_PER_CALL);
 }
 
 export type PreviewOutcome = DecisionOutcome | "outranked";
@@ -153,7 +158,11 @@ export function previewDecision(
 		return { probability, outcome, why: `Fits at ${pct(probability)}, but "${quote(first.rule.criteria)}" comes first` };
 	}
 	if (outcome === "below" && aloneProbability(rules, probabilities, ruleId) >= RULE_THRESHOLDS[mine.rule.action]) {
-		const rival = decisions.filter((d) => d.rule.id !== ruleId).sort((a, b) => b.probability - a.probability)[0];
+		// Only rules in its own chunk took its mass.
+		const chunk = new Set(chunkOf(rules, ruleId).map((r) => r.id));
+		const rival = decisions
+			.filter((d) => d.rule.id !== ruleId && chunk.has(d.rule.id))
+			.sort((a, b) => b.probability - a.probability)[0];
 		if (rival) {
 			const why =
 				rival.probability > probability
