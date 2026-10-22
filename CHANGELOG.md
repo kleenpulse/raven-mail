@@ -104,7 +104,9 @@ as you work — it ships inside the app.
   When the time comes and no reply has reached your Inbox, a reminder
   pops up, and the Overview lists it under Follow-ups, with Done, Snooze
   1 day and Open thread. If they reply first, the reminder goes away on
-  its own. Raven checks while it's open. Reminders need a database
+  its own. Raven checks while it's open. If your mail server is slow,
+  Raven stops looking for replies after 10 seconds and shows the rest
+  anyway, so your reminders never get stuck. Reminders need a database
   (DATABASE_URL), since they're saved to your account.
 - Rules in plain words: in Settings → Rules, say which mail a rule is
   for, like "receipts and invoices from shops", and pick one thing to

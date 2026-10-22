@@ -13,11 +13,14 @@ const createSchema = z.object({ folder: folderParam, uid: uidParam, remind: remi
 const patchSchema = z.object({ id: z.uuid(), action: z.enum(["done", "snooze"]) });
 const idSchema = z.object({ id: z.uuid() });
 const writes = limiter(30);
+// Up to 50 header SEARCHes can crawl on a slow server; unchecked reminders just stay due.
+const REPLY_CHECK_BUDGET_MS = 10_000;
 
 /** Open reminders, with `due` worked out now (time passed, no reply in the Inbox). */
-export const GET = integrationRoute(async () => {
+export const GET = integrationRoute(async (request) => {
 	const session = await requireApiSession();
-	return json({ ok: true, data: await listFollowUps(session) });
+	const signal = AbortSignal.any([request.signal, AbortSignal.timeout(REPLY_CHECK_BUDGET_MS)]);
+	return json({ ok: true, data: await listFollowUps(session, { signal }) });
 });
 
 /** Remind me if no reply, on a message already in the mailbox. The server reads the message. */

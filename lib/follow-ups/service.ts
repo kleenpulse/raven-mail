@@ -66,10 +66,13 @@ export function removeFollowUp(session: MailSession, id: string): Promise<void> 
 /**
  * Open reminders, soonest first, with `due` worked out now: the time has
  * passed and no reply has reached the Inbox. One that has a reply is closed
- * here, so it never shows. A failed check leaves them due: a reminder too
- * many beats a missed one.
+ * here, so it never shows. A failed or unfinished check (`signal` ends it)
+ * leaves them due: a reminder too many beats a missed one.
  */
-export async function listFollowUps(session: MailSession, now = new Date()): Promise<FollowUpView[]> {
+export async function listFollowUps(
+	session: MailSession,
+	{ now = new Date(), signal }: { now?: Date; signal?: AbortSignal } = {},
+): Promise<FollowUpView[]> {
 	const open = await getOpenFollowUps(session);
 	const past = open.filter((f) => isDue(f, now)).slice(0, REPLY_CHECKS);
 	let answers = new Map<string, ReplyAnswer>();
@@ -80,7 +83,7 @@ export async function listFollowUps(session: MailSession, now = new Date()): Pro
 			needUid: !f.uid,
 		}));
 		try {
-			answers = isDevSession(session) ? devFindReplies(checks) : await findReplies(session, checks);
+			answers = isDevSession(session) ? devFindReplies(checks) : await findReplies(session, checks, signal);
 		} catch (err) {
 			console.error("[follow-ups] reply check failed", err);
 		}

@@ -685,13 +685,23 @@ export type ReplyAnswer = { replied: boolean; sentUid?: string };
  * For each sent Message-ID: has a reply reached the Inbox (In-Reply-To or
  * References), and, when asked, its uid in Sent. One connection, one SEARCH
  * per check, each bounded by SINCE so a big folder isn't scanned end to end.
+ *
+ * `signal` closes the socket, like getThread: the answers found so far come
+ * back, and the checks that didn't finish are simply missing.
  */
-export async function findReplies(session: MailSession, checks: ReplyCheck[]): Promise<Map<string, ReplyAnswer>> {
+export async function findReplies(
+  session: MailSession,
+  checks: ReplyCheck[],
+  signal?: AbortSignal,
+): Promise<Map<string, ReplyAnswer>> {
   const answers = new Map<string, ReplyAnswer>();
-  if (checks.length === 0) return answers;
+  if (checks.length === 0 || signal?.aborted) return answers;
   const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
   const { client, release } = await acquireClient(session);
+  const abort = () => client.close();
+  signal?.addEventListener("abort", abort, { once: true });
   try {
+    signal?.throwIfAborted();
     await client.connect();
     await inMailbox(client, inbox ?? "INBOX", async () => {
       for (const { messageId, since } of checks) {
@@ -714,7 +724,11 @@ export async function findReplies(session: MailSession, checks: ReplyCheck[]): P
       });
     }
     return answers;
+  } catch (err) {
+    if (signal?.aborted) return answers;
+    throw err;
   } finally {
+    signal?.removeEventListener("abort", abort);
     release();
   }
 }
