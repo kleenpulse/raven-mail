@@ -112,6 +112,59 @@ export function decideMessage(
 	return decisions;
 }
 
+/**
+ * About what `ruleId` would score asked without its chunk's other rules: its
+ * share of the mass they didn't take, p / (p + P(anything else)). For a choice
+ * that spreads mass like a softmax, dropping labels renormalises exactly this
+ * way, so the preview needs no second engine call.
+ */
+export function aloneProbability(rules: RuleInput[], probabilities: Map<string, number>, ruleId: string): number {
+	const at = rules.findIndex((r) => r.id === ruleId);
+	const p = probabilities.get(ruleId);
+	if (at < 0 || p === undefined) return 0;
+	const start = at - (at % RULES_PER_CALL);
+	const rivals = rules
+		.slice(start, start + RULES_PER_CALL)
+		.reduce((sum, r) => sum + (r.id === ruleId ? 0 : (probabilities.get(r.id) ?? 0)), 0);
+	const rest = 1 - rivals;
+	return rest > 0 ? clamp(p / rest) : 0;
+}
+
+export type PreviewOutcome = DecisionOutcome | "outranked";
+export type PreviewDecision = { probability: number; outcome: PreviewOutcome; why: string };
+
+/**
+ * How a run would treat `ruleId` on one message, judged among `rules`. On top
+ * of decideMessage, it names the rule that gets in the way: one that acts
+ * first, or one that takes the mass this rule would have cleared alone.
+ */
+export function previewDecision(
+	rules: RuleInput[],
+	probabilities: Map<string, number>,
+	ruleId: string,
+	opts: { protectedSender: boolean; engine: RuleEngine },
+): PreviewDecision | null {
+	const decisions = decideMessage(rules, probabilities, opts);
+	const mine = decisions.find((d) => d.rule.id === ruleId);
+	if (!mine) return null;
+	const { probability, outcome } = mine;
+	if (outcome === "earlier") {
+		const first = decisions.find((d) => d.outcome === "applied")!;
+		return { probability, outcome, why: `Fits at ${pct(probability)}, but "${quote(first.rule.criteria)}" comes first` };
+	}
+	if (outcome === "below" && aloneProbability(rules, probabilities, ruleId) >= RULE_THRESHOLDS[mine.rule.action]) {
+		const rival = decisions.filter((d) => d.rule.id !== ruleId).sort((a, b) => b.probability - a.probability)[0];
+		if (rival) {
+			const why =
+				rival.probability > probability
+					? `Fits, but "${quote(rival.rule.criteria)}" fits better`
+					: `Fits, but it overlaps "${quote(rival.rule.criteria)}"`;
+			return { probability, outcome: "outranked", why };
+		}
+	}
+	return { probability, outcome, why: mine.why };
+}
+
 function clamp(p: number): number {
 	return Math.max(0, Math.min(1, p));
 }

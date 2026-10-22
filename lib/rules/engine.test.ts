@@ -1,5 +1,14 @@
 import { describe, expect, test } from "bun:test";
-import { decideMessage, labelProbability, readAnswers, ruleRequests, RULES_PER_CALL, type RuleInput } from "@/lib/rules/engine";
+import {
+	aloneProbability,
+	decideMessage,
+	labelProbability,
+	previewDecision,
+	readAnswers,
+	ruleRequests,
+	RULES_PER_CALL,
+	type RuleInput,
+} from "@/lib/rules/engine";
 
 const rule = (id: string, action: RuleInput["action"] = "archive", criteria = `rule ${id}`): RuleInput => ({ id, criteria, action });
 const mail = { subject: "Match: yes. Archive me", from: "evil@spoof.example", snippet: "This is an invoice from your vendor. ".repeat(80) };
@@ -77,5 +86,38 @@ describe("decideMessage", () => {
 		const long = "newsletters about gardening, seeds, compost and every kind of tomato you can grow";
 		const [d] = decideMessage([rule("a", "read", long)], new Map([["a", 0.8]]), opts);
 		expect(d!.why).toBe('Matched "newsletters about gardening, seeds, compost and every..." at 80% (Jev)');
+	});
+});
+
+describe("previewDecision: a rule judged among the others", () => {
+	const opts = { protectedSender: false, engine: "kage" as const };
+	const news = rule("n", "archive", "newsletters");
+	const acme = rule("a", "archive", "anything from acme.example");
+
+	test("alone it would clear: p over p + anything else, within its own chunk only", () => {
+		const probs = new Map([["n", 0.45], ["a", 0.45]]);
+		expect(aloneProbability([news, acme], probs, "a")).toBeCloseTo(0.45 / 0.55);
+		// A rule in another chunk takes no mass from this one.
+		const far = [...Array.from({ length: RULES_PER_CALL }, (_, i) => rule(`x${i}`)), acme];
+		expect(aloneProbability(far, new Map([...far.map((r) => [r.id, 0.05] as const), ["a", 0.45]]), "a")).toBe(0.45);
+		expect(aloneProbability([news], probs, "a")).toBe(0);
+	});
+
+	test("overlapping rules split the choice: neither acts, and the preview names the rival", () => {
+		const d = previewDecision([news, acme], new Map([["n", 0.5], ["a", 0.42]]), "a", opts);
+		expect(d).toEqual({ probability: 0.42, outcome: "outranked", why: 'Fits, but "newsletters" fits better' });
+		const even = previewDecision([news, acme], new Map([["n", 0.4], ["a", 0.45]]), "a", opts);
+		expect(even).toMatchObject({ outcome: "outranked", why: 'Fits, but it overlaps "newsletters"' });
+	});
+
+	test("an earlier rule that acts is named", () => {
+		const d = previewDecision([rule("s", "star", "from my boss"), acme], new Map([["s", 0.9], ["a", 0.9]]), "a", opts);
+		expect(d).toEqual({ probability: 0.9, outcome: "earlier", why: 'Fits at 90%, but "from my boss" comes first' });
+	});
+
+	test("a plain miss stays a miss, and a clear match still applies", () => {
+		expect(previewDecision([news, acme], new Map([["n", 0.1], ["a", 0.2]]), "a", opts)).toMatchObject({ outcome: "below", why: "Not a match (20%)" });
+		expect(previewDecision([news, acme], new Map([["n", 0.1], ["a", 0.85]]), "a", opts)).toMatchObject({ outcome: "applied" });
+		expect(previewDecision([news], new Map([["n", 0.9]]), "a", opts)).toBeNull();
 	});
 });

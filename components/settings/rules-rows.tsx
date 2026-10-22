@@ -140,7 +140,8 @@ export function RulesListRow() {
 
 function PreviewList({ items }: { items: PreviewItem[] }) {
 	const matches = items.filter((i) => i.wouldApply);
-	const held = items.filter((i) => !i.wouldApply && i.why.includes("you write to"));
+	const held = items.filter((i) => i.outcome === "protected");
+	const taken = items.filter((i) => i.outcome === "earlier" || i.outcome === "outranked");
 	return (
 		<div role="status" className="space-y-2 rounded-[18px] bg-card-nested p-3 ring-1 ring-border dark:ring-glass-border">
 			<p className="text-[13px] font-medium">
@@ -165,6 +166,12 @@ function PreviewList({ items }: { items: PreviewItem[] }) {
 				<p className="text-[12px] text-ink-2">
 					{held.length} more {held.length === 1 ? "matches" : "match"}, but {held.length === 1 ? "it's" : "they're"} from people you write to, so{" "}
 					{held.length === 1 ? "it stays" : "they stay"}.
+				</p>
+			)}
+			{taken.length > 0 && (
+				<p className="text-[12px] text-ink-2" title={taken.map((t) => `${t.subject}: ${t.why}`).join("\n")}>
+					{taken.length} more {taken.length === 1 ? "fits" : "fit"}, but your other rules fit{" "}
+					{taken.length === 1 ? "it" : "them"} better or come first.
 				</p>
 			)}
 		</div>

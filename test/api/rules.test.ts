@@ -389,7 +389,9 @@ describe("/api/rules/preview", () => {
 	test("scores the newest 50 and writes nothing", async () => {
 		const keep = await protectedSenders(me);
 		const newest = (realDev as typeof import("@/lib/mail/dev-store")).devRulesBatch(null, 50).messages;
-		const m = newest.find((x) => !keep.has(x.from.address.toLowerCase()))!;
+		// A subject that appears once: the fake engine scores by subject, and the dev mailbox repeats some.
+		const once = (x: MailSummary) => newest.filter((y) => y.subject === x.subject).length === 1;
+		const m = newest.find((x) => once(x) && !keep.has(x.from.address.toLowerCase()))!;
 		engine(only("receipts from shops", m.subject, 0.9));
 		const res = await call(previewRoute.POST, req("/api/rules/preview", { json: { criteria: "receipts from shops", action: "archive" }, session: me }));
 		expect(res.status).toBe(200);
@@ -399,6 +401,50 @@ describe("/api/rules/preview", () => {
 		expect(items.filter((i) => i.wouldApply)).toHaveLength(1);
 		expect(events).toEqual([]);
 		expect(moves).toEqual([]);
+	});
+
+	test("judged among the enabled rules, as a run would: an overlapping rule splits the match, and the preview says so", async () => {
+		const keep = await protectedSenders(me);
+		const newest = (realDev as typeof import("@/lib/mail/dev-store")).devRulesBatch(null, 50).messages;
+		const once = (x: MailSummary) => newest.filter((y) => y.subject === x.subject).length === 1;
+		const m = newest.find((x) => once(x) && !keep.has(x.from.address.toLowerCase()))!;
+		// Asked alone, "weekly digests" fits m at 0.9. Asked with "newsletters", the two share it.
+		engine((c, s) => (s !== m.subject ? 0.05 : c === "newsletters" ? 0.5 : c === "weekly digests" ? 0.45 : 0.05));
+		const preview = async (json: Record<string, unknown>) => {
+			const res = await call(previewRoute.POST, req("/api/rules/preview", { json, session: me }));
+			expect(res.status).toBe(200);
+			return (await readJson<Ok<PreviewItem[]>>(res)).data.find((i) => i.uid === m.uid)!;
+		};
+
+		const off = await addRule({ criteria: "newsletters", action: "read" });
+		await patch({ id: off.id, enabled: false });
+		// A rule that's switched off doesn't compete.
+		expect(await preview({ criteria: "weekly digests", action: "archive" })).toMatchObject({ outcome: "outranked" });
+		engine((c, s) => (s !== m.subject ? 0.05 : c === "weekly digests" ? 0.9 : 0.05));
+		expect(await preview({ criteria: "weekly digests", action: "archive" })).toMatchObject({ probability: 0.9, outcome: "applied", wouldApply: true });
+
+		await patch({ id: off.id, enabled: true });
+		engine((c, s) => (s !== m.subject ? 0.05 : c === "newsletters" ? 0.5 : c === "weekly digests" ? 0.45 : 0.05));
+		const item = await preview({ criteria: "weekly digests", action: "archive" });
+		expect(item).toMatchObject({ probability: 0.45, wouldApply: false, outcome: "outranked", why: 'Fits, but "newsletters" fits better' });
+		// The real run agrees: neither rule acts on m.
+		await addRule({ criteria: "weekly digests", action: "archive" });
+		await runOk({ uids: [m.uid] });
+		expect(where(m.uid)).toBe("INBOX");
+		expect(events.filter((e) => e.applied)).toEqual([]);
+
+		// Editing judges the rule in its own place, with its new words, not as an extra rule at the end.
+		// (This fake scores each label on its own, so two rules can both clear and order decides.)
+		const [, mine] = (await list()).rules;
+		await patch({ id: mine!.id, move: "up" });
+		engine((_c, s) => (s !== m.subject ? 0.05 : 0.9));
+		expect(await preview({ id: mine!.id, criteria: "digests", action: "star" })).toMatchObject({ outcome: "applied" });
+		const asked = (fakeJev.systemOne as ReturnType<typeof mock>).mock.calls.at(-1)![0] as { questions: { rules: { criteria: Record<string, string> } } };
+		expect(Object.values(asked.questions.rules.criteria)).toEqual(["digests", "newsletters", "Anything else"]);
+		expect(await preview({ criteria: "digests", action: "star" })).toMatchObject({
+			outcome: "earlier",
+			why: 'Fits at 90%, but "weekly digests" comes first',
+		});
 	});
 
 	test("limited to 6 a minute", async () => {

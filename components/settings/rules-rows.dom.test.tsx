@@ -165,9 +165,11 @@ describe("RulesListRow", () => {
 describe("NewRuleRow", () => {
 	test("Save waits for a preview of the current words; a preview says what would match", async () => {
 		preview = [
-			{ uid: "1", subject: "Your order #4821", from: "Shop", probability: 0.92, wouldApply: true, why: "" },
-			{ uid: "2", subject: "Lunch?", from: "Maya", probability: 0.88, wouldApply: false, why: "Matched at 88%, but you write to this sender, so it stayed" },
-			{ uid: "3", subject: "Notes", from: "Leo", probability: 0.1, wouldApply: false, why: "Not a match (10%)" },
+			{ uid: "1", subject: "Your order #4821", from: "Shop", probability: 0.92, wouldApply: true, outcome: "applied", why: "" },
+			{ uid: "2", subject: "Lunch?", from: "Maya", probability: 0.88, wouldApply: false, outcome: "protected", why: "Matched at 88%, but you write to this sender, so it stayed" },
+			{ uid: "3", subject: "Notes", from: "Leo", probability: 0.1, wouldApply: false, outcome: "below", why: "Not a match (10%)" },
+			{ uid: "4", subject: "Weekly digest", from: "Acme", probability: 0.45, wouldApply: false, outcome: "outranked", why: 'Fits, but "newsletters" fits better' },
+			{ uid: "5", subject: "Invoice 7", from: "Acme", probability: 0.8, wouldApply: false, outcome: "earlier", why: 'Fits at 80%, but "anything from acme" comes first' },
 		];
 		stubServer();
 		wrap(<NewRuleRow />);
@@ -177,9 +179,10 @@ describe("NewRuleRow", () => {
 		expect(save().disabled).toBe(true);
 
 		fireEvent.click(screen.getByRole("button", { name: /Preview on the last 50/ }));
-		await waitFor(() => screen.getByText("Would match 1 of the last 3"));
+		await waitFor(() => screen.getByText("Would match 1 of the last 5"));
 		expect(screen.getByText("Your order #4821")).toBeTruthy();
 		expect(screen.getByText("1 more matches, but it's from people you write to, so it stays.")).toBeTruthy();
+		expect(screen.getByText("2 more fit, but your other rules fit them better or come first.")).toBeTruthy();
 		expect(calls.find((c) => c.url === "/api/rules/preview")?.body).toEqual({ criteria: "receipts from shops", action: "archive" });
 		expect(save().disabled).toBe(false);
 

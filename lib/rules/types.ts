@@ -58,4 +58,17 @@ export type RuleEventDTO = {
 
 export type RunSummary = { checked: number; judged: number; applied: number; engine: RuleEngine | null };
 
-export type PreviewItem = { uid: string; subject: string; from: string; probability: number; wouldApply: boolean; why: string };
+/**
+ * One message in a preview. `outcome`: applied (it would act), below (not a
+ * match), protected (you write to the sender), earlier (another rule acts
+ * first), outranked (it fits, but another rule takes the match).
+ */
+export type PreviewItem = {
+	uid: string;
+	subject: string;
+	from: string;
+	probability: number;
+	wouldApply: boolean;
+	outcome: "applied" | "below" | "protected" | "earlier" | "outranked";
+	why: string;
+};

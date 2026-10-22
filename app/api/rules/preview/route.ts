@@ -9,6 +9,8 @@ import { RULE_ACTIONS, RULE_CRITERIA_MAX } from "@/lib/rules/types";
 export const maxDuration = 60;
 
 const bodySchema = z.object({
+	/** The rule being edited, so it's judged in its own place among the others. */
+	id: z.uuid().optional(),
 	criteria: z.string().trim().min(1).max(RULE_CRITERIA_MAX),
 	action: z.enum(RULE_ACTIONS),
 	folder: folderParam.optional(),

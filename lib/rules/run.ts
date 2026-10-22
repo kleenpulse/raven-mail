@@ -10,7 +10,7 @@ import { moveWithUids, resolveSpecial, rulesBatch, setFlags } from "@/lib/mail/i
 import { getSnapshot, invalidateSnapshot } from "@/lib/mail/snapshot";
 import type { MailSummary } from "@/lib/mail/types";
 import type { MailSession } from "@/lib/session";
-import { decideMessage, readAnswers, ruleRequests, type Decision, type RuleInput } from "./engine";
+import { decideMessage, previewDecision, readAnswers, ruleRequests, type Decision, type RuleInput } from "./engine";
 import { claimEvent, judgedFingerprints, pruneEvents, settleEvent } from "./events-repo";
 import { getRules } from "./service";
 import {
@@ -20,6 +20,7 @@ import {
 	RUN_UID_LIMIT,
 	type PreviewItem,
 	type RuleAction,
+	type RuleDTO,
 	type RuleEngine,
 	type RunSummary,
 } from "./types";
@@ -213,25 +214,35 @@ async function applyAll(session: MailSession, key: string, folder: string, winne
 	return applied;
 }
 
+/** The enabled rules in run order, with the candidate in its place: its own when editing, else last. */
+export function previewContext(rules: RuleDTO[], candidate: RuleInput): RuleInput[] {
+	const ordered = rules
+		.filter((r) => r.enabled || r.id === candidate.id)
+		.map((r): RuleInput => (r.id === candidate.id ? candidate : r));
+	return ordered.includes(candidate) ? ordered : [...ordered, candidate];
+}
+
 /**
  * A dry run before saving: how a rule with this wording would judge the newest
- * 50 Inbox messages. Writes nothing.
+ * 50 Inbox messages. It's judged among the enabled rules, as a run would, since
+ * rules asked together share one choice. Writes nothing.
  */
 export async function previewRule(
 	session: MailSession,
-	input: { criteria: string; action: RuleAction; folder?: string },
+	input: { id?: string; criteria: string; action: RuleAction; folder?: string },
 	signal?: AbortSignal,
 ): Promise<PreviewItem[]> {
 	const client = engineFor(session);
-	const rule: RuleInput = { id: "preview", criteria: input.criteria.trim(), action: input.action, folder: input.folder };
+	const candidate: RuleInput = { id: input.id ?? "preview", criteria: input.criteria.trim(), action: input.action, folder: input.folder };
+	const rules = previewContext(await getRules(session), candidate);
 	const { messages } = await batch(session, null, RUN_RECENT);
-	const keep = REMOVING_ACTIONS.has(rule.action) ? await protectedSenders(session) : new Set<string>();
-	const results = await judgeAll(client, () => [rule], messages, signal);
+	const keep = rules.some((r) => REMOVING_ACTIONS.has(r.action)) ? await protectedSenders(session) : new Set<string>();
+	const results = await judgeAll(client, () => rules, messages, signal);
 	return messages
 		.flatMap((m) => {
 			const result = results.get(m.uid);
 			if (!result) return [];
-			const [decision] = decideMessage([rule], result.probabilities, {
+			const decision = previewDecision(rules, result.probabilities, candidate.id, {
 				protectedSender: keep.has(m.from.address.toLowerCase()),
 				engine: result.engine,
 			});
@@ -243,6 +254,7 @@ export async function previewRule(
 					from: m.from.name || m.from.address,
 					probability: decision.probability,
 					wouldApply: decision.outcome === "applied",
+					outcome: decision.outcome,
 					why: decision.why,
 				},
 			];

@@ -111,7 +111,9 @@ as you work — it ships inside the app.
 - Rules in plain words: in Settings → Rules, say which mail a rule is
   for, like "receipts and invoices from shops", and pick one thing to
   do: move it to a folder, archive, star, mark read or move to Trash.
-  Preview a rule on your last 50 messages before you save it. Rules run
+  Preview a rule on your last 50 messages before you save it. The
+  preview weighs it against your other rules, as a real run does, and
+  tells you when another rule fits a message better or comes first. Rules run
   on new mail while Raven is open, and when you click Run rules now (it's
   in the Ctrl+K menu too). Jev decides, or Kage, Raven's built-in engine,
   when there's no key. A rule only acts when it's sure, and Trash asks
