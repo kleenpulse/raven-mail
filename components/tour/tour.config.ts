@@ -53,7 +53,7 @@ export const TOUR_STEPS: TourStep[] = [
 	{
 		id: "hero-ask",
 		title: "Ask Jev",
-		body: "Ask Jev about your mail in plain words, like who's waiting on you or what to answer first. Press Control K to open it from any page.",
+		body: "Ask Jev about your mail in plain words, like who's waiting on you or what to answer first. Press Control K on any page and type your question.",
 		typewriter: true,
 		tts: true,
 		route: "/overview",
