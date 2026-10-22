@@ -44,6 +44,9 @@ as you work — it ships inside the app.
 - Emails with images no longer open squashed into a thin strip with
   their own scrollbar. The message now opens at its full height right
   away, instead of waiting for every image to finish loading.
+- The Reply and Forward buttons no longer push the close button off the
+  edge when the message pane is narrow. If they don't fit beside the
+  other tools, they move to their own row just below, labels and all.
 
 ### Security
 

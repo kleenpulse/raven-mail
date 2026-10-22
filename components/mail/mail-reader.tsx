@@ -108,6 +108,41 @@ function ToolCircle({
 	);
 }
 
+/**
+ * Whether the reply actions have to drop to their own row. Measures the real
+ * widths of the three toolbar groups rather than guessing a breakpoint, since
+ * how much fits depends on which tools this folder and message show.
+ */
+function useWrapActions() {
+	const [row, setRow] = React.useState<HTMLDivElement | null>(null);
+	const tools = React.useRef<HTMLDivElement>(null);
+	const actions = React.useRef<HTMLDivElement>(null);
+	const controls = React.useRef<HTMLDivElement>(null);
+	const [wrapped, setWrapped] = React.useState(false);
+
+	React.useLayoutEffect(() => {
+		if (!row) return;
+		const parts = [tools.current, actions.current, controls.current];
+		if (parts.some((part) => !part)) return;
+		const measure = () => {
+			const style = getComputedStyle(row);
+			const room = row.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+			const gap = parseFloat(style.columnGap) || 0;
+			// A little breathing room so the groups never sit flush against each other.
+			const needed = parts.reduce((sum, part) => sum + part!.offsetWidth, 0) + gap * 2 + 12;
+			setWrapped(needed > room);
+		};
+		measure();
+		const observer = new ResizeObserver(measure);
+		observer.observe(row);
+		for (const part of parts) observer.observe(part!);
+		return () => observer.disconnect();
+		// The actions group remounts when it moves rows, so observe the new node.
+	}, [row, wrapped]);
+
+	return { rowRef: setRow, tools, actions, controls, wrapped };
+}
+
 type ReaderProps = {
 	folder: string;
 	uid: string;
@@ -181,6 +216,7 @@ function MailReaderInner({
 	const replyAll = message ? replyOptions(message, accountEmail) : null;
 	const canReplyAll = Boolean(replyAll?.extra.length);
 	const leadAll = Boolean(replyAll?.preferReplyAll);
+	const { rowRef, tools, actions, controls, wrapped } = useWrapActions();
 
 	React.useEffect(() => {
 		if (!message || message.flags.seen || markedRef.current === message.uid) return;
@@ -237,133 +273,134 @@ function MailReaderInner({
 	const starred = message.flags.flagged;
 	const attachmentCount = message.attachments.length;
 
+	const replyActions = (
+		<div ref={actions} className={cn("flex items-center gap-1.5", !wrapped && "ml-auto")}>
+			<Button
+				variant={leadAll ? "surface" : "default"}
+				size="pill-sm"
+				className={cn(leadAll && "order-2")}
+				onClick={() => onOpenReply("reply", message)}
+			>
+				<Reply />
+				Reply
+			</Button>
+			{canReplyAll && replyAll && (
+				<Tooltip>
+					<TooltipTrigger
+						render={
+							<Button
+								variant={leadAll ? "default" : "surface"}
+								size="pill-sm"
+								aria-label={`Reply all, ${replyAll.everyone.length} people`}
+								onClick={() => onOpenReply("replyAll", message)}
+							/>
+						}
+					>
+						<ReplyAll />
+						<span>
+							Reply all <span className="font-mono text-[11px] tabular opacity-70">· {replyAll.everyone.length}</span>
+						</span>
+					</TooltipTrigger>
+					<TooltipContent side="bottom" className="max-w-72">
+						Also adds {replyAll.extra.map((a) => a.name || a.address).join(", ")}
+					</TooltipContent>
+				</Tooltip>
+			)}
+			<Button variant="surface" size="pill-sm" onClick={() => onOpenReply("forward", message)}>
+				<Forward />
+				Forward
+			</Button>
+		</div>
+	);
+
 	return (
 		<ReaderPane wide={wide}>
 			<TooltipGroup>
-				<div className="flex h-16 shrink-0 items-center gap-1.5 px-3 @md/reader:px-5">
-					<ToolCircle label="Back to list" className="md:hidden" onClick={onBack}>
-						<ArrowLeft />
-					</ToolCircle>
-					<ToolCircle
-						label="Star"
-						aria-pressed={starred}
-						disabled={busy}
-						onClick={() =>
-							mutateFlags({
-								folder,
-								uids: [message.uid],
-								flagged: !starred,
-							})
-						}
-						className={cn(starred && "text-signal hover:text-signal")}
-					>
-						<Star className={cn(starred && "fill-current")} />
-					</ToolCircle>
-					{canArchive && (
-						<ToolCircle
-							label="Archive"
-							disabled={busy}
-							onClick={() =>
-								act(async () => {
-									if (!archivePath)
-										return { ok: false, error: "No Archive folder" };
-									return moveMessagesAction({
-										folder,
-										uids: [message.uid],
-										destination: archivePath,
-									});
-								}, "Archived")
-							}
-						>
-							<Archive />
+				<div ref={rowRef} className="flex h-16 shrink-0 items-center gap-1.5 px-3 @md/reader:px-5">
+					<div ref={tools} className="flex items-center gap-1.5">
+						<ToolCircle label="Back to list" className="md:hidden" onClick={onBack}>
+							<ArrowLeft />
 						</ToolCircle>
-					)}
-					{canRestoreInbox && (
 						<ToolCircle
-							label="Move to Inbox"
+							label="Star"
+							aria-pressed={starred}
 							disabled={busy}
 							onClick={() =>
-								act(
-									() =>
-										moveMessagesAction({
+								mutateFlags({
+									folder,
+									uids: [message.uid],
+									flagged: !starred,
+								})
+							}
+							className={cn(starred && "text-signal hover:text-signal")}
+						>
+							<Star className={cn(starred && "fill-current")} />
+						</ToolCircle>
+						{canArchive && (
+							<ToolCircle
+								label="Archive"
+								disabled={busy}
+								onClick={() =>
+									act(async () => {
+										if (!archivePath)
+											return { ok: false, error: "No Archive folder" };
+										return moveMessagesAction({
 											folder,
 											uids: [message.uid],
-											destination: inboxPath!,
-										}),
-									"Moved to Inbox",
-								)
-							}
-						>
-							<Inbox />
-						</ToolCircle>
-					)}
-					<ToolCircle
-						label={isTrash ? "Delete forever" : "Move to trash"}
-						disabled={busy}
-						className="hover:text-destructive"
-						onClick={() => {
-							if (isTrash) {
-								deleteWithUndo(folder, [message.uid]);
-								onRemoved(uid);
-								return;
-							}
-							void act(
-								() => deleteMessagesAction({ folder, uids: [message.uid] }),
-								"Moved to trash",
-							);
-						}}
-					>
-						<Trash2 />
-					</ToolCircle>
-					<ShareMenu folder={folder} message={message} />
-					<ToolCircle label="Print" className="hidden @lg/reader:inline-flex" onClick={() => window.print()}>
-						<Printer />
-					</ToolCircle>
-
-					<div className="ml-auto flex items-center gap-1.5">
-						<Button
-							variant={leadAll ? "surface" : "default"}
-							size="pill-sm"
-							aria-label="Reply"
-							className={cn("h-9 w-9 px-0 @md/reader:w-auto @md/reader:px-4", leadAll && "order-2")}
-							onClick={() => onOpenReply("reply", message)}
-						>
-							<Reply />
-							<span className="hidden @md/reader:inline">Reply</span>
-						</Button>
-						{canReplyAll && replyAll && (
-							<Tooltip>
-								<TooltipTrigger
-									render={
-										<Button
-											variant={leadAll ? "default" : "surface"}
-											size="pill-sm"
-											aria-label={`Reply all, ${replyAll.everyone.length} people`}
-											className="h-9 w-9 px-0 @md/reader:w-auto @md/reader:px-4"
-											onClick={() => onOpenReply("replyAll", message)}
-										/>
-									}
-								>
-									<ReplyAll />
-									<span className="hidden @md/reader:inline">
-										Reply all <span className="font-mono text-[11px] tabular opacity-70">· {replyAll.everyone.length}</span>
-									</span>
-								</TooltipTrigger>
-								<TooltipContent side="bottom" className="max-w-72">
-									Also adds {replyAll.extra.map((a) => a.name || a.address).join(", ")}
-								</TooltipContent>
-							</Tooltip>
+											destination: archivePath,
+										});
+									}, "Archived")
+								}
+							>
+								<Archive />
+							</ToolCircle>
 						)}
-						<Button
-							variant="surface"
-							size="pill-sm"
-							aria-label="Forward"
-							className="h-9 w-9 px-0 @md/reader:w-auto @md/reader:px-4"
-							onClick={() => onOpenReply("forward", message)}
+						{canRestoreInbox && (
+							<ToolCircle
+								label="Move to Inbox"
+								disabled={busy}
+								onClick={() =>
+									act(
+										() =>
+											moveMessagesAction({
+												folder,
+												uids: [message.uid],
+												destination: inboxPath!,
+											}),
+										"Moved to Inbox",
+									)
+								}
+							>
+								<Inbox />
+							</ToolCircle>
+						)}
+						<ToolCircle
+							label={isTrash ? "Delete forever" : "Move to trash"}
+							disabled={busy}
+							className="hover:text-destructive"
+							onClick={() => {
+								if (isTrash) {
+									deleteWithUndo(folder, [message.uid]);
+									onRemoved(uid);
+									return;
+								}
+								void act(
+									() => deleteMessagesAction({ folder, uids: [message.uid] }),
+									"Moved to trash",
+								);
+							}}
 						>
-							<Forward />
-							<span className="hidden @md/reader:inline">Forward</span>
-						</Button>
+							<Trash2 />
+						</ToolCircle>
+						<ShareMenu folder={folder} message={message} />
+						<ToolCircle label="Print" className="hidden @lg/reader:inline-flex" onClick={() => window.print()}>
+							<Printer />
+						</ToolCircle>
+					</div>
+
+					{!wrapped && replyActions}
+
+					<div ref={controls} className={cn("flex items-center gap-1.5", wrapped && "ml-auto")}>
 						<span aria-hidden className="mx-1 hidden h-5 w-px bg-border md:block dark:bg-glass-border" />
 						{nav && (
 							<>
@@ -395,6 +432,7 @@ function MailReaderInner({
 						</ToolCircle>
 					</div>
 				</div>
+				{wrapped && <div className="flex shrink-0 items-center px-3 pb-3 @md/reader:px-5">{replyActions}</div>}
 			</TooltipGroup>
 
 			<AutoScroll className="min-h-0 flex-1 overflow-y-auto mask-[linear-gradient(to_bottom,transparent,black_12px)]">
