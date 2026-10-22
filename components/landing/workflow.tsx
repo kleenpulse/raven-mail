@@ -8,9 +8,11 @@ const KEY = "h-7 min-w-7 rounded-md bg-card-nested px-2 font-mono text-[12px] te
 
 const SHORTCUTS = [
 	{ keys: ["J", "K"], label: "Move through mail" },
+	{ keys: ["E"], label: "Archive" },
+	{ keys: ["R"], label: "Reply" },
 	{ keys: ["C"], label: "Compose" },
 	{ keys: ["/"], label: "Search" },
-	{ keys: ["⌘", "K"], label: "Ask Jev" },
+	{ keys: ["⌘", "K"], label: "Jump, search or ask" },
 	{ keys: ["Esc"], label: "Back out" },
 ];
 

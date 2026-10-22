@@ -66,7 +66,7 @@ export type Shortcut = { keys: string[]; label: string; scope: "Anywhere" | "Mai
 
 /** What the Keyboard settings list shows; keep in step with the handlers. */
 export const SHORTCUTS: Shortcut[] = [
-	{ keys: ["mod", "K"], label: "Ask Jev", scope: "Anywhere", single: false },
+	{ keys: ["mod", "K"], label: "Search, jump or ask Jev", scope: "Anywhere", single: false },
 	{ keys: ["mod", ","], label: "Open settings", scope: "Anywhere", single: false },
 	{ keys: ["C"], label: "Compose", scope: "Anywhere", single: true },
 	{ keys: ["/"], label: "Search", scope: "Search", single: true },

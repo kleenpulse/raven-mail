@@ -3,7 +3,6 @@
 import * as React from "react";
 import { usePathname, useSearchParams } from "next/navigation";
 import { ArrowUp, Clock3, Inbox, Loader2, MailQuestion, Paperclip, Sparkles, Timer, Trash2, X } from "lucide-react";
-import { Kbd } from "@/components/ui/kbd";
 import { useAskStore } from "@/components/jev/ask-store";
 import { AnswerCard, StageTrail } from "@/components/jev/ask-answer";
 import { useAsk, type AskOptions } from "@/components/jev/use-ask";
@@ -12,9 +11,7 @@ import { useDeepTriage } from "@/hooks/use-deep-triage";
 import { INTENT_META, SUGGESTED_INTENTS } from "@/lib/jev/ask/catalog";
 import { formatDuration } from "@/lib/jev/ask/format";
 import { smartChips } from "@/lib/jev/ask/chips";
-import { cn, modKeyLabel } from "@/lib/utils";
-
-const subscribeNoop = () => () => {};
+import { cn } from "@/lib/utils";
 
 function TurnView({ turn, onAsk, onNavigate }: { turn: ReturnType<typeof useAskStore.getState>["turns"][number]; onAsk: (q: string, o?: AskOptions) => void; onNavigate: () => void }) {
 	return (
@@ -58,7 +55,6 @@ export function AskTray() {
 	const [useContext, setUseContext] = React.useState(true);
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const listRef = React.useRef<HTMLOListElement>(null);
-	const mod = React.useSyncExternalStore(subscribeNoop, modKeyLabel, () => "Ctrl");
 
 	const contextUid = pathname === "/mail" ? searchParams.get("uid") : null;
 	const contextFolder = searchParams.get("folder") ?? "INBOX";
@@ -111,7 +107,7 @@ export function AskTray() {
 		: null;
 
 	if (!open) {
-		// Over Mail the pill would sit on the list; the rail button and ⌘K cover it there.
+		// Over Mail the pill would sit on the list; the rail button and the palette cover it there.
 		if (heroVisible || pathname.startsWith("/mail")) return null;
 		return (
 			<button
@@ -121,7 +117,6 @@ export function AskTray() {
 			>
 				<Sparkles className="[&>path:first-child]:fill-current size-4 text-signal-ink dark:text-signal" />
 				Ask Jev
-				<Kbd>{mod}+K</Kbd>
 			</button>
 		);
 	}

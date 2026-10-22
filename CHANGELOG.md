@@ -48,6 +48,17 @@ as you work — it ships inside the app.
   Settings → Mail. If you try to leave while a message is waiting, Raven
   asks first. If you close the tab anyway, the message isn't sent, and
   it opens again in compose the next time you visit.
+- A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
+  any folder or page, open a settings section, switch between Ember and
+  Nebula, search your mail, or act on the open message. Each action
+  shows its key. Type a question and the top row asks Jev.
+
+### Changed
+
+- Ctrl+K (⌘K) now opens the command menu instead of going straight to
+  Ask Jev. Press Enter on the first row to ask Jev, or type your
+  question first. The Ask Jev button in the side bar still opens it
+  directly.
 
 ### Fixed
 

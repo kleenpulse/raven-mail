@@ -38,7 +38,8 @@ import { useTheme } from "next-themes";
 import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { useMessage, useFolders, useSetFlags } from "@/hooks/use-mail";
 import type { DeferredKind } from "@/lib/mail/deferred-actions";
-import { messageKeyAction } from "@/lib/keyboard";
+import { messageKeyAction, type MessageKeyAction } from "@/lib/keyboard";
+import { registerMessageCommands } from "@/components/shell/palette-store";
 import { Conversation, useConversation } from "@/components/mail/conversation";
 import { conversationTargets } from "@/lib/mail/thread";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
@@ -248,11 +249,9 @@ function MailReaderInner({
 		if (id) onRemoved(uid);
 	}
 
-	// Triage keys act on the open message, which is also the list's selection.
-	const onKey = React.useEffectEvent((e: KeyboardEvent) => {
-		const action = messageKeyAction(e);
-		if (!action || !message) return;
-		e.preventDefault();
+	// Triage keys and the ⌘K palette act on the open message, which is also the list's selection.
+	const runAction = React.useEffectEvent((action: MessageKeyAction) => {
+		if (!message) return;
 		switch (action) {
 			case "archive":
 				if (canArchive) move("archive", archivePath);
@@ -271,6 +270,20 @@ function MailReaderInner({
 				onOpenReply(action, message);
 		}
 	});
+
+	const onKey = React.useEffectEvent((e: KeyboardEvent) => {
+		const action = messageKeyAction(e);
+		if (!action || !message) return;
+		e.preventDefault();
+		runAction(action);
+	});
+
+	// Cleared on unmount, so the palette never offers actions for a message that's gone.
+	React.useEffect(() => {
+		if (!message) return;
+		const { flagged } = message.flags;
+		return registerMessageCommands({ canArchive, inTrash: isTrash, flagged, canReplyAll, run: (a) => runAction(a) });
+	}, [message, canArchive, isTrash, canReplyAll]);
 
 	React.useEffect(() => {
 		const handler = (e: KeyboardEvent) => onKey(e);

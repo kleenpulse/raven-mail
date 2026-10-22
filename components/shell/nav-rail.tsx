@@ -170,7 +170,7 @@ export function NavRail({ onAsk, className }: { onAsk: () => void; className?: s
 					</button>
 				</RailTip>
 
-				<RailTip label="Ask Jev" hint={<Kbd>{mod}+K</Kbd>}>
+				<RailTip label="Ask Jev">
 					<button
 						type="button"
 						onClick={onAsk}

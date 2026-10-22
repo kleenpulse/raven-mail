@@ -17,7 +17,7 @@ A self-hosted mail client for Gmail, Outlook, Yahoo, iCloud, Fastmail, Proton (B
 ## What's inside
 
 - **Overview** (`/overview`, the home screen) — replies you owe and who owes you (judged against each person's usual reply time), reply debt with a payoff plan, inbox "weather", received vs sent, mail mix, arrival heatmap turned into suggested check-in times, newsletter open rates (A–F) with unsubscribe links, storage, a daily brief, and a reply-zero streak.
-- **Ask Jev** (⌘/Ctrl + K anywhere) — questions like "who's waiting on my reply?", "receipts this month", "anything about the roadmap?". Answers show the emails they came from, how sure Jev is, and exactly what was searched.
+- **Ask Jev** (⌘/Ctrl + K anywhere, then type your question) — questions like "who's waiting on my reply?", "receipts this month", "anything about the roadmap?". Answers show the emails they came from, how sure Jev is, and exactly what was searched.
 - **Mail** (`/mail`) — the three-pane reader: folders, list with previews, and a sandboxed message view.
 - **Integrations** (`/integrations`) — step-by-step health checks for your mail account and Jev; Slack, Discord and signed JSON webhooks (Zapier, Make, n8n) for **Share** from the reader and **Send brief** from the Overview; and a resumable **mailbox export** to `.mbox`. Every connect, test and delivery streams its progress and lands in an activity log.
 - **Two skins** — *Ember* (light: warm paper, coral) and *Nebula* (dark: deep-teal glass, gold and cyan). The sun/moon button in the rail switches between them.
@@ -123,7 +123,7 @@ The image runs Node 24 on port 3000 as a non-root user.
 
 | Key          | Action                   |
 | ------------ | ------------------------ |
-| `⌘/Ctrl + K` | Ask Jev                  |
+| `⌘/Ctrl + K` | Search, jump or ask Jev  |
 | `C`          | Compose                  |
 | `J` / `K`    | Next / previous message  |
 | `U`          | Back to list             |

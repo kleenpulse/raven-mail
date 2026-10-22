@@ -106,7 +106,7 @@ export function JevPanel({ data }: { data: IntegrationsOverview }) {
 				rows={[
 					["Mode", jev.configured ? <span key="m" className="text-ok">Live — decisions by Jev</span> : "Heuristic — free local rules"],
 					["Model", <span key="model" className="font-mono text-[12px]">{jev.model}</span>],
-					["Used by", "Ask Jev (⌘K) · Deep triage · Daily brief re-rank"],
+					["Used by", "Ask Jev · Deep triage · Daily brief re-rank"],
 				]}
 			/>
 			{!jev.configured && (

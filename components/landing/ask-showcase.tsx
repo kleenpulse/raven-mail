@@ -51,7 +51,7 @@ export function AskShowcase({ asks, overview }: { asks: DemoAsk[]; overview: Ove
 					<p className="mt-6 hidden flex-wrap lg:flex items-center gap-1.5 text-[13px] text-ink-2">
 						Anywhere in Raven, press <Kbd className={KEY}>⌘</Kbd>
 						<Kbd className={KEY}>K</Kbd> or <Kbd className={KEY}>Ctrl</Kbd>
-						<Kbd className={KEY}>K</Kbd>.
+						<Kbd className={KEY}>K</Kbd> and type your question.
 					</p>
 				</div>
 

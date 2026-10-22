@@ -19,7 +19,7 @@ export type AskTurn = {
 type AskState = {
 	open: boolean;
 	turns: AskTurn[];
-	/** Bumped to ask the tray input to take focus (⌘K, rail button). */
+	/** Bumped to ask the tray input to take focus (rail button, palette). */
 	focusNonce: number;
 	/** The Overview hero prompt is on screen — the collapsed tray pill hides. */
 	heroVisible: boolean;

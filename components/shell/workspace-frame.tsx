@@ -11,6 +11,8 @@ import { AccountMenu } from "@/components/shell/account-menu";
 import { ComposeDock } from "@/components/mail/compose";
 import { AskTray } from "@/components/jev/ask-tray";
 import { useAskStore } from "@/components/jev/ask-store";
+import { CommandPalette } from "@/components/shell/command-palette";
+import { usePaletteStore } from "@/components/shell/palette-store";
 import { useComposeStore } from "@/lib/store/compose";
 import { allowSingleKey } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
@@ -75,12 +77,13 @@ function MobileTabBar({ onAsk }: { onAsk: () => void }) {
 export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 	const openCompose = useComposeStore((s) => s.openCompose);
 	const openAsk = useAskStore((s) => s.requestFocus);
+	const togglePalette = usePaletteStore((s) => s.toggle);
 	const router = useRouter();
 
 	const onKey = React.useEffectEvent((e: KeyboardEvent) => {
 		if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
 			e.preventDefault();
-			openAsk();
+			togglePalette();
 			return;
 		}
 		if ((e.metaKey || e.ctrlKey) && e.key === ",") {
@@ -110,6 +113,7 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 				<AskTray />
 			</React.Suspense>
 			<ComposeDock />
+			<CommandPalette />
 			<ExportRunToast />
 			<NewMailBanner />
 		</div>
