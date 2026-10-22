@@ -16,3 +16,25 @@ describe("buildRawMessage recipients", () => {
     expect(headers).toMatch(/^Cc: "Ops; Night" <ops@x\.com>$/m);
   });
 });
+
+describe("buildRawMessage bodies", () => {
+  test("an HTML body goes out as multipart/alternative with the text part first", async () => {
+    const { raw } = await buildRawMessage(makeSession({ dev: false }), {
+      ...draft("a@x.com"),
+      text: "- one\n- two",
+      html: "<ul><li><p>one</p></li><li><p>two</p></li></ul>",
+    });
+    const mime = raw.toString();
+    expect(mime).toMatch(/Content-Type: multipart\/alternative/);
+    const plain = mime.indexOf("Content-Type: text/plain");
+    const html = mime.indexOf("Content-Type: text/html");
+    expect(plain).toBeGreaterThan(-1);
+    expect(html).toBeGreaterThan(plain);
+  });
+
+  test("no HTML: a single text/plain body, as before", async () => {
+    const mime = (await buildRawMessage(makeSession({ dev: false }), draft("a@x.com"))).raw.toString();
+    expect(mime).not.toMatch(/multipart\/alternative/);
+    expect(mime).toMatch(/Content-Type: text\/plain/);
+  });
+});

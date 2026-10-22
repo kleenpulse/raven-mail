@@ -60,6 +60,12 @@ as you work — it ships inside the app.
   becomes a chip you can remove, and pasting a list adds them all.
   Backspace in an empty box takes the last one back to edit. An address
   that doesn't look right turns red, and Send tells you which one.
+- Formatting in compose: bold, italic, bulleted and numbered lists,
+  links, quotes and code, from the bar under the text or with the usual
+  keys (Ctrl+B, Ctrl+I). Markdown works too: type **bold**, "- " for a
+  list or "> " for a quote. Every message also goes out as plain text,
+  with list markers and link addresses kept, for mail apps that don't
+  show formatting.
 - A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
   any folder or page, open a settings section, switch between Ember and
   Nebula, search your mail, or act on the open message. Each action

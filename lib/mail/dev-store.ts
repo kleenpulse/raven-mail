@@ -639,7 +639,8 @@ function draftToMessage(
       draft: flags.draft,
     },
     text,
-    html: `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+    // What compose's editor wrote; plain-text sends get the same simple HTML as before.
+    html: draft.html || `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
     attachments,
     messageId: `<dev-${uid}@localhost>`,
     inReplyTo: draft.inReplyTo,

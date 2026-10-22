@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import dynamic from "next/dynamic";
 import {
   ChevronUp,
   FilePen,
@@ -17,7 +18,6 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Kbd } from "@/components/ui/kbd";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { discardDraftAction, saveDraftAction } from "@/lib/actions/mail";
@@ -29,9 +29,14 @@ import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { bytesToBase64 } from "@/lib/mail/attachment";
-import { onlySignature } from "@/lib/mail/signature";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 import type { ComposeDraft } from "@/lib/mail/types";
+
+// The editor (Tiptap, ProseMirror) loads when compose first opens, not with the mail list.
+const RichEditor = dynamic(() => import("@/components/mail/rich-editor").then((m) => m.RichEditor), {
+  ssr: false,
+  loading: () => <div className="min-h-0 flex-1" />,
+});
 
 /**
  * The message being answered, kept under the text box instead of in it:
@@ -155,6 +160,7 @@ export function ComposeDock() {
     attachmentsLoading,
     addAttachments,
     removeAttachment,
+    session,
   } = useComposeStore();
 
   // The store rehydrates from localStorage on the client; rendering before
@@ -415,20 +421,14 @@ export function ComposeDock() {
           </Field>
         </div>
 
-        <Textarea
-          value={draft.text}
-          onChange={(e) => setDraft({ text: e.target.value })}
-          placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
-          aria-label="Message body"
+        <RichEditor
+          key={session}
+          html={draft.html}
+          text={draft.text}
           autoFocus={!focusTo}
-          onFocus={(e) => {
-            // React leaves the caret after the value: start above the signature instead.
-            const el = e.currentTarget;
-            if (onlySignature(el.value) && el.selectionStart === el.value.length) {
-              requestAnimationFrame(() => el.setSelectionRange(0, 0));
-            }
-          }}
-          className="auto-scroll min-h-0 flex-1 resize-none rounded-none border-0 bg-transparent px-5 py-4 text-[14.5px] leading-relaxed shadow-none focus-visible:ring-0 dark:bg-transparent"
+          placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
+          mod={mod}
+          onChange={({ html, text }) => setDraft({ html, text })}
         />
 
         {draft.quote && (

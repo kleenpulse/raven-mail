@@ -6,6 +6,7 @@ import { sendMessageAction } from "@/lib/actions/mail";
 import { useInvalidateMail } from "@/hooks/use-mail";
 import { getPref } from "@/lib/prefs/store";
 import { draftBody } from "@/lib/mail/reply";
+import { draftHtml } from "@/lib/mail/rich-text";
 import { createSendQueue, pickOrphan, type SendRecord } from "@/lib/mail/pending-send";
 import { useComposeStore, type ComposeAttachment, type ComposeMode } from "@/lib/store/compose";
 import type { ComposeDraft } from "@/lib/mail/types";
@@ -32,6 +33,7 @@ export function toOutgoing({ draft, draftUid, attachments }: Omit<OutgoingSend, 
 		draft: {
 			...draft,
 			text: draftBody(draft),
+			html: draftHtml(draft),
 			quote: undefined,
 			attachments: attachments.map(({ filename, contentType, contentBase64 }) => ({ filename, contentType, contentBase64 })),
 		},

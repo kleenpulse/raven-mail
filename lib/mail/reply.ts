@@ -145,6 +145,8 @@ export function draftFromMessage(message: MailMessage): Partial<ComposeDraft> {
     // Saving fills an empty subject with this placeholder; don't hand it back as typed text.
     subject: message.subject === "(no subject)" ? "" : message.subject,
     text: text.replace(/\r\n/g, "\n").replace(/\s+$/, ""),
+    // The editor parses this through its own schema (inert, no scripts), keeping the formatting.
+    ...(message.html ? { html: message.html } : {}),
     inReplyTo: message.inReplyTo,
     references: message.references,
   };

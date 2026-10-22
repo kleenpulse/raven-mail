@@ -28,6 +28,8 @@ type ComposeState = {
   draftUid?: string;
   attachments: ComposeAttachment[];
   attachmentsLoading: boolean;
+  /** Bumped by every openCompose, so the editor starts over instead of keeping the last message. */
+  session: number;
   openCompose: (mode?: ComposeMode, draft?: Partial<ComposeDraft>, options?: OpenOptions) => void;
   closeCompose: () => void;
   minimize: () => void;
@@ -60,10 +62,13 @@ export const useComposeStore = create<ComposeState>()(
       draftUid: undefined,
       attachments: [],
       attachmentsLoading: false,
+      session: 0,
       openCompose: (mode = "new", draft, options = {}) => {
         const next = { ...emptyDraft(), ...draft };
-        if (options.signature !== false) next.text = withSignature(next.text, getPref("mail.signature"));
+        // HTML only arrives with a draft being reopened, which already has its sign-off.
+        if (options.signature !== false && !next.html) next.text = withSignature(next.text, getPref("mail.signature"));
         set({
+          session: get().session + 1,
           open: true,
           minimized: false,
           mode,

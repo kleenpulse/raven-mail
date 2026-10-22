@@ -236,6 +236,13 @@ describe("devSendMessage", () => {
 		expect(m.text).toContain("<script>");
 	});
 
+	test("keeps the editor's HTML when compose sends one", () => {
+		devSendMessage(draft({ text: "- a", html: "<ul><li><p><strong>a</strong></p></li></ul>" }), me);
+		const m = devGetMessage("Sent", devListMessages("Sent", { limit: 1 }).messages[0]!.uid);
+		expect(m.html).toBe("<ul><li><p><strong>a</strong></p></li></ul>");
+		expect(m.text).toBe("- a");
+	});
+
 	test("empty subject becomes (no subject); reply headers kept", () => {
 		devSendMessage(draft({ subject: "", inReplyTo: "<a@x>", references: ["<a@x>"] }), me);
 		const m = devGetMessage("Sent", devListMessages("Sent", { limit: 1 }).messages[0]!.uid);
