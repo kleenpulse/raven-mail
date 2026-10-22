@@ -1,4 +1,4 @@
-import { jsonResponse } from "@/test/dom";
+import { jsonResponse, router } from "@/test/dom";
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import type { BlockDTO } from "@/lib/blocks/types";
 import type { MailMessage } from "@/lib/mail/types";
@@ -101,14 +101,14 @@ describe("ReaderMoreMenu", () => {
 		stubServer();
 		wrap(<ReaderMoreMenu message={message("Deals@Shop.Example")} accountEmail="me@home.example" onBlocked={() => {}} onUnblocked={() => {}} />);
 		await openMenu();
-		expect(items()).toEqual(["Block deals@shop.example", "Block everyone at shop.example"]);
+		expect(items()).toEqual(["Block deals@shop.example", "Block everyone at shop.example", "Make a rule from this sender…"]);
 	});
 
 	test("no domain option for a shared provider", async () => {
 		stubServer();
 		wrap(<ReaderMoreMenu message={message("friend@gmail.com")} accountEmail="me@home.example" onBlocked={() => {}} onUnblocked={() => {}} />);
 		await openMenu();
-		expect(items()).toEqual(["Block friend@gmail.com"]);
+		expect(items()).toEqual(["Block friend@gmail.com", "Make a rule from this sender…"]);
 	});
 
 	test("your own email can't be blocked", async () => {
@@ -142,7 +142,15 @@ describe("ReaderMoreMenu", () => {
 		wrap(<ReaderMoreMenu message={message("news@mail.shop.example")} accountEmail="me@home.example" onBlocked={() => {}} onUnblocked={() => {}} />);
 		await waitFor(() => expect(calls.some((c) => c.method === "GET")).toBe(true));
 		await openMenu();
-		await waitFor(() => expect(items()).toEqual(["Unblock everyone at shop.example"]));
+		await waitFor(() => expect(items()).toEqual(["Unblock everyone at shop.example", "Make a rule from this sender…"]));
+	});
+
+	test("Make a rule from this sender opens Settings → Rules with the words filled in", async () => {
+		stubServer();
+		wrap(<ReaderMoreMenu message={message("deals@shop.example")} accountEmail="me@home.example" onBlocked={() => {}} onUnblocked={() => {}} />);
+		await openMenu();
+		fireEvent.click(screen.getByRole("menuitem", { name: "Make a rule from this sender…" }));
+		expect(router.push).toHaveBeenCalledWith("/settings?s=rules&rule=Emails+from+deals%40shop.example");
 	});
 
 	test("no database: an error toast with the fix, and onBlocked never runs", async () => {

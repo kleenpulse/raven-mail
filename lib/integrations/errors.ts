@@ -118,6 +118,10 @@ export const ERROR_COPY = {
 		"Rules, blocked senders and reminders need a database.",
 		"Set DATABASE_URL, then run bun run db:migrate.",
 	),
+	rules_no_engine: copy(
+		"Rules can't run on this server.",
+		"Kage is turned off (KAGE=off) and there's no Jev key. Add one in Settings → Account.",
+	),
 	db_not_migrated: copy("The database isn't set up yet.", "Run bun run db:migrate, then reload."),
 	db_unavailable: copy("Couldn't reach the database.", "It may be waking up. Try again in a few seconds.", true),
 	too_many_requests: copy("Slow down a little.", "Too many attempts in a minute. Try again shortly.", true),
@@ -195,6 +199,7 @@ function defaultStatus(code: IntegrationErrorCode): number {
 		case "paused":
 		case "export_running":
 		case "jev_no_key":
+		case "rules_no_engine":
 			return 409;
 		case "too_many_requests":
 			return 429;

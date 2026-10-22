@@ -12,6 +12,7 @@ import {
 	Info,
 	Inbox,
 	Keyboard,
+	ListFilter,
 	Palette,
 	RefreshCw,
 	Search,
@@ -41,6 +42,7 @@ import { LayoutScroll } from "@/components/ui/layout-scroll";
 const ICONS: Record<SectionId, LucideIcon> = {
 	appearance: Palette,
 	mail: Inbox,
+	rules: ListFilter,
 	notifications: Bell,
 	sync: RefreshCw,
 	keyboard: Keyboard,

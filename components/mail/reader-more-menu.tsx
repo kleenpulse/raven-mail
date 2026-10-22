@@ -1,7 +1,8 @@
 "use client";
 
 import * as React from "react";
-import { Ellipsis, ShieldBan, ShieldCheck } from "lucide-react";
+import { Ellipsis, ListFilter, ShieldBan, ShieldCheck } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,13 +34,14 @@ type Props = {
 	sent?: boolean;
 };
 
-/** The reader's ⋯ menu: a reminder on mail you sent, and block or unblock the sender. */
+/** The reader's ⋯ menu: a reminder on mail you sent, block or unblock the sender, or make a rule from them. */
 export function ReaderMoreMenu({ message, accountEmail, onBlocked, onUnblocked, sent = false }: Props) {
 	const address = message.from.address.toLowerCase();
 	const domain = senderDomain(address);
 	const covering = useBlockedSender()(address);
 	const { block, unblock } = useBlockActions();
 	const own = !address || address === accountEmail.toLowerCase();
+	const router = useRouter();
 	const reminder = useFollowUpFor(sent ? message.messageId : undefined);
 	const reminders = useFollowUpActions();
 	const [picking, setPicking] = React.useState(false);
@@ -108,6 +110,15 @@ export function ReaderMoreMenu({ message, accountEmail, onBlocked, onUnblocked, 
 								</DropdownMenuItem>
 							)}
 						</>
+					)}
+					{!own && (
+						<DropdownMenuItem
+							className="gap-2.5"
+							onClick={() => router.push(`/settings?${new URLSearchParams({ s: "rules", rule: `Emails from ${address}` })}`)}
+						>
+							<ListFilter className="size-4 text-ink-2" />
+							Make a rule from this sender…
+						</DropdownMenuItem>
 					)}
 				</DropdownMenuGroup>
 			</DropdownMenuContent>

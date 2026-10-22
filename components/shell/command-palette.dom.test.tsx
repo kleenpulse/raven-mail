@@ -21,6 +21,15 @@ mock.module(path.resolve(import.meta.dir, "../jev/use-ask.ts"), () => ({
 	},
 }));
 mock.module(path.resolve(import.meta.dir, "../jev/ask-name.ts"), () => ({ useAskName: () => askName }));
+let rulesRuns = 0;
+mock.module(path.resolve(import.meta.dir, "../../hooks/use-rules.ts"), () => ({
+	useRuleActions: () => ({
+		runNow: async () => {
+			rulesRuns += 1;
+			return null;
+		},
+	}),
+}));
 mock.module("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light", setTheme: () => {} }) }));
 
 const { render, screen, fireEvent, cleanup, waitFor, act } = await import("@testing-library/react");
@@ -83,6 +92,14 @@ describe("CommandPalette", () => {
 		type(input, "compose");
 		fireEvent.click(screen.getByRole("option", { name: /^Compose/ }));
 		await waitFor(() => expect(useComposeStore.getState().open).toBe(true));
+		expect(usePaletteStore.getState().open).toBe(false);
+	});
+
+	test("Run rules now runs them after the palette closes", async () => {
+		const input = openPalette();
+		type(input, "rules");
+		fireEvent.click(screen.getByRole("option", { name: /^Run rules now/ }));
+		await waitFor(() => expect(rulesRuns).toBe(1));
 		expect(usePaletteStore.getState().open).toBe(false);
 	});
 

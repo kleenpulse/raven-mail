@@ -545,6 +545,27 @@ export function devGetThread(folder: string, uid: string): MailThread {
   return { messages };
 }
 
+/** Like IMAP `rulesBatch`: the given Inbox uids, or the newest `limit`. */
+export function devRulesBatch(
+  uids: string[] | null,
+  limit: number,
+): { folder: string; uidValidity: string; messages: MailSummary[] } {
+  const inbox = getDb()
+    .messages.filter((m) => m.folder === "INBOX")
+    .sort((a, b) => Date.parse(b.date) - Date.parse(a.date));
+  const wanted = uids ? new Set(uids) : null;
+  const picked = wanted ? inbox.filter((m) => wanted.has(m.uid)) : inbox.slice(0, limit);
+  return { folder: "INBOX", uidValidity: "1", messages: picked.map(toSummary) };
+}
+
+/** Like IMAP `moveWithUids`. Dev uids are unique across folders, so a move keeps its uid. */
+export function devMoveWithUids(folder: string, uids: string[], destination: string): Map<string, string> {
+  const present = new Set(getDb().messages.filter((m) => m.folder === folder).map((m) => m.uid));
+  const moving = uids.filter((uid) => present.has(uid));
+  devMoveMessages(folder, moving, destination);
+  return new Map(moving.map((uid) => [uid, uid]));
+}
+
 /** Like IMAP `findReplies`: a reply in the Inbox since `since`, and the uid in Sent when asked. */
 export function devFindReplies(
   checks: { messageId: string; since: Date; needUid: boolean }[],

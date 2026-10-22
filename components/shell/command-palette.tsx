@@ -11,6 +11,7 @@ import {
 	Forward,
 	Inbox,
 	LayoutGrid,
+	ListFilter,
 	Mail,
 	Moon,
 	PenSquare,
@@ -41,6 +42,7 @@ import { revealTheme } from "@/components/shell/theme-toggle";
 import { useAskStore } from "@/components/jev/ask-store";
 import { useAsk } from "@/components/jev/use-ask";
 import { useAskName } from "@/components/jev/ask-name";
+import { useRuleActions } from "@/hooks/use-rules";
 import { SECTION_IDS, SECTIONS, searchSettings } from "@/components/settings";
 import { useFolders } from "@/hooks/use-mail";
 import { useComposeStore } from "@/lib/store/compose";
@@ -51,6 +53,7 @@ const ICONS: Record<PaletteIcon, LucideIcon> = {
 	ask: Sparkles,
 	search: Search,
 	compose: PenSquare,
+	rules: ListFilter,
 	"theme-light": Sun,
 	"theme-dark": Moon,
 	settings: Settings,
@@ -89,6 +92,7 @@ export function CommandPalette() {
 	const pathname = usePathname();
 	const ask = useAsk();
 	const askName = useAskName();
+	const { runNow: runRulesNow } = useRuleActions();
 	// Runs once the dialog has closed, so the command's own focus isn't taken back.
 	const pending = React.useRef<PaletteAction | null>(null);
 
@@ -120,6 +124,9 @@ export function CommandPalette() {
 			}
 			case "compose":
 				useComposeStore.getState().openCompose("new");
+				return;
+			case "runRules":
+				void runRulesNow();
 				return;
 			case "theme":
 				revealTheme(action.to, setTheme);

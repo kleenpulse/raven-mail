@@ -17,3 +17,45 @@ export type RuleDTO = {
 	createdAt: string;
 	updatedAt: string;
 };
+
+/** Which engine judged a message. */
+export const RULE_ENGINES = ["jev", "kage"] as const;
+export type RuleEngine = (typeof RULE_ENGINES)[number];
+
+/** How sure a rule must be before it acts. Trash asks for more, since it's the costliest mistake. */
+export const RULE_THRESHOLDS: Record<RuleAction, number> = { move: 0.7, archive: 0.7, star: 0.7, read: 0.7, trash: 0.85 };
+
+/** Actions that take mail out of the Inbox: never applied to people you write to. */
+export const REMOVING_ACTIONS: ReadonlySet<RuleAction> = new Set(["move", "archive", "trash"]);
+
+/** One run moves at most this many messages; a new-mail run takes at most this many uids. */
+export const RUN_MOVE_LIMIT = 50;
+export const RUN_UID_LIMIT = 20;
+/** "Run rules now" and previews look at this many of the newest Inbox messages. */
+export const RUN_RECENT = 50;
+
+/** One judgment in Recent activity. */
+export type RuleEventDTO = {
+	id: string;
+	ruleId: string;
+	action: RuleAction;
+	probability: number;
+	applied: boolean;
+	undone: boolean;
+	engine: RuleEngine;
+	subject: string;
+	from: string;
+	/** Where the message was, and where it went (moves only). */
+	folder: string;
+	uid: string;
+	dest?: string;
+	newUid?: string;
+	why: string;
+	/** Applied move, archive or trash with a known new uid, not yet undone. */
+	undoable: boolean;
+	createdAt: string;
+};
+
+export type RunSummary = { checked: number; judged: number; applied: number; engine: RuleEngine | null };
+
+export type PreviewItem = { uid: string; subject: string; from: string; probability: number; wouldApply: boolean; why: string };

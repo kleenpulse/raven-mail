@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { blockFingerprint, openRow, sealRow } from "@/lib/db/sealed";
+import { blockFingerprint, openRow, ruleMessageFingerprint, sealRow } from "@/lib/db/sealed";
 
 describe("sealed rows", () => {
   test("round trip, and nothing readable in the stored token", () => {
@@ -21,5 +21,33 @@ describe("sealed rows", () => {
     expect(a).not.toBe(blockFingerprint("acct-b", "address", "bob@acme.com"));
     expect(a).not.toBe(blockFingerprint("acct-a", "domain", "bob@acme.com"));
     expect(a).not.toContain("acme");
+  });
+
+  describe("rule fingerprints", () => {
+    const rule = { id: "rule-1", criteria: "receipts from vendors" };
+    const msg = { messageId: "<r1@shop.example>", folder: "INBOX", uidValidity: "7", uid: "42" };
+
+    test("a Message-ID names the message wherever it sits", () => {
+      const a = ruleMessageFingerprint("acct-a", rule, msg);
+      expect(ruleMessageFingerprint("acct-a", rule, { ...msg, folder: "Archive", uidValidity: "9", uid: "3" })).toBe(a);
+      expect(a).not.toContain("shop.example");
+    });
+
+    test("editing the wording judges again; another rule or mailbox is its own judgment", () => {
+      const a = ruleMessageFingerprint("acct-a", rule, msg);
+      expect(ruleMessageFingerprint("acct-a", { ...rule, criteria: "receipts and invoices" }, msg)).not.toBe(a);
+      expect(ruleMessageFingerprint("acct-a", { ...rule, id: "rule-2" }, msg)).not.toBe(a);
+      expect(ruleMessageFingerprint("acct-b", rule, msg)).not.toBe(a);
+    });
+
+    test("no Message-ID: folder, UIDVALIDITY and uid name it instead", () => {
+      const bare = { folder: "INBOX", uidValidity: "7", uid: "42" };
+      const a = ruleMessageFingerprint("acct-a", rule, bare);
+      expect(ruleMessageFingerprint("acct-a", rule, bare)).toBe(a);
+      expect(ruleMessageFingerprint("acct-a", rule, { ...bare, uid: "43" })).not.toBe(a);
+      expect(ruleMessageFingerprint("acct-a", rule, { ...bare, uidValidity: "8" })).not.toBe(a);
+      expect(ruleMessageFingerprint("acct-a", rule, { ...bare, folder: "Archive" })).not.toBe(a);
+      expect(a).not.toBe(ruleMessageFingerprint("acct-a", rule, msg));
+    });
   });
 });

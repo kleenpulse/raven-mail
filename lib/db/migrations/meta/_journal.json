@@ -22,6 +22,13 @@
       "when": 1792682688463,
       "tag": "0002_rules_blocks_followups",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1792688704670,
+      "tag": "0003_rule_events",
+      "breakpoints": true
     }
   ]
 }

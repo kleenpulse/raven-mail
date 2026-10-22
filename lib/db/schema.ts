@@ -5,6 +5,7 @@ import {
 	integer,
 	jsonb,
 	pgTable,
+	real,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -20,7 +21,7 @@ import {
 	type LastError,
 } from "../integrations/types"; // relative: drizzle-kit loads this file outside Next's alias resolution
 import { TOUR_VOICES } from "../tour/types";
-import { RULE_ACTIONS } from "../rules/types";
+import { RULE_ACTIONS, RULE_ENGINES } from "../rules/types";
 import { BLOCK_KINDS } from "../blocks/types";
 import { FOLLOW_UP_STATUSES } from "../follow-ups/types";
 
@@ -148,8 +149,40 @@ export const followUps = pgTable(
 	(t) => [index("follow_ups_account_due_idx").on(t.accountKey, t.status, t.dueAt)],
 );
 
+/*
+ * One row per rule per message it judged. The row is claimed (inserted) before
+ * any IMAP action, and only the run that inserted it acts, so two tabs running
+ * rules at once can't both move a message.
+ */
+export const ruleEvents = pgTable(
+	"rule_events",
+	{
+		// App-generated: the id is bound into the seal before insert.
+		id: uuid("id").primaryKey(),
+		accountKey: text("account_key").notNull(),
+		ruleId: uuid("rule_id")
+			.notNull()
+			.references(() => mailRules.id, { onDelete: "cascade" }),
+		/** Keyed HMAC of the rule, a hash of its wording, and the message: edit a rule and it judges again. */
+		fingerprint: text("fingerprint").notNull(),
+		action: text("action", { enum: RULE_ACTIONS }).notNull(),
+		probability: real("probability").notNull(),
+		applied: boolean("applied").notNull().default(false),
+		undone: boolean("undone").notNull().default(false),
+		engine: text("engine", { enum: RULE_ENGINES }).notNull(),
+		/** Sealed JSON `{ subject, from, folder, uid, dest?, newUid?, why }`. */
+		sealed: text("sealed").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => [
+		uniqueIndex("rule_events_rule_fingerprint_idx").on(t.ruleId, t.fingerprint),
+		index("rule_events_account_idx").on(t.accountKey, t.createdAt.desc()),
+	],
+);
+
 export type IntegrationRow = typeof integrations.$inferSelect;
 export type IntegrationEventRow = typeof integrationEvents.$inferSelect;
 export type MailRuleRow = typeof mailRules.$inferSelect;
 export type BlockedSenderRow = typeof blockedSenders.$inferSelect;
 export type FollowUpRow = typeof followUps.$inferSelect;
+export type RuleEventRow = typeof ruleEvents.$inferSelect;

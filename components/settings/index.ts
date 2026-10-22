@@ -1,11 +1,12 @@
 import type { PrefKey } from "@/lib/prefs/schema";
 
-export const SECTION_IDS = ["appearance", "mail", "notifications", "sync", "keyboard", "tour", "account", "about"] as const;
+export const SECTION_IDS = ["appearance", "mail", "rules", "notifications", "sync", "keyboard", "tour", "account", "about"] as const;
 export type SectionId = (typeof SECTION_IDS)[number];
 
 export const SECTIONS: Record<SectionId, { label: string; blurb: string; group: "Preferences" | "You" }> = {
 	appearance: { label: "Appearance", blurb: "Change the theme, the size and the animations.", group: "Preferences" },
 	mail: { label: "Mail", blurb: "How you read, send and delete mail.", group: "Preferences" },
+	rules: { label: "Rules", blurb: "Sort new mail with rules written in plain words.", group: "Preferences" },
 	notifications: { label: "Notifications", blurb: "How Raven tells you about new mail.", group: "Preferences" },
 	sync: { label: "Sync & Storage", blurb: "How often Raven checks for mail, and what it saves on this device.", group: "Preferences" },
 	keyboard: { label: "Keyboard", blurb: "Use keys instead of the mouse.", group: "Preferences" },
@@ -172,6 +173,34 @@ export const SETTINGS: SettingEntry[] = [
 		description:
 			"Their mail is hidden from your Inbox list, not deleted, so unread counts still include it. Saved to your account, so it works on every device.",
 		keywords: "block blocked unblock spam sender domain screener",
+		stack: true,
+	},
+	{
+		id: "rules-list",
+		section: "rules",
+		card: "Your rules",
+		label: "Rules",
+		description:
+			"Each rule is a few words about the mail it's for, and one thing to do with it. The first rule that fits an email acts on it. Saved to your account.",
+		keywords: "rules filters automation sort archive move trash star read run",
+		stack: true,
+	},
+	{
+		id: "rules-new",
+		section: "rules",
+		card: "New rule",
+		label: "Add a Rule",
+		description: "Say which mail it's for and what to do, then preview it on your last 50 messages before you save.",
+		keywords: "create rule filter preview dry run",
+		stack: true,
+	},
+	{
+		id: "rules-activity",
+		section: "rules",
+		card: "Recent activity",
+		label: "Recent Activity",
+		description: "What your rules did lately, and how sure they were. Moves can be undone here.",
+		keywords: "rules log history undo activity",
 		stack: true,
 	},
 	{

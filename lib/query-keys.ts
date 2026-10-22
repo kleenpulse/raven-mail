@@ -21,6 +21,9 @@ export const qk = {
 	blocks: (account: string) => ["acct", account, "blocks"] as const,
 	/** Memory only, like blocks: subjects and names stay out of IndexedDB. */
 	followUps: (account: string) => ["acct", account, "follow-ups"] as const,
+	/** Memory only, like blocks: rule wording and activity stay out of IndexedDB. */
+	rules: (account: string) => ["acct", account, "rules"] as const,
+	ruleEvents: (account: string) => ["acct", account, "rules", "events"] as const,
 	overview: (account: string, days: number, tz: string) =>
 		["acct", account, "overview", days, tz] as const,
 	integrations: (account: string) => ["acct", account, "integrations"] as const,

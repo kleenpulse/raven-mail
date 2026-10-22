@@ -59,6 +59,7 @@ import { requestTourResume, requestTourRestart } from "@/components/tour/store";
 import { setTourVoice, useTourStateStore } from "@/lib/tour/state";
 import { DEFAULT_TOUR_STATE, TOUR_VOICES, VOICE_LABELS, type TourVoice } from "@/lib/tour/types";
 import { BlockedSendersRow } from "@/components/settings/blocked-senders-row";
+import { NewRuleRow, RuleActivityRow, RulesListRow } from "@/components/settings/rules-rows";
 
 /* ─── Appearance ─────────────────────────────────────────────────────── */
 
@@ -731,6 +732,9 @@ const ROWS: Record<string, React.ComponentType> = {
 	"undo-send": UndoSendRow,
 	signature: SignatureRow,
 	blocked: BlockedSendersRow,
+	"rules-list": RulesListRow,
+	"rules-new": NewRuleRow,
+	"rules-activity": RuleActivityRow,
 	"mail-layout": MailLayoutRow,
 	"banner-position": BannerPositionRow,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,

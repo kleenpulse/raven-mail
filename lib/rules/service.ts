@@ -76,3 +76,17 @@ export async function editRule(
 export function removeRule(session: MailSession, id: string): Promise<void> {
 	return deleteRule(tenantKey(session), id);
 }
+
+/** Swap a rule with its neighbour, so it runs earlier or later. Positions are renumbered 0..n. */
+export async function moveRule(session: MailSession, id: string, direction: "up" | "down"): Promise<void> {
+	const key = tenantKey(session);
+	const order = await listRules(key);
+	const i = order.findIndex((r) => r.id === id);
+	if (i < 0) throw new IntegrationError("not_found", { message: "That rule no longer exists." });
+	const j = direction === "up" ? i - 1 : i + 1;
+	if (j < 0 || j >= order.length) return;
+	[order[i], order[j]] = [order[j]!, order[i]!];
+	for (const [position, row] of order.entries()) {
+		if (row.position !== position) await updateRule(key, row.id, { position });
+	}
+}

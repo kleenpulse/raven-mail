@@ -106,6 +106,17 @@ as you work — it ships inside the app.
   1 day and Open thread. If they reply first, the reminder goes away on
   its own. Raven checks while it's open. Reminders need a database
   (DATABASE_URL), since they're saved to your account.
+- Rules in plain words: in Settings → Rules, say which mail a rule is
+  for, like "receipts and invoices from shops", and pick one thing to
+  do: move it to a folder, archive, star, mark read or move to Trash.
+  Preview a rule on your last 50 messages before you save it. Rules run
+  on new mail while Raven is open, and when you click Run rules now (it's
+  in the Ctrl+K menu too). Jev decides, or Kage, Raven's built-in engine,
+  when there's no key. A rule only acts when it's sure, and Trash asks
+  for more. Mail from people you write to is never moved, archived or
+  trashed by a rule. Recent activity shows what each rule did and how
+  sure it was, and moves can be undone there. Start a rule from the ⋯
+  menu on any message. Rules need a database (DATABASE_URL).
 - The "not found" page now glows with the same gold aurora as the
   bottom of the landing page.
 - A refresh button now sits beside the folder name above your mail list.

@@ -618,6 +618,66 @@ function dedupeThread(found: MailSummary[], folder: string): MailSummary[] {
     .slice(-THREAD_LIMIT);
 }
 
+/**
+ * What the rules run reads: the given Inbox uids, or the newest `limit`, with
+ * their previews and the folder's UIDVALIDITY (the fingerprint for mail with
+ * no Message-ID).
+ */
+export async function rulesBatch(
+  session: MailSession,
+  uids: string[] | null,
+  limit: number,
+): Promise<{ folder: string; uidValidity: string; messages: MailSummary[] }> {
+  const folder = (await resolveSpecial(session, "\\Inbox")) ?? "INBOX";
+  return withMailbox(
+    session,
+    folder,
+    async (client) => {
+      const mailbox = client.mailbox;
+      const exists = mailbox ? mailbox.exists : 0;
+      let fetched: FetchMessageObject[] = [];
+      if (uids) {
+        if (uids.length) fetched = await client.fetchAll(uids.join(","), SUMMARY_QUERY, { uid: true });
+      } else if (exists > 0) {
+        fetched = await client.fetchAll(`${Math.max(1, exists - limit + 1)}:${exists}`, SUMMARY_QUERY);
+      }
+      const uidValidity = mailbox ? String(mailbox.uidValidity) : "0";
+      const previews = await fetchPreviews(client, `${sessionKey(session)}:${folder}:${uidValidity}`, fetched);
+      return { folder, uidValidity, messages: fetched.map((m) => toSummary(m, folder, previews.get(m.uid) ?? "")) };
+    },
+    { readOnly: true },
+  );
+}
+
+/**
+ * Move, and say where each message landed: the COPYUID map (UIDPLUS) as
+ * old uid → new uid. A server without UIDPLUS answers with an empty map, and
+ * those moves can't be undone by uid.
+ */
+export async function moveWithUids(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  destination: string,
+): Promise<Map<string, string>> {
+  const moved = new Map<string, string>();
+  if (uids.length === 0) return moved;
+  await withMailbox(session, folder, async (client) => {
+    const set = uids.join(",");
+    let result;
+    if (client.capabilities.has("MOVE")) {
+      result = await client.messageMove(set, destination, { uid: true });
+    } else {
+      result = await client.messageCopy(set, destination, { uid: true });
+      await client.messageFlagsAdd(set, ["\\Deleted"], { uid: true });
+      await client.messageDelete(set, { uid: true });
+    }
+    const map = result && typeof result === "object" ? result.uidMap : undefined;
+    for (const [from, to] of map ?? []) moved.set(String(from), String(to));
+  });
+  return moved;
+}
+
 export type ReplyCheck = { messageId: string; since: Date; needUid: boolean };
 export type ReplyAnswer = { replied: boolean; sentUid?: string };
 

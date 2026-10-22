@@ -14,6 +14,7 @@ export type PaletteAction =
   | { kind: "ask"; question: string }
   | { kind: "search"; query: string }
   | { kind: "compose" }
+  | { kind: "runRules" }
   | { kind: "theme"; to: "light" | "dark" }
   | { kind: "go"; href: string }
   | { kind: "message"; action: MessageKeyAction };
@@ -22,6 +23,7 @@ export type PaletteIcon =
   | "ask"
   | "search"
   | "compose"
+  | "rules"
   | "theme-light"
   | "theme-dark"
   | "settings"
@@ -139,6 +141,7 @@ export function buildCommands(ctx: PaletteContext): PaletteGroup[] {
           ? { id: "theme", label: "Switch to Ember", keywords: "theme light mode appearance", icon: "theme-light", action: { kind: "theme", to: "light" } }
           : { id: "theme", label: "Switch to Nebula", keywords: "theme dark mode appearance", icon: "theme-dark", action: { kind: "theme", to: "dark" } },
         { id: "settings", label: "Open settings", keys: ["mod", ","], keywords: "preferences options", icon: "settings", action: { kind: "go", href: "/settings" } },
+        { id: "rules:run", label: "Run rules now", keywords: "rules filters sort inbox", icon: "rules", action: { kind: "runRules" } },
       ],
     },
     { heading: "This message", items: ctx.message ? messageCommands(ctx.message) : [] },
