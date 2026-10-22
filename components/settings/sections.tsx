@@ -156,6 +156,30 @@ function UndoRow() {
 	);
 }
 
+const UNDO_SEND_OPTIONS = [
+	{ value: "0", label: "Off" },
+	{ value: "5000", label: "5s" },
+	{ value: "10000", label: "10s" },
+	{ value: "20000", label: "20s" },
+	{ value: "30000", label: "30s" },
+] as const;
+
+function UndoSendRow() {
+	const value = usePref("mail.undoSend");
+	return (
+		<SettingRow id="undo-send" layout="wide">
+			{(labelId) => (
+				<Segmented
+					value={String(value) as (typeof UNDO_SEND_OPTIONS)[number]["value"]}
+					options={UNDO_SEND_OPTIONS}
+					onChange={(next) => setPref("mail.undoSend", Number(next) as 0 | 5000 | 10_000 | 20_000 | 30_000)}
+					labelledBy={labelId}
+				/>
+			)}
+		</SettingRow>
+	);
+}
+
 function MailLayoutRow() {
 	return (
 		<SettingRow id="mail-layout">
@@ -640,6 +664,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	preload: () => <PrefSwitchRow id="preload" pref="mail.preload" />,
 	threading: () => <PrefSwitchRow id="threading" pref="mail.threading" />,
 	undo: UndoRow,
+	"undo-send": UndoSendRow,
 	"mail-layout": MailLayoutRow,
 	"banner-position": BannerPositionRow,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,

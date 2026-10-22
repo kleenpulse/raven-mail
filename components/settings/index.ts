@@ -5,7 +5,7 @@ export type SectionId = (typeof SECTION_IDS)[number];
 
 export const SECTIONS: Record<SectionId, { label: string; blurb: string; group: "Preferences" | "You" }> = {
 	appearance: { label: "Appearance", blurb: "Change the theme, the size and the animations.", group: "Preferences" },
-	mail: { label: "Mail", blurb: "How you read and delete mail.", group: "Preferences" },
+	mail: { label: "Mail", blurb: "How you read, send and delete mail.", group: "Preferences" },
 	notifications: { label: "Notifications", blurb: "How Raven tells you about new mail.", group: "Preferences" },
 	sync: { label: "Sync & Storage", blurb: "How often Raven checks for mail, and what it saves on this device.", group: "Preferences" },
 	keyboard: { label: "Keyboard", blurb: "Use keys instead of the mouse.", group: "Preferences" },
@@ -109,6 +109,15 @@ export const SETTINGS: SettingEntry[] = [
 		description: "How long you have to undo an archive, move or delete.",
 		keywords: "delete trash archive move grace timer",
 		prefs: ["mail.undoMs"],
+	},
+	{
+		id: "undo-send",
+		section: "mail",
+		card: "Sending",
+		label: "Undo Send",
+		description: "How long you have to take back a message after you press Send.",
+		keywords: "undo send unsend cancel recall delay wait",
+		prefs: ["mail.undoSend"],
 	},
 	{
 		id: "mail-layout",

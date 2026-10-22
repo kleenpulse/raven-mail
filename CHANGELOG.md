@@ -42,6 +42,12 @@ as you work — it ships inside the app.
   and K move from one conversation to the next. Search results still
   show one row per message. Turn it off in Settings → Mail →
   Conversations.
+- Undo Send: after you press Send, the compose window closes and you
+  get 10 seconds to take the message back. Undo opens it again with
+  everything you wrote and attached. Pick 5 to 30 seconds, or Off, in
+  Settings → Mail. If you try to leave while a message is waiting, Raven
+  asks first. If you close the tab anyway, the message isn't sent, and
+  it opens again in compose the next time you visit.
 
 ### Fixed
 

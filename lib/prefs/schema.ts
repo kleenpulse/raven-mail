@@ -12,6 +12,8 @@ export const PREF_SCHEMAS = {
 	/** Absent = never answered (the reader asks once); false = "just this once". */
 	"mail.remoteImages": z.boolean(),
 	"mail.undoMs": z.union([z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
+	/** How long Send waits so it can be undone; 0 sends at once. */
+	"mail.undoSend": z.union([z.literal(0), z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
 	"mail.preload": z.boolean(),
 	/** Group the list into conversations and show the rest of each one in the reader. */
 	"mail.threading": z.boolean(),
@@ -37,6 +39,7 @@ export const DEFAULTS: Prefs = {
 	"appearance.reduceTransparency": false,
 	"mail.remoteImages": false,
 	"mail.undoMs": 5000,
+	"mail.undoSend": 10_000,
 	"mail.preload": true,
 	"mail.threading": true,
 	"sync.focusRefetch": true,
