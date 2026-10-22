@@ -159,7 +159,8 @@ export const SETTINGS: SettingEntry[] = [
 		section: "mail",
 		card: "Blocked senders",
 		label: "Blocked Senders",
-		description: "Their mail is hidden from your Inbox. Saved to your account, so it works on every device.",
+		description:
+			"Their mail is hidden from your Inbox list, not deleted, so unread counts still include it. Saved to your account, so it works on every device.",
 		keywords: "block blocked unblock spam sender domain screener",
 		stack: true,
 	},
