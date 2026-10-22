@@ -63,7 +63,7 @@ export async function* runAsk(
   let ranked: Ranked[] = execution.candidates.map((row) => ({ row }));
   if (execution.rankable && jev) {
     const pool = Math.min(execution.candidates.length, 120);
-    yield { type: "stage", stage: "rank", detail: `Ranking ${pool} ${pool === 1 ? "candidate" : "candidates"} with Jev` };
+    yield { type: "stage", stage: "rank", detail: `Ranking ${pool} ${pool === 1 ? "candidate" : "candidates"} with ${jev.source === "kage" ? "Kage" : "Jev"}` };
     const byJev = await jevRank(request.question, execution.candidates, now, jev, signal);
     if (byJev) ranked = byJev;
   }

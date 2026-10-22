@@ -13,6 +13,12 @@ as you work — it ships inside the app.
 
 ### Added
 
+- Ask Jev and Deep triage now work without a Jev key. Raven has its own
+  built-in engine, Kage, that answers the same questions on your server,
+  with no account and no cost. If your Jev key stops working, Kage steps
+  in instead of plain keyword rules. Answers and badges say "Kage" when
+  Kage answered. Without a key, the Ask button and the Ctrl+K panel are
+  called "Ask Kage", so you always know who is answering.
 - A "buy me a coffee" button now sits in the top-right corner of the
   Overview and Mail top bars, if you'd like to support Raven.
 

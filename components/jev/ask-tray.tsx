@@ -7,6 +7,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { useAskStore } from "@/components/jev/ask-store";
 import { AnswerCard, StageTrail } from "@/components/jev/ask-answer";
 import { useAsk, type AskOptions } from "@/components/jev/use-ask";
+import { useAskName } from "@/components/jev/ask-name";
 import { useOverview } from "@/hooks/use-overview";
 import { useDeepTriage } from "@/hooks/use-deep-triage";
 import { INTENT_META, SUGGESTED_INTENTS } from "@/lib/jev/ask/catalog";
@@ -59,6 +60,7 @@ export function AskTray() {
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const listRef = React.useRef<HTMLOListElement>(null);
 	const mod = React.useSyncExternalStore(subscribeNoop, modKeyLabel, () => "Ctrl");
+	const name = useAskName();
 
 	const contextUid = pathname === "/mail" ? searchParams.get("uid") : null;
 	const contextFolder = searchParams.get("folder") ?? "INBOX";
@@ -120,7 +122,7 @@ export function AskTray() {
 				className="glass fixed bottom-6 left-1/2 z-30 hidden h-12 -translate-x-1/2 items-center gap-2.5 rounded-pill px-5 text-sm shadow-lift transition-[translate,box-shadow] hover:-translate-y-0.5 hover:shadow-glow md:left-[calc(50%+42px)] md:flex"
 			>
 				<Sparkles className="[&>path:first-child]:fill-current size-4 text-signal-ink dark:text-signal" />
-				Ask Jev
+				Ask {name}
 				<Kbd>{mod}+K</Kbd>
 			</button>
 		);
@@ -129,12 +131,12 @@ export function AskTray() {
 	return (
 		<div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-40 flex justify-center px-3 md:bottom-5 md:pl-[84px]">
 			<section
-				aria-label="Ask Jev"
+				aria-label={`Ask ${name}`}
 				className="glass pointer-events-auto flex max-h-[min(78vh,760px)] w-full max-w-[760px] flex-col rounded-card p-3 shadow-lift entrance"
 			>
 				<header className="flex items-center justify-between px-2 pt-1 pb-2">
 					<p className="font-mono text-[11px] tracking-[0.14em] text-ink-2">
-						<span className="text-signal-ink dark:text-signal">JEV</span> ANALYSIS
+						<span className="text-signal-ink dark:text-signal">{name.toUpperCase()}</span> ANALYSIS
 					</p>
 					<div className="flex items-center gap-1">
 						{turns.length > 0 && (
@@ -150,7 +152,7 @@ export function AskTray() {
 						<button
 							type="button"
 							onClick={() => setOpen(false)}
-							aria-label="Close Ask Jev"
+							aria-label={`Close Ask ${name}`}
 							className="grid size-8 place-items-center rounded-full text-ink-2 hover:bg-card-nested hover:text-foreground"
 						>
 							<X className="size-4" />
@@ -167,7 +169,7 @@ export function AskTray() {
 				)}
 				<p aria-live="polite" className="sr-only">
 					{last?.status === "running"
-						? (last.stages[last.stages.length - 1]?.detail ?? "Jev is thinking")
+						? (last.stages[last.stages.length - 1]?.detail ?? `${name} is thinking`)
 						: last?.status === "done"
 							? last.answer?.headline
 							: ""}
@@ -193,7 +195,7 @@ export function AskTray() {
 						value={value}
 						onChange={(e) => setValue(e.target.value)}
 						placeholder="Ask about your inbox…"
-						aria-label="Ask Jev"
+						aria-label={`Ask ${name}`}
 						autoComplete="off"
 						maxLength={500}
 						className={cn(

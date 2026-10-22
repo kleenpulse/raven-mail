@@ -18,6 +18,7 @@
     "test:dom": "bun test --isolate .dom.test",
     "test:coverage": "bun test --isolate --coverage",
     "test:report": "bun scripts/test-report.ts",
+    "eval:kage": "bun scripts/eval-kage.ts",
     "bump": "bun run scripts/bump.ts",
     "check:payload": "bun scripts/check-payload.ts",
     "db:generate": "drizzle-kit generate",

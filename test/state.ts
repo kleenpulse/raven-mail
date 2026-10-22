@@ -30,6 +30,8 @@ const accepted: (key: string) => Promise<void> = async () => {};
  */
 export const fakeJev = {
 	enabled: false,
+	/** Keyless sessions get the real Kage engine instead of null (heuristics). */
+	kage: false,
 	systemOne: mock(unexpected),
 	/** verifyJevKey: accepts every key unless a test makes it throw. */
 	verifyKey: mock(accepted),
@@ -37,6 +39,7 @@ export const fakeJev = {
 	client: { systemOne: (...args: [unknown, unknown?]) => fakeJev.systemOne(...args) },
 	reset() {
 		this.enabled = false;
+		this.kage = false;
 		this.systemOne = mock(unexpected);
 		this.verifyKey = mock(accepted);
 	},

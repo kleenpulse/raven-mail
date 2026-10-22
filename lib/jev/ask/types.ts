@@ -46,7 +46,8 @@ export type AskPlan = {
   keywords: string[];
   /** Literal search text typed beside an intent chip; list intents narrow their results by it. */
   filter?: string;
-  source: "jev" | "heuristic" | "forced";
+  /** `kage` = Raven's built-in engine answered (no Jev key, or Jev failed). */
+  source: "jev" | "kage" | "heuristic" | "forced";
 };
 
 export type Evidence = ThreadRef & {

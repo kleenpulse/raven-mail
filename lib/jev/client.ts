@@ -1,10 +1,15 @@
 import "server-only";
 import { TypeSafeClient } from "@typesafe-ai/sdk";
+import { kage, kageEnabled, withKageFallback, type DecisionClient } from "@/lib/kage";
 import type { MailSession } from "@/lib/session";
 
-/** Whose key pays for the call: the signed-in user's (BYOK) or the deployment's. */
-export type JevSource = "user" | "server";
-export type Jev = { client: TypeSafeClient; source: JevSource };
+/**
+ * Whose engine answers: the signed-in user's Jev key (BYOK), the deployment's,
+ * or Kage — the built-in engine for everyone without a key.
+ */
+export type JevSource = "user" | "server" | "kage";
+export type Jev = { client: DecisionClient; source: JevSource };
+export type TypeSafeAccess = { client: TypeSafeClient; source: Exclude<JevSource, "kage"> };
 
 const MAX_USER_CLIENTS = 50;
 let serverClient: TypeSafeClient | null = null;
@@ -43,11 +48,8 @@ export async function verifyJevKey(apiKey: string): Promise<void> {
   await createClient(apiKey).models.list({ timeout: 5_000, retry: { maxRetries: 0 } });
 }
 
-/**
- * The Jev this request may use. A key the user saved in Settings wins over the
- * deployment's TYPESAFE_API_KEY; with neither, callers fall back to heuristics.
- */
-export function jevFor(session: Pick<MailSession, "jevKey"> | null): Jev | null {
+/** The raw TypeSafe client, for diagnostics that must talk to Jev itself. */
+export function typesafeFor(session: Pick<MailSession, "jevKey"> | null): TypeSafeAccess | null {
   if (session?.jevKey) return { client: clientForKey(session.jevKey), source: "user" };
   const key = serverKey();
   if (!key) return null;
@@ -55,10 +57,30 @@ export function jevFor(session: Pick<MailSession, "jevKey"> | null): Jev | null 
   return { client: serverClient, source: "server" };
 }
 
+/**
+ * The engine this request may use. A key the user saved in Settings wins over
+ * the deployment's TYPESAFE_API_KEY, and a failed Jev call is answered by Kage.
+ * With no key, Kage answers alone; with KAGE=off too, callers use heuristics.
+ */
+export function jevFor(session: Pick<MailSession, "jevKey"> | null): Jev | null {
+  const typesafe = typesafeFor(session);
+  if (typesafe) return { client: withKageFallback(typesafe.client), source: typesafe.source };
+  return kageEnabled() ? { client: kage, source: "kage" } : null;
+}
+
+/** Which engine Ask and Deep triage run on, for labels and live dots. */
+export type DecisionEngine = "jev" | "kage";
+
+export function decisionEngine(session: Pick<MailSession, "jevKey"> | null): DecisionEngine | null {
+  if (session?.jevKey || serverKey()) return "jev";
+  return kageEnabled() ? "kage" : null;
+}
+
 /** What the UI may know about the key: never the key, only its last four characters. */
-export type JevStatus = { source: JevSource | null; hint: string | null };
+export type JevStatus = { source: Exclude<JevSource, "kage"> | null; hint: string | null; kage: boolean };
 
 export function jevStatus(session: Pick<MailSession, "jevKey"> | null): JevStatus {
-  if (session?.jevKey) return { source: "user", hint: session.jevKey.slice(-4) };
-  return { source: serverKey() ? "server" : null, hint: null };
+  const kage = kageEnabled();
+  if (session?.jevKey) return { source: "user", hint: session.jevKey.slice(-4), kage };
+  return { source: serverKey() ? "server" : null, hint: null, kage };
 }

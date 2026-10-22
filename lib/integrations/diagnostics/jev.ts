@@ -9,7 +9,7 @@ import {
 	RateLimitError,
 	type ModelCard,
 } from "@typesafe-ai/sdk";
-import { jevFor } from "@/lib/jev/client";
+import { typesafeFor } from "@/lib/jev/client";
 import type { MailSession } from "@/lib/session";
 import { IntegrationError } from "../errors";
 import { warn, type Step } from "../steps";
@@ -44,7 +44,7 @@ type Ctx = { models?: ModelCard[] };
  */
 export function jevDiagnostics(session: MailSession): { steps: Step<Ctx>[]; ctx: Ctx } {
 	const model = pinnedModel();
-	const jev = jevFor(session);
+	const jev = typesafeFor(session);
 	return {
 		ctx: {},
 		steps: [

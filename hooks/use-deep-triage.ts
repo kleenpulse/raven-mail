@@ -50,7 +50,8 @@ export function useDeepTriage() {
 		},
 		onSuccess: (result) => {
 			client.setQueryData(key, result);
-			toast.success(`Jev triaged ${result.items.length} recent ${result.items.length === 1 ? "email" : "emails"}`);
+			const by = result.items.some((i) => i.triage.source === "jev") ? "Jev" : result.items.some((i) => i.triage.source === "kage") ? "Kage" : "Raven";
+			toast.success(`${by} triaged ${result.items.length} recent ${result.items.length === 1 ? "email" : "emails"}`);
 		},
 		onError: (err) => toast.error(err instanceof Error ? err.message : "Deep triage failed"),
 	});

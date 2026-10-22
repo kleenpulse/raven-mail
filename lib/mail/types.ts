@@ -98,7 +98,7 @@ export type TriageResult = {
   urgency: number;
   needsReply: boolean;
   confidence: number;
-  source: "jev" | "heuristic";
+  source: "jev" | "kage" | "heuristic";
 };
 
 export type ActionResult<T = unknown> =

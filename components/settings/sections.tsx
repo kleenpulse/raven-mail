@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/dialog";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { useAccount } from "@/components/providers/account-provider";
+import { useAskName } from "@/components/jev/ask-name";
 import { centerOf, revealTheme, type ThemeChoice } from "@/components/shell/theme-toggle";
 import { sectionEntries, type SectionId, type SettingEntry } from "@/components/settings";
 import {
@@ -293,6 +294,7 @@ function ClearCacheRow() {
 
 function ShortcutListRow() {
 	const singleKey = usePref("keyboard.singleKey");
+	const askName = useAskName();
 	const mod = React.useSyncExternalStore(
 		() => () => {},
 		() => modKeyLabel(),
@@ -310,7 +312,7 @@ function ShortcutListRow() {
 								className={cn("flex min-h-10 items-center justify-between gap-3 border-b border-border/60 py-1.5 dark:border-glass-border", off && "opacity-45")}
 							>
 								<span className="text-[13px] text-foreground">
-									{s.label}
+									{s.label.replace("Ask Jev", `Ask ${askName}`)}
 									<span className="ml-2 text-[11px] text-ink-2">{off ? "Off" : s.scope}</span>
 								</span>
 								<KbdGroup>
@@ -368,6 +370,7 @@ function SignOutRow() {
 function jevStatusLine(status: JevStatus): string {
 	if (status.source === "user") return `Jev uses your key ending in ${status.hint}.`;
 	if (status.source === "server") return "Jev uses this Raven's key. Add your own to use your TypeSafe account instead.";
+	if (status.kage) return "No key yet, so Ask Jev and Deep triage run on Kage, Raven's built-in engine. It runs on this server and needs no account.";
 	return "Jev is off. Ask Jev uses free local rules until you add a key.";
 }
 

@@ -35,6 +35,16 @@ describe("POST /api/jev/triage", () => {
 		expect(statuses).toEqual([409, 409, 409, 409, 409]);
 	});
 
+	test("without any key, Kage runs Deep triage and labels its results", async () => {
+		fakeJev.kage = true;
+		const res = await call(POST, req("/api/jev/triage", { method: "POST" }));
+		expect(res.status).toBe(200);
+		const body = await readJson<{ ok: true; data: { items: { triage: { source: string } }[] } }>(res);
+		expect(body.data.items.length).toBeGreaterThan(0);
+		expect(body.data.items.every((i) => i.triage.source === "kage")).toBe(true);
+		expect(fakeJev.systemOne).not.toHaveBeenCalled();
+	});
+
 	test("a session with its own key runs Deep triage without a server key", async () => {
 		fakeJev.systemOne.mockImplementation(async () => answers({}));
 		const session = makeSession({ jevKey: "user-key-0123456789abcd" });

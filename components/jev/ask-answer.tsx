@@ -20,6 +20,7 @@ const STAGES: { stage: AskStage; label: string }[] = [
 
 const SOURCE: Record<AskAnswer["plan"]["source"], string> = {
 	jev: "Jev",
+	kage: "Kage",
 	heuristic: "Keywords",
 	forced: "Suggested",
 };
@@ -178,7 +179,7 @@ export function AnswerCard({
 	const pct = Math.round(answer.confidence * 100);
 	const firstCritical = answer.evidence.findIndex((e) => e.critical);
 	const alternatives =
-		!answer.clarify && answer.plan.source === "jev" && answer.confidence < 0.9 ? answer.plan.alternatives.slice(0, 2) : [];
+		!answer.clarify && (answer.plan.source === "jev" || answer.plan.source === "kage") && answer.confidence < 0.9 ? answer.plan.alternatives.slice(0, 2) : [];
 
 	return (
 		<article
