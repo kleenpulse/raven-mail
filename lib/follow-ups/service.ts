@@ -89,10 +89,21 @@ export async function listFollowUps(
 		}
 	}
 	const replied = new Set(past.filter((f) => answers.get(f.messageId)?.replied).map((f) => f.id));
-	await Promise.all([...replied].map((id) => finishFollowUp(session, id).catch(() => {})));
+	// A compose reminder learns its Sent uid here; keep it, so later loads skip the Sent lookup.
+	const found = past.filter((f) => !f.uid && !replied.has(f.id) && answers.get(f.messageId)?.sentUid);
+	await Promise.all([
+		...[...replied].map((id) => finishFollowUp(session, id).catch(() => {})),
+		...found.map((f) => rememberUid(session, f, answers.get(f.messageId)!.sentUid!).catch(() => {})),
+	]);
 	return open
 		.filter((f) => !replied.has(f.id))
 		.map((f) => ({ ...f, uid: f.uid || answers.get(f.messageId)?.sentUid || "", due: isDue(f, now) }));
+}
+
+async function rememberUid(session: MailSession, f: FollowUpDTO, uid: string): Promise<void> {
+	const key = tenantKey(session);
+	const target: FollowUpTarget = { messageId: f.messageId, subject: f.subject, to: f.to, folder: f.folder, uid };
+	await updateFollowUp(key, f.id, { sealed: sealRow("follow-ups", target, key, f.id) });
 }
 
 /**

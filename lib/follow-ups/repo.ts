@@ -33,7 +33,7 @@ export async function insertFollowUp(values: typeof followUps.$inferInsert): Pro
 export async function updateFollowUp(
 	accountKey: string,
 	id: string,
-	patch: Partial<Pick<typeof followUps.$inferInsert, "dueAt" | "status">>,
+	patch: Partial<Pick<typeof followUps.$inferInsert, "dueAt" | "status" | "sealed">>,
 ): Promise<FollowUpRow> {
 	const [row] = await withStore((db) =>
 		db

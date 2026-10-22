@@ -34,7 +34,7 @@ mock.module(path.resolve(import.meta.dir, "../../lib/follow-ups/repo.ts"), () =>
 		rows.push(row);
 		return row;
 	},
-	updateFollowUp: async (key: string, id: string, patch: Partial<Pick<Row, "dueAt" | "status">>) => {
+	updateFollowUp: async (key: string, id: string, patch: Partial<Pick<Row, "dueAt" | "status" | "sealed">>) => {
 		const row = rows.find((r) => r.accountKey === key && r.id === id);
 		if (!row) throw await notFound();
 		Object.assign(row, patch, { updatedAt: new Date() });
@@ -49,6 +49,7 @@ mock.module(path.resolve(import.meta.dir, "../../lib/follow-ups/repo.ts"), () =>
 
 const { GET, POST, PATCH, DELETE } = await import("@/app/api/follow-ups/route");
 const { sendMessageAction } = await import("@/lib/actions/mail");
+const { getOpenFollowUps } = await import("@/lib/follow-ups/service");
 const { devAllMessages, devSendMessage } = await import("@/lib/mail/dev-store");
 
 type Ok<T> = { ok: true; data: T };
@@ -199,6 +200,10 @@ describe("Remind me if no reply, from compose", () => {
 		const [due] = await list();
 		const copy = devAllMessages().find((m) => m.folder === "Sent" && m.messageId === res.data.messageId)!;
 		expect(due).toMatchObject({ messageId: res.data.messageId, subject: "Q3 plan", to: "Maya", folder: "Sent", uid: copy.uid, due: true });
+		// Saved once found, so the next load doesn't search Sent again.
+		const [saved] = await getOpenFollowUps(me);
+		expect(saved).toMatchObject({ id: due!.id, uid: copy.uid, subject: "Q3 plan" });
+		expect(JSON.stringify(rows)).not.toContain("Q3 plan");
 	});
 
 	test("no reminder asked, none set", async () => {
