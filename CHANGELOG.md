@@ -45,7 +45,8 @@ as you work — it ships inside the app.
 - Undo Send: after you press Send, the compose window closes and you
   get 10 seconds to take the message back. Undo opens it again with
   everything you wrote and attached. Pick 5 to 30 seconds, or Off, in
-  Settings → Mail. If you try to leave while a message is waiting, Raven
+  Settings → Mail. Starting another message sends the waiting one right
+  away. If you try to leave while a message is waiting, Raven
   asks first. If you close the tab anyway, the message isn't sent, and
   it opens again in compose the next time you visit.
 - A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
