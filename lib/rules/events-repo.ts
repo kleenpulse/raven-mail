@@ -1,8 +1,9 @@
 import "server-only";
-import { and, desc, eq, inArray, lte } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, lte, or } from "drizzle-orm";
 import { withStore } from "@/lib/db/store";
 import { ruleEvents, type RuleEventRow } from "@/lib/db/schema";
 import { IntegrationError } from "@/lib/integrations/errors";
+import { RULE_ACTIONS, RULE_THRESHOLDS, STORED_SLACK } from "./types";
 
 /** Recent activity keeps this many judgments per mailbox. */
 export const EVENTS_KEPT = 1000;
@@ -45,9 +46,19 @@ export async function settleEvent(accountKey: string, id: string, patch: { appli
 	);
 }
 
+/** The newest notable judgments (see `isNotable`, which this mirrors in SQL). */
 export function listEvents(accountKey: string, limit = 50): Promise<RuleEventRow[]> {
+	const notable = or(
+		eq(ruleEvents.applied, true),
+		...RULE_ACTIONS.map((a) => and(eq(ruleEvents.action, a), gte(ruleEvents.probability, RULE_THRESHOLDS[a] - STORED_SLACK))),
+	);
 	return withStore((db) =>
-		db.select().from(ruleEvents).where(eq(ruleEvents.accountKey, accountKey)).orderBy(desc(ruleEvents.createdAt)).limit(limit),
+		db
+			.select()
+			.from(ruleEvents)
+			.where(and(eq(ruleEvents.accountKey, accountKey), notable))
+			.orderBy(desc(ruleEvents.createdAt))
+			.limit(limit),
 	);
 }
 

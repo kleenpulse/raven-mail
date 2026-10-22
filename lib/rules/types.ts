@@ -25,6 +25,18 @@ export type RuleEngine = (typeof RULE_ENGINES)[number];
 /** How sure a rule must be before it acts. Trash asks for more, since it's the costliest mistake. */
 export const RULE_THRESHOLDS: Record<RuleAction, number> = { move: 0.7, archive: 0.7, star: 0.7, read: 0.7, trash: 0.85 };
 
+/** Probabilities are stored as `real`, so 0.7 reads back as 0.6999999881. */
+export const STORED_SLACK = 1e-6;
+
+/**
+ * Worth showing in Recent activity: what a rule did, or would have done but
+ * held back (people you write to, an earlier rule, a failed move). Plain
+ * non-matches are kept only so a message isn't judged twice.
+ */
+export function isNotable(e: { applied: boolean; action: RuleAction; probability: number }): boolean {
+	return e.applied || e.probability >= RULE_THRESHOLDS[e.action] - STORED_SLACK;
+}
+
 /** Actions that take mail out of the Inbox: never applied to people you write to. */
 export const REMOVING_ACTIONS: ReadonlySet<RuleAction> = new Set(["move", "archive", "trash"]);
 

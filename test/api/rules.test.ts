@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, setSystemTime, test } from "bun:test";
 import path from "node:path";
 import type { MailSummary } from "@/lib/mail/types";
-import type { PreviewItem, RuleDTO, RuleEventDTO, RunSummary } from "@/lib/rules/types";
+import { isNotable, type PreviewItem, type RuleAction, type RuleDTO, type RuleEventDTO, type RunSummary } from "@/lib/rules/types";
 import type { MailSession } from "@/lib/session";
 import { makeSession } from "../helpers/session";
 import { call, readJson, req } from "../helpers/request";
@@ -72,7 +72,7 @@ mock.module(path.resolve(import.meta.dir, "../../lib/rules/events-repo.ts"), () 
 	},
 	listEvents: async (key: string, limit = 50) =>
 		events
-			.filter((e) => e.accountKey === key)
+			.filter((e) => e.accountKey === key && isNotable(e as EventRow & { action: RuleAction }))
 			.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
 			.slice(0, limit),
 	getEvent: async (key: string, id: string) => {
@@ -249,7 +249,9 @@ describe("/api/rules/run", () => {
 		await patch({ id: rule.id, criteria: "receipts and invoices", action: "star", enabled: true });
 		await runOk({ uids: [m.uid] });
 		expect(fakeJev.systemOne).toHaveBeenCalledTimes(2);
-		expect((await activity()).map((e) => e.why)).toEqual(["Not a match (10%)", "Not a match (10%)"]);
+		// Both judgments are kept, so neither runs again; non-matches stay out of Recent activity.
+		expect(events.map((e) => e.probability)).toEqual([0.1, 0.1]);
+		expect(await activity()).toEqual([]);
 	});
 
 	test("no Message-ID: still judged once, by folder, UIDVALIDITY and uid", async () => {
@@ -281,7 +283,22 @@ describe("/api/rules/run", () => {
 		engine(only("sales", m.subject, 0.8));
 		expect((await runOk({ uids: [m.uid] })).applied).toBe(0);
 		expect(where(m.uid)).toBe("INBOX");
-		expect((await activity())[0]).toMatchObject({ applied: false, why: "Not a match (80%)" });
+		expect(events).toMatchObject([{ applied: false, probability: 0.8 }]);
+		expect(await activity()).toEqual([]);
+	});
+
+	test("Recent activity shows what rules did, not the pile of non-matches a run leaves", async () => {
+		const keep = await protectedSenders(me);
+		const newest = (realDev as typeof import("@/lib/mail/dev-store")).devRulesBatch(null, 50).messages;
+		const once = (x: MailSummary) => newest.filter((y) => y.subject === x.subject).length === 1;
+		// The newest message is judged first, so its event is the oldest of the 100 this run writes.
+		const m = newest.find((x) => once(x) && !keep.has(x.from.address.toLowerCase()))!;
+		await addRule({ criteria: "receipts from shops", action: "archive" });
+		await addRule({ criteria: "weekly digests", action: "star" });
+		engine(only("receipts from shops", m.subject, 0.9));
+		expect(await runOk()).toMatchObject({ checked: 50, applied: 1 });
+		expect(events).toHaveLength(100);
+		expect((await activity()).map((e) => [e.subject, e.applied, e.undoable])).toEqual([[m.subject, true, true]]);
 	});
 
 	test("the first rule that clears acts; the next match is logged", async () => {
