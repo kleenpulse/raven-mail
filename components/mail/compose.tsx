@@ -3,6 +3,7 @@
 import * as React from "react";
 import dynamic from "next/dynamic";
 import {
+  BellRing,
   ChevronUp,
   FilePen,
   LoaderCircle,
@@ -25,6 +26,8 @@ import { useComposeStore } from "@/lib/store/compose";
 import { useMounted } from "@/hooks/use-mounted";
 import { useContacts, useFolders, useInvalidateMail } from "@/hooks/use-mail";
 import { RecipientField } from "@/components/mail/recipient-field";
+import { RemindMenu } from "@/components/mail/remind-menu";
+import { choiceLabel } from "@/lib/follow-ups/when";
 import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
@@ -490,6 +493,33 @@ export function ComposeDock() {
             <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={blocked}>
               {busy === "draft" ? <LoaderCircle className="animate-spin" /> : <FilePen />}
             </IconCircle>
+            <RemindMenu
+              label={draft.remind ? `Reminds you ${choiceLabel(draft.remind)} if no one replies` : "Remind me if no reply"}
+              button={
+                draft.remind ? (
+                  <Button
+                    variant="surface"
+                    size="pill-sm"
+                    aria-label={`Reminder ${choiceLabel(draft.remind)}`}
+                    className="ml-1 text-signal-ink dark:text-signal"
+                  />
+                ) : (
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    aria-label="Remind me if no reply"
+                    className="rounded-full text-ink-2 hover:text-foreground"
+                  />
+                )
+              }
+              status={draft.remind ? `Reminds you ${choiceLabel(draft.remind)}` : undefined}
+              onPick={(remind) => setDraft({ remind })}
+              onClear={draft.remind ? () => setDraft({ remind: undefined }) : undefined}
+              clearLabel="Don't remind me"
+            >
+              <BellRing />
+              {draft.remind && <span className="hidden sm:inline">{choiceLabel(draft.remind)}</span>}
+            </RemindMenu>
             <div className="ml-auto flex items-center gap-2">
               <span className="hidden items-center gap-1 text-[11px] text-ink-2 sm:inline-flex">
                 <Kbd>{mod}</Kbd>

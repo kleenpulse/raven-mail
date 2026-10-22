@@ -14,6 +14,7 @@ import { ThreadsRadar } from "@/components/overview/threads-radar";
 import { DailyBrief } from "@/components/overview/daily-brief";
 import type { DecisionEngine } from "@/lib/jev/client";
 import { ReplyDebtCard } from "@/components/overview/reply-debt-card";
+import { FollowUpsCard } from "@/components/overview/follow-ups-card";
 import { HygieneCard } from "@/components/overview/hygiene-card";
 import { RhythmCard } from "@/components/overview/rhythm-card";
 import { OrbitCard } from "@/components/overview/orbit-card";
@@ -139,6 +140,7 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 									Based on the latest 1,500 messages per folder.
 								</p>
 							)}
+							<FollowUpsCard className="order-first col-span-12" i={1} />
 							<div
 								{...tourAttr(TOUR_TARGET.needsReply)}
 								className="order-2 col-span-12 md:order-3 md:col-span-6 xl:order-none xl:col-span-4 *:h-full"

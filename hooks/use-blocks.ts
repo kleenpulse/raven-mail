@@ -4,30 +4,11 @@ import * as React from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { useAccount } from "@/components/providers/account-provider";
-import { getJson } from "@/hooks/use-mail";
-import { ApiError, readApiError, toApiError } from "@/lib/api-error";
+import { getJson, sendJson } from "@/hooks/use-mail";
+import { ApiError, toApiError } from "@/lib/api-error";
 import { blockMatcher } from "@/lib/blocks/match";
 import type { BlockDTO, BlockKind } from "@/lib/blocks/types";
 import { qk } from "@/lib/query-keys";
-
-async function send<T>(method: "POST" | "DELETE", url: string, body?: unknown): Promise<T> {
-	let res: Response;
-	try {
-		res = await fetch(url, {
-			method,
-			headers: body === undefined ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/json" },
-			body: body === undefined ? undefined : JSON.stringify(body),
-		});
-	} catch (err) {
-		throw toApiError(err);
-	}
-	if (res.status === 401) {
-		window.location.replace("/login");
-		throw new ApiError("Your session expired.", { status: 401, code: "unauthorized" });
-	}
-	if (!res.ok) throw await readApiError(res);
-	return ((await res.json()) as { data: T }).data;
-}
 
 /** The mailbox's blocked senders. Errors (no database) never retry. */
 export function useBlocks({ enabled = true }: { enabled?: boolean } = {}) {
@@ -62,7 +43,7 @@ export function useBlockActions() {
 			const loaded = queryClient.getQueryData<BlockDTO[]>(key) !== undefined;
 			if (loaded) queryClient.setQueryData<BlockDTO[]>(key, (list = []) => [...list, temp]);
 			try {
-				const saved = await send<BlockDTO>("POST", "/api/blocks", { kind, value });
+				const saved = await sendJson<BlockDTO>("POST", "/api/blocks", { kind, value });
 				if (loaded) {
 					queryClient.setQueryData<BlockDTO[]>(key, (list = []) => [...list.filter((b) => b.id !== temp.id && b.id !== saved.id), saved]);
 				} else {
@@ -87,7 +68,7 @@ export function useBlockActions() {
 			const before = queryClient.getQueryData<BlockDTO[]>(key);
 			queryClient.setQueryData<BlockDTO[]>(key, (list) => list?.filter((b) => b.id !== entry.id));
 			try {
-				await send("DELETE", `/api/blocks?${new URLSearchParams({ id: entry.id })}`);
+				await sendJson("DELETE", `/api/blocks?${new URLSearchParams({ id: entry.id })}`);
 				return true;
 			} catch (err) {
 				const e = toApiError(err);

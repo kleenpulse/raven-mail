@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Bento, BentoTitle } from "@/components/overview/bento";
+import { GoneQuietRemind } from "@/components/overview/follow-ups-card";
 import { CountUp } from "@/components/viz/count-up";
 import { formatAge, formatDuration, mailLink } from "@/lib/jev/ask/format";
 import { initials } from "@/lib/format";
@@ -72,8 +73,8 @@ export function ReplyDebtCard({ overview, i = 0 }: { overview: Overview; i?: num
 				) : (
 					<ul className="mt-2 space-y-1">
 						{obligations.waitingOn.slice(0, 4).map((w) => (
-							<li key={`${w.folder}:${w.uid}`}>
-								<Link href={mailLink(w)} className="block rounded-[14px] px-2 py-1.5 transition-colors hover:bg-card-nested">
+							<li key={`${w.folder}:${w.uid}`} className="flex items-center gap-1">
+								<Link href={mailLink(w)} className="block min-w-0 flex-1 rounded-[14px] px-2 py-1.5 transition-colors hover:bg-card-nested">
 									<span className="flex items-baseline justify-between gap-2 text-[13px]">
 										<span className="truncate">{w.to.name}</span>
 										<span className="tabular shrink-0 font-mono text-[11px] text-signal-ink dark:text-signal">
@@ -85,6 +86,7 @@ export function ReplyDebtCard({ overview, i = 0 }: { overview: Overview; i?: num
 										{w.subject}
 									</span>
 								</Link>
+								<GoneQuietRemind waiting={w} />
 							</li>
 						))}
 					</ul>

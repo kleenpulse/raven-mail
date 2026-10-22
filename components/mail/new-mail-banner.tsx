@@ -3,6 +3,7 @@
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "motion/react";
+import { create } from "zustand";
 import { X } from "lucide-react";
 import { SenderAvatar } from "@/components/mail/mail-row";
 import { useMediaQuery } from "@/hooks/use-media-query";
@@ -16,14 +17,17 @@ import { cn } from "@/lib/utils";
 const DISMISS_MS = 8000;
 const MAX_HELD = 50;
 
-type Dock = "none" | "pill" | "window";
+export type Dock = "none" | "pill" | "window";
+
+/** Whether the new-mail banner is up; the follow-up banner waits its turn in the same corner. */
+export const useNewMailShowing = create<{ showing: boolean }>(() => ({ showing: false }));
 
 /**
  * Below md the banner spans the width above the tab bar; from md it sits in its
  * corner, clear of the nav rail. Bottom corners step around the compose dock,
  * which lives bottom-right (and its pill spans the width on phones).
  */
-function placement(position: NotifyBannerPosition, dock: Dock): string {
+export function placement(position: NotifyBannerPosition, dock: Dock): string {
 	const [v, h] = position.split("-") as ["top" | "bottom", "left" | "right"];
 	if (v === "top") {
 		return cn("top-3 md:top-6", h === "left" ? "md:right-auto md:left-[calc(84px+1.5rem)]" : "md:left-auto md:right-6");
@@ -64,6 +68,11 @@ export function NewMailBanner() {
 	const dock: Dock = compose === "pill" ? "pill" : compose === "window" ? "window" : "none";
 	const latest = held[0];
 	const visible = Boolean(latest) && !covered;
+
+	React.useEffect(() => {
+		useNewMailShowing.setState({ showing: visible });
+		return () => useNewMailShowing.setState({ showing: false });
+	}, [visible]);
 
 	React.useEffect(() => {
 		if (!visible || paused) return;

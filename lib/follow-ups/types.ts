@@ -14,3 +14,9 @@ export type FollowUpDTO = FollowUpTarget & {
 	createdAt: string;
 	updatedAt: string;
 };
+
+/** An open reminder as the app shows it: `due` once its time has passed with no reply. */
+export type FollowUpView = FollowUpDTO & { due: boolean };
+
+/** What became of compose's "Remind me if no reply" once the message went. */
+export type SendReminder = { ok: true; dueAt: string } | { ok: false; error: string; hint?: string };

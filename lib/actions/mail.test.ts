@@ -134,3 +134,25 @@ describe("sendMessageAction: \\Answered", () => {
 		expect(answered()).toBe(before);
 	});
 });
+
+describe("sendMessageAction with Remind me if no reply", () => {
+	test("without a database the message still goes, and the reminder says why it wasn't set", async () => {
+		signIn();
+		const before = devAllMessages().filter((m) => m.folder === "Sent").length;
+		const res = await sendMessageAction({ draft: draft({ remind: { days: 3 } }) });
+		if (!res.ok) throw new Error(res.error);
+		expect(devAllMessages().filter((m) => m.folder === "Sent")).toHaveLength(before + 1);
+		expect(res.data.reminder).toEqual({
+			ok: false,
+			error: "Rules, blocked senders and reminders need a database.",
+			hint: "Set DATABASE_URL, then run bun run db:migrate.",
+		});
+	});
+
+	test("a picked time that has passed by send time sets nothing", async () => {
+		signIn();
+		const res = await sendMessageAction({ draft: draft({ remind: { at: "2020-01-01T00:00:00.000Z" } }) });
+		if (!res.ok) throw new Error(res.error);
+		expect(res.data.reminder).toEqual({ ok: false, error: "The reminder time had passed, so no reminder was set." });
+	});
+});

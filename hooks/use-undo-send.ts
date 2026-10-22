@@ -2,6 +2,9 @@
 
 import * as React from "react";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
+import { useAccount } from "@/components/providers/account-provider";
+import { qk } from "@/lib/query-keys";
 import { sendMessageAction } from "@/lib/actions/mail";
 import { useInvalidateMail } from "@/hooks/use-mail";
 import { getPref } from "@/lib/prefs/store";
@@ -10,6 +13,8 @@ import { draftHtml } from "@/lib/mail/rich-text";
 import { createSendQueue, pickOrphan, type SendRecord } from "@/lib/mail/pending-send";
 import { useComposeStore, type ComposeAttachment, type ComposeMode } from "@/lib/store/compose";
 import type { ComposeDraft } from "@/lib/mail/types";
+import type { SendReminder } from "@/lib/follow-ups/types";
+import { dueLabel } from "@/lib/follow-ups/when";
 
 /** Compose's own local copy; kept until the send succeeds. */
 export const AUTOSAVE_KEY = "em-compose-local";
@@ -22,6 +27,8 @@ export type OutgoingSend = {
 	draft: ComposeDraft;
 	draftUid?: string;
 	attachments: ComposeAttachment[];
+	/** Set once sent, when the draft asked for "Remind me if no reply". */
+	reminder?: SendReminder;
 };
 
 // Files stay out: base64 would blow the localStorage quota.
@@ -88,9 +95,14 @@ function releaseLock(id: string) {
 	} else settledEarly.add(id);
 }
 
-const shared: { invalidate: ReturnType<typeof useInvalidateMail> | null; draftsFolder: string | null } = {
+const shared: {
+	invalidate: ReturnType<typeof useInvalidateMail> | null;
+	draftsFolder: string | null;
+	refreshFollowUps: (() => void) | null;
+} = {
 	invalidate: null,
 	draftsFolder: null,
+	refreshFollowUps: null,
 };
 
 let restoring = false;
@@ -112,6 +124,7 @@ const queue = createSendQueue<OutgoingSend>({
 	send: async (send) => {
 		const res = await sendMessageAction(toOutgoing(send));
 		if (!res.ok) throw new Error(res.error);
+		send.reminder = res.data.reminder;
 	},
 	persist: {
 		save: (id, send, until) => {
@@ -134,7 +147,15 @@ const queue = createSendQueue<OutgoingSend>({
 	},
 	onSending: (_send, id) => toast.loading("Sending…", { id, action: undefined }),
 	onSent: (send, id) => {
-		toast.success("Message sent", { id, action: undefined });
+		const reminder = send.reminder;
+		toast.success("Message sent", {
+			id,
+			action: undefined,
+			description: reminder?.ok ? `Reminder set for ${dueLabel(reminder.dueAt)}, if no one replies.` : undefined,
+		});
+		// The message went; only the reminder didn't stick.
+		if (reminder && !reminder.ok) toast.error(reminder.error, { description: reminder.hint });
+		if (reminder?.ok) shared.refreshFollowUps?.();
 		// A new compose may be writing its own local copy by now.
 		if (!useComposeStore.getState().open) forgetLocalCopy();
 		if (send.draftUid) void shared.invalidate?.invalidateMessages(shared.draftsFolder ?? undefined);
@@ -243,11 +264,14 @@ function listenOnce() {
  */
 export function useUndoSend({ draftsFolder }: { draftsFolder: string | null }) {
 	const invalidate = useInvalidateMail();
+	const queryClient = useQueryClient();
+	const { email } = useAccount();
 
 	React.useEffect(() => {
 		shared.invalidate = invalidate;
 		shared.draftsFolder = draftsFolder;
-	}, [invalidate, draftsFolder]);
+		shared.refreshFollowUps = () => void queryClient.invalidateQueries({ queryKey: qk.followUps(email) });
+	}, [invalidate, draftsFolder, queryClient, email]);
 
 	React.useEffect(() => {
 		listenOnce();

@@ -97,6 +97,15 @@ as you work — it ships inside the app.
   and Undo brings it back. Search still finds it. See and unblock
   everyone in Settings → Mail → Blocked senders. Blocking needs a
   database (DATABASE_URL), since your list is saved to your account.
+- Follow-up reminders: ask Raven to remind you if no one replies. In
+  compose, click the bell and pick 1 day, 3 days, 1 week or a time of
+  your own. You can also set one from the ⋯ menu on a message in Sent,
+  or from the bell next to anyone under "Gone quiet" on the Overview.
+  When the time comes and no reply has reached your Inbox, a reminder
+  pops up, and the Overview lists it under Follow-ups, with Done, Snooze
+  1 day and Open thread. If they reply first, the reminder goes away on
+  its own. Raven checks while it's open. Reminders need a database
+  (DATABASE_URL), since they're saved to your account.
 - The "not found" page now glows with the same gold aurora as the
   bottom of the landing page.
 - A refresh button now sits beside the folder name above your mail list.

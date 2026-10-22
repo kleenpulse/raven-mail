@@ -13,6 +13,7 @@ import { dateHeader, generateSyntheticMail } from "@/lib/mail/dev-seed";
 import { fixtureBytes } from "@/lib/mail/dev-fixtures";
 import { searchText } from "@/lib/search/text";
 import { splitAddressList } from "@/lib/format";
+import { hasReply } from "@/lib/follow-ups/when";
 
 export function isDevSession(session: { dev?: boolean }): boolean {
   return session.dev === true && process.env.NODE_ENV !== "production";
@@ -542,6 +543,20 @@ export function devGetThread(folder: string, uid: string): MailThread {
     .slice(-50)
     .map(toSummary);
   return { messages };
+}
+
+/** Like IMAP `findReplies`: a reply in the Inbox since `since`, and the uid in Sent when asked. */
+export function devFindReplies(
+  checks: { messageId: string; since: Date; needUid: boolean }[],
+): Map<string, { replied: boolean; sentUid?: string }> {
+  const messages = getDb().messages;
+  return new Map(
+    checks.map(({ messageId, since, needUid }) => {
+      const inbox = messages.filter((m) => m.folder === "INBOX" && Date.parse(m.date) >= since.getTime());
+      const sent = needUid ? messages.find((m) => m.folder === "Sent" && m.messageId === messageId) : undefined;
+      return [messageId, { replied: hasReply(inbox, messageId), ...(sent ? { sentUid: sent.uid } : {}) }];
+    }),
+  );
 }
 
 /** Like IMAP `expandThreadUids`: `uids` plus every message in `folder` with one of the thread ids. */

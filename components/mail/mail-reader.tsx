@@ -451,6 +451,7 @@ function MailReaderInner({
 							// Blocked senders are hidden from the Inbox only.
 							onBlocked={() => folder.toUpperCase() === "INBOX" && onRemoved(uid)}
 							onUnblocked={() => onRestored?.(folder, uid)}
+							sent={role === "\\Sent"}
 						/>
 						<ToolCircle label="Print" className="hidden @lg/reader:inline-flex" onClick={() => window.print()}>
 							<Printer />

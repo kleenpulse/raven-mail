@@ -88,6 +88,8 @@ export type ComposeDraft = {
   references?: string[];
   /** Message being replied to — flagged \Answered after a successful send. */
   source?: { folder: string; uid: string };
+  /** "Remind me if no reply": a reminder is set once the message has gone. */
+  remind?: { days: number } | { at: string };
   /** The original being replied to / forwarded, kept out of `text` until send (see draftBody). */
   quote?: { kind: "reply" | "forward"; header: string; body: string };
   attachments?: {

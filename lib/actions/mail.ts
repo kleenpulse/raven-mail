@@ -27,6 +27,11 @@ import {
 } from "@/lib/mail/dev-store";
 import type { MailSession } from "@/lib/session";
 import type { ActionResult, ComposeDraft } from "@/lib/mail/types";
+import { createFollowUp } from "@/lib/follow-ups/service";
+import { remindSchema } from "@/lib/follow-ups/schema";
+import { dueAtFor, recipientLine } from "@/lib/follow-ups/when";
+import type { SendReminder } from "@/lib/follow-ups/types";
+import { IntegrationError } from "@/lib/integrations/errors";
 
 // Reads live in app/api/mail/* (GET route handlers); these are mutations only.
 
@@ -84,6 +89,7 @@ const draftSchema = z.object({
   inReplyTo: z.string().max(998).optional(),
   references: z.array(z.string().max(998)).max(200).optional(),
   source: z.object({ folder: folderSchema, uid: uidSchema }).optional(),
+  remind: remindSchema.optional(),
   attachments: z
     .array(
       z.object({
@@ -199,7 +205,7 @@ export async function sendMessageAction(input: {
   draft: ComposeDraft;
   /** The saved draft this message came from; its server copy goes once sent. */
   draftUid?: string;
-}): Promise<ActionResult<{ messageId: string }>> {
+}): Promise<ActionResult<{ messageId: string; reminder?: SendReminder }>> {
   const session = await requireSession();
   const parsed = draftSchema.safeParse(input.draft);
   if (!parsed.success) return invalid(parsed.error);
@@ -218,7 +224,7 @@ export async function sendMessageAction(input: {
         draft.source ?? (answers && devAllMessages().find((m) => m.folder === "INBOX" && m.messageId === answers));
       if (original) devSetFlags(original.folder, [original.uid], { answered: true });
       if (fromDraft.data) await removeDraftCopy(session, fromDraft.data);
-      return { ok: true, data: { messageId } };
+      return { ok: true, data: { messageId, reminder: await remindAfterSend(session, draft, messageId) } };
     }
 
     const { raw, envelope } = await buildRawMessage(session, draft);
@@ -236,9 +242,31 @@ export async function sendMessageAction(input: {
     ]);
     invalidateSnapshot(session);
 
-    return { ok: true, data: { messageId } };
+    return { ok: true, data: { messageId, reminder: await remindAfterSend(session, draft, messageId) } };
   } catch (err) {
     return fail(err);
+  }
+}
+
+/**
+ * "Remind me if no reply" from compose. The message has already gone, so a
+ * reminder that can't be saved is reported, never a failed send.
+ */
+async function remindAfterSend(
+  session: MailSession,
+  draft: z.infer<typeof draftSchema>,
+  messageId: string,
+): Promise<SendReminder | undefined> {
+  if (!draft.remind || !messageId) return undefined;
+  const dueAt = dueAtFor(draft.remind);
+  if (!dueAt) return { ok: false, error: "The reminder time had passed, so no reminder was set." };
+  try {
+    const sent = isDevSession(session) ? "Sent" : ((await resolveSpecial(session, "\\Sent")) ?? "Sent");
+    const target = { messageId, subject: draft.subject, to: recipientLine(draft.to), folder: sent, uid: "" };
+    return { ok: true, dueAt: (await createFollowUp(session, target, dueAt)).dueAt };
+  } catch (err) {
+    if (err instanceof IntegrationError) return { ok: false, error: err.message, hint: err.hint };
+    return { ok: false, error: "Sent, but the reminder couldn't be saved." };
   }
 }
 

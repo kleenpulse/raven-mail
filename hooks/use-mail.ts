@@ -12,7 +12,7 @@ import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
 import { setFlagsAction } from "@/lib/actions/mail";
 import { useAccount } from "@/components/providers/account-provider";
-import { readApiError } from "@/lib/api-error";
+import { ApiError, readApiError, toApiError } from "@/lib/api-error";
 import { qk } from "@/lib/query-keys";
 import { PERSIST_MAX_AGE } from "@/lib/query-persist";
 import type { MailFlags, MailFolder, MailMessage, MailSummary, MailThread } from "@/lib/mail/types";
@@ -37,6 +37,26 @@ export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> 
   const body = (await res.json().catch(() => null)) as { ok: true; data: T } | { ok: false; error: string } | null;
   if (!body || !body.ok) throw new Error(body && !body.ok ? body.error : `Request failed (${res.status})`);
   return body.data;
+}
+
+/** POST, PATCH or DELETE a `{ ok, data }` route; 401 → back to login, failures as ApiError. */
+export async function sendJson<T>(method: "POST" | "PATCH" | "DELETE", url: string, body?: unknown): Promise<T> {
+  let res: Response;
+  try {
+    res = await fetch(url, {
+      method,
+      headers: body === undefined ? { accept: "application/json" } : { accept: "application/json", "content-type": "application/json" },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+  } catch (err) {
+    throw toApiError(err);
+  }
+  if (res.status === 401) {
+    window.location.replace("/login");
+    throw new ApiError("Your session expired.", { status: 401, code: "unauthorized" });
+  }
+  if (!res.ok) throw await readApiError(res);
+  return ((await res.json()) as { data: T }).data;
 }
 
 export function useFolders() {

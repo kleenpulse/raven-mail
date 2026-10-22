@@ -618,6 +618,47 @@ function dedupeThread(found: MailSummary[], folder: string): MailSummary[] {
     .slice(-THREAD_LIMIT);
 }
 
+export type ReplyCheck = { messageId: string; since: Date; needUid: boolean };
+export type ReplyAnswer = { replied: boolean; sentUid?: string };
+
+/**
+ * For each sent Message-ID: has a reply reached the Inbox (In-Reply-To or
+ * References), and, when asked, its uid in Sent. One connection, one SEARCH
+ * per check, each bounded by SINCE so a big folder isn't scanned end to end.
+ */
+export async function findReplies(session: MailSession, checks: ReplyCheck[]): Promise<Map<string, ReplyAnswer>> {
+  const answers = new Map<string, ReplyAnswer>();
+  if (checks.length === 0) return answers;
+  const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
+  const { client, release } = await acquireClient(session);
+  try {
+    await client.connect();
+    await inMailbox(client, inbox ?? "INBOX", async () => {
+      for (const { messageId, since } of checks) {
+        const criteria: SearchObject = {
+          since,
+          or: [{ header: { "in-reply-to": messageId } }, { header: { references: messageId } }],
+        };
+        const hits = await client.search(criteria, { uid: true });
+        answers.set(messageId, { replied: Array.isArray(hits) && hits.length > 0 });
+      }
+    });
+    const lookups = checks.filter((c) => c.needUid);
+    if (sent && lookups.length) {
+      await inMailbox(client, sent, async () => {
+        for (const { messageId } of lookups) {
+          const hits = await client.search({ header: { "message-id": messageId } }, { uid: true });
+          const uid = (Array.isArray(hits) ? hits : []).sort((a, b) => b - a)[0];
+          if (uid) answers.set(messageId, { ...answers.get(messageId)!, sentUid: String(uid) });
+        }
+      });
+    }
+    return answers;
+  } finally {
+    release();
+  }
+}
+
 /**
  * Every UID in `folder` belonging to the given server thread ids, plus `uids`.
  * Whole-thread archive/trash/read act on messages the list never loaded.

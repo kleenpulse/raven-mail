@@ -19,6 +19,8 @@ export const qk = {
 	contacts: (account: string) => ["acct", account, "contacts"] as const,
 	/** Memory only: never persisted (see `shouldPersist`). */
 	blocks: (account: string) => ["acct", account, "blocks"] as const,
+	/** Memory only, like blocks: subjects and names stay out of IndexedDB. */
+	followUps: (account: string) => ["acct", account, "follow-ups"] as const,
 	overview: (account: string, days: number, tz: string) =>
 		["acct", account, "overview", days, tz] as const,
 	integrations: (account: string) => ["acct", account, "integrations"] as const,
