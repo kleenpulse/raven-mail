@@ -13,7 +13,7 @@ export const TOUR_AUDIO: Record<TourVoice, Record<string, TourAudioEntry>> = {
 	us: {
 		"compose": { file: "/tour/us/compose.upgne4.mp3", provider: "elevenlabs", hash: "upgne4" },
 		"finish": { file: "/tour/us/finish.q67oyh.mp3", provider: "elevenlabs", hash: "q67oyh" },
-		"hero-ask": { file: "/tour/us/hero-ask.lut1cd.mp3", provider: "elevenlabs", hash: "lut1cd" },
+		"hero-ask": { file: "/tour/us/hero-ask.7ql5s4.mp3", provider: "elevenlabs", hash: "7ql5s4" },
 		"mail-list": { file: "/tour/us/mail-list.vg5pdt.mp3", provider: "elevenlabs", hash: "vg5pdt" },
 		"nav-integrations": { file: "/tour/us/nav-integrations.tgd3mf.mp3", provider: "elevenlabs", hash: "tgd3mf" },
 		"nav-mail": { file: "/tour/us/nav-mail.wmz92i.mp3", provider: "elevenlabs", hash: "wmz92i" },
@@ -26,7 +26,7 @@ export const TOUR_AUDIO: Record<TourVoice, Record<string, TourAudioEntry>> = {
 	gb: {
 		"compose": { file: "/tour/gb/compose.jwf0y7.mp3", provider: "mistral", hash: "jwf0y7" },
 		"finish": { file: "/tour/gb/finish.frrkai.mp3", provider: "mistral", hash: "frrkai" },
-		"hero-ask": { file: "/tour/gb/hero-ask.axn6em.mp3", provider: "mistral", hash: "axn6em" },
+		"hero-ask": { file: "/tour/gb/hero-ask.izit5z.mp3", provider: "mistral", hash: "izit5z" },
 		"mail-list": { file: "/tour/gb/mail-list.j0npky.mp3", provider: "mistral", hash: "j0npky" },
 		"nav-integrations": { file: "/tour/gb/nav-integrations.3bcduc.mp3", provider: "mistral", hash: "3bcduc" },
 		"nav-mail": { file: "/tour/gb/nav-mail.7z2xjd.mp3", provider: "mistral", hash: "7z2xjd" },
