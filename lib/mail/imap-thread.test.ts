@@ -7,12 +7,19 @@ type Fake = { uid: number; messageId: string; date: string; threadId?: string; r
 let mailboxes: Record<string, Fake[]> = {};
 let anchor: Fake & { folder: string };
 const searches: { mailbox: string; criteria: Record<string, unknown> }[] = [];
+let connects = 0;
+// A SEARCH that never answers, like a header scan on a huge unindexed folder.
+// As in imapflow, close() rejects whatever is still pending.
+let hangSearch = false;
 
 class FakeImapFlow {
   usable = true;
   capabilities = new Map();
   mailbox: { path: string; uidValidity: bigint } | null = null;
-  async connect() {}
+  private pending: ((err: Error) => void)[] = [];
+  async connect() {
+    connects++;
+  }
   async list() {
     return [
       { path: "INBOX", delimiter: "/", specialUse: "\\Inbox", flags: new Set() },
@@ -36,6 +43,7 @@ class FakeImapFlow {
   async search(criteria: Record<string, unknown>) {
     const path = this.mailbox!.path;
     searches.push({ mailbox: path, criteria });
+    if (hangSearch) return new Promise<number[]>((_, reject) => this.pending.push(reject));
     return (mailboxes[path] ?? []).map((m) => m.uid);
   }
   async fetchAll(uids: number[]) {
@@ -51,8 +59,13 @@ class FakeImapFlow {
         headers: Buffer.from("\r\n"),
       }));
   }
-  async logout() {}
-  close() {}
+  async logout() {
+    if (!this.usable) throw new Error("Connection not available");
+  }
+  close() {
+    this.usable = false;
+    for (const reject of this.pending.splice(0)) reject(new Error("Connection not available"));
+  }
 }
 
 mock.module("imapflow", () => ({ ImapFlow: FakeImapFlow }));
@@ -63,6 +76,8 @@ const session = () => makeSession({ dev: false });
 beforeEach(() => {
   searches.length = 0;
   mailboxes = {};
+  hangSearch = false;
+  connects = 0;
 });
 
 describe("getThread over IMAP", () => {
@@ -120,6 +135,46 @@ describe("getThread over IMAP", () => {
     };
     const t = await getThread(session(), "INBOX", "9");
     expect(t.messages.map((m) => `${m.folder}:${m.uid}`)).toEqual(["INBOX:9"]);
+  });
+
+  test("one login per conversation, not one per folder", async () => {
+    const s = session();
+    anchor = { folder: "INBOX", uid: 9, messageId: "<c@x>", date: "2026-10-20T10:00:00Z", threadId: "777" };
+    await getThread(s, "INBOX", "9"); // warms the cached folder list
+    connects = 0;
+    await getThread(s, "INBOX", "9");
+    expect(connects).toBe(1);
+  });
+
+  test("an abort closes the connection, so a stuck SEARCH gives its slot back", async () => {
+    const s = session();
+    anchor = { folder: "INBOX", uid: 9, messageId: "<c@x>", date: "2026-10-20T10:00:00Z", threadId: "777" };
+    await getThread(s, "INBOX", "9");
+    hangSearch = true;
+    // Fill all four connection slots with searches that never answer.
+    const stuck = Array.from({ length: 4 }, () =>
+      getThread(s, "INBOX", "9", AbortSignal.timeout(30)).then(
+        () => "resolved",
+        () => "aborted",
+      ),
+    );
+    expect(await Promise.all(stuck)).toEqual(["aborted", "aborted", "aborted", "aborted"]);
+    hangSearch = false;
+    mailboxes = { INBOX: [{ uid: 3, messageId: "<a@x>", date: "" }] };
+    const next = expandThreadUids(s, "INBOX", ["9"], ["777"]);
+    const late = new Promise((r) => setTimeout(() => r("still waiting for a slot"), 500));
+    expect(await Promise.race([next.then((u) => u.sort()), late])).toEqual(["3", "9"]);
+  });
+
+  test("an abort while waiting for a slot never connects", async () => {
+    const s = session();
+    anchor = { folder: "INBOX", uid: 9, messageId: "<c@x>", date: "2026-10-20T10:00:00Z", threadId: "777" };
+    await getThread(s, "INBOX", "9");
+    const ctl = new AbortController();
+    ctl.abort();
+    connects = 0;
+    await expect(getThread(s, "INBOX", "9", ctl.signal)).rejects.toThrow();
+    expect(connects).toBe(0);
   });
 });
 

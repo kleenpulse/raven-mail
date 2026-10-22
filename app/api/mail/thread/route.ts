@@ -23,14 +23,14 @@ export const GET = route(async (request) => {
       mailError(err);
     }
   }
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<MailThread>((resolve) => {
-    timer = setTimeout(() => resolve({ messages: [], partial: true }), THREAD_TIMEOUT_MS);
+  // Timing out or the reader moving on closes the IMAP connection, which frees its slot.
+  const signal = AbortSignal.any([request.signal, AbortSignal.timeout(THREAD_TIMEOUT_MS)]);
+  const partial = new Promise<MailThread>((resolve) => {
+    signal.addEventListener("abort", () => resolve({ messages: [], partial: true }), { once: true });
   });
-  try {
-    const data = await Promise.race([getThread(session, folder, uid), timeout]).catch(mailError);
-    return json({ ok: true, data });
-  } finally {
-    clearTimeout(timer);
-  }
+  const data = await Promise.race([
+    getThread(session, folder, uid, signal).catch((err) => (signal.aborted ? partial : mailError(err))),
+    partial,
+  ]);
+  return json({ ok: true, data });
 });

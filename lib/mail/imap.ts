@@ -504,13 +504,51 @@ const THREAD_SINCE_MS = 180 * 86_400_000;
  * Sent when it was opened from Sent): one SEARCH per folder. Servers with a
  * thread id answer exactly; others match the header chain, bounded by SINCE
  * so a big unindexed folder isn't scanned end to end.
+ *
+ * One connection for every step. imapflow can't cancel a command, so `signal`
+ * closes the socket instead: the slow SEARCH rejects and the slot frees.
  */
-export async function getThread(session: MailSession, folder: string, uid: string): Promise<MailThread> {
-  const anchor = await withMailbox(
-    session,
-    folder,
-    (client) => client.fetchOne(uid, { uid: true, envelope: true, internalDate: true, threadId: true, headers: ["references"] }, { uid: true }),
-    { readOnly: true },
+export async function getThread(
+  session: MailSession,
+  folder: string,
+  uid: string,
+  signal?: AbortSignal,
+): Promise<MailThread> {
+  const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
+  const other = folder === sent ? (inbox ?? "INBOX") : sent;
+  const folders = [...new Set([folder, other].filter((f): f is string => Boolean(f)))];
+
+  const { client, release } = await acquireClient(session);
+  const abort = () => client.close();
+  signal?.addEventListener("abort", abort, { once: true });
+  try {
+    signal?.throwIfAborted();
+    await client.connect();
+    return await threadOn(client, session, folder, uid, folders);
+  } finally {
+    signal?.removeEventListener("abort", abort);
+    release();
+  }
+}
+
+async function inMailbox<T>(client: ImapFlow, path: string, fn: () => Promise<T>): Promise<T> {
+  const lock = await client.getMailboxLock(path, { readOnly: true });
+  try {
+    return await fn();
+  } finally {
+    lock.release();
+  }
+}
+
+async function threadOn(
+  client: ImapFlow,
+  session: MailSession,
+  folder: string,
+  uid: string,
+  folders: string[],
+): Promise<MailThread> {
+  const anchor = await inMailbox(client, folder, () =>
+    client.fetchOne(uid, { uid: true, envelope: true, internalDate: true, threadId: true, headers: ["references"] }, { uid: true }),
   );
   if (!anchor) throw new Error("Message not found");
 
@@ -535,28 +573,19 @@ export async function getThread(session: MailSession, folder: string, uid: strin
     criteria = { since, ...(any.length === 1 ? any[0] : { or: any }) };
   }
 
-  const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
-  const other = folder === sent ? (inbox ?? "INBOX") : sent;
-  const folders = [...new Set([folder, other].filter((f): f is string => Boolean(f)))];
-
   const found: MailSummary[] = [];
   for (const path of folders) {
     found.push(
-      ...(await withMailbox(
-        session,
-        path,
-        async (client) => {
-          const hits = await client.search(criteria, { uid: true });
-          const uids = (Array.isArray(hits) ? hits : []).sort((a, b) => b - a).slice(0, THREAD_LIMIT);
-          if (uids.length === 0) return [];
-          const fetched = await client.fetchAll(uids, SUMMARY_QUERY, { uid: true });
-          const mailbox = client.mailbox;
-          const scope = `${sessionKey(session)}:${path}:${mailbox ? String(mailbox.uidValidity) : "0"}`;
-          const previews = await fetchPreviews(client, scope, fetched);
-          return fetched.map((m) => toSummary(m, path, previews.get(m.uid) ?? ""));
-        },
-        { readOnly: true },
-      )),
+      ...(await inMailbox(client, path, async () => {
+        const hits = await client.search(criteria, { uid: true });
+        const uids = (Array.isArray(hits) ? hits : []).sort((a, b) => b - a).slice(0, THREAD_LIMIT);
+        if (uids.length === 0) return [];
+        const fetched = await client.fetchAll(uids, SUMMARY_QUERY, { uid: true });
+        const mailbox = client.mailbox;
+        const scope = `${sessionKey(session)}:${path}:${mailbox ? String(mailbox.uidValidity) : "0"}`;
+        const previews = await fetchPreviews(client, scope, fetched);
+        return fetched.map((m) => toSummary(m, path, previews.get(m.uid) ?? ""));
+      })),
     );
   }
   return { messages: dedupeThread(found, folder) };
