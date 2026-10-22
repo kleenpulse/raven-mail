@@ -1,13 +1,10 @@
 import { htmlToText } from "@/lib/mail/mime";
+import { formatAddress } from "@/lib/format";
 import type { ComposeDraft, MailAddress, MailMessage } from "@/lib/mail/types";
 
 export type ReplyMode = "reply" | "replyAll" | "forward";
 
 const QUOTE_LIMIT = 20_000;
-
-function formatAddress(a: MailAddress): string {
-  return a.name ? `${a.name} <${a.address}>` : a.address;
-}
 
 function uniqueAddresses(list: MailAddress[], exclude: Set<string>): MailAddress[] {
   const seen = new Set(exclude);
@@ -137,12 +134,9 @@ export function draftBody(draft: Pick<ComposeDraft, "text" | "quote">): string {
   return lead ? `${lead}\n\n${block}` : block;
 }
 
-// The To/Cc split on "," and ";" (see smtp.ts), so a name holding either would cut the address in two.
-const safeAddress = (a: MailAddress) => (a.name && !/[,;"<>]/.test(a.name) ? formatAddress(a) : a.address);
-
 /** A saved draft back into compose fields, so reopening it carries on where it was left. */
 export function draftFromMessage(message: MailMessage): Partial<ComposeDraft> {
-  const list = (as: MailAddress[]) => as.map(safeAddress).join(", ");
+  const list = (as: MailAddress[]) => as.map(formatAddress).join(", ");
   const text = message.text.trim() ? message.text : htmlToText(message.html).trim();
   return {
     to: list(message.to),

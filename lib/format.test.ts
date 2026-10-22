@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, test, setSystemTime } from "bun:test";
-import { formatBytes, formatFullDate, formatListDate, formatRelative, initials, splitAddressList } from "@/lib/format";
+import { formatAddress, formatBytes, formatFullDate, formatListDate, formatRelative, initials, splitAddressList } from "@/lib/format";
 
 // Friday, 25 Sep 2026, 12:00 UTC (the preload pins TZ=UTC).
 const NOW = new Date("2026-09-25T12:00:00.000Z");
@@ -69,10 +69,11 @@ describe("initials", () => {
 		expect(initials(name, address)).toBe(out);
 	});
 
-	// BUG: lib/format.ts:24 takes `parts[0][0]`, a UTF-16 code unit, so a name that starts
-	// with an astral character (emoji, some CJK) renders a lone surrogate in the avatar.
-	test.todo("BUG: keeps astral characters whole (emoji-led display names)", () => {
+	// Regression: the first letter was a UTF-16 code unit, so an emoji-led name rendered a
+	// lone surrogate in the avatar.
+	test("keeps astral characters whole (emoji-led display names)", () => {
 		expect(initials("😀 Smile")).toBe("😀S");
+		expect(initials("𠮷田")).toBe("𠮷");
 	});
 });
 
@@ -117,14 +118,38 @@ describe("splitAddressList", () => {
 		expect(splitAddressList("Sam <sam@x.com")).toEqual([{ address: "Sam <sam@x.com" }]);
 	});
 
-	// BUG: lib/format.ts:35 splits on every comma, so a quoted "Last, First" display name
-	// (common from Exchange directories) becomes two bogus recipients. The same split lives
-	// in lib/mail/smtp.ts:29 and lib/mail/dev-store.ts:425, and reply.ts formatAddress
-	// doesn't quote names, so reply-all to such a sender yields a recipient called "Chen".
-	test.todo('BUG: keeps a quoted display name containing a comma together', () => {
+	// Regression: every comma split, so a quoted "Last, First" display name (common from
+	// Exchange directories) became two bogus recipients, and reply-all to such a sender
+	// got a recipient called "Chen". smtp.ts and dev-store.ts now share this parser.
+	test("keeps a quoted display name containing a comma together", () => {
 		expect(splitAddressList(`"Chen, Maya" <maya@x.com>, b@y.org`)).toEqual([
 			{ name: "Chen, Maya", address: "maya@x.com" },
 			{ address: "b@y.org" },
 		]);
+	});
+
+	test("semicolons and escaped quotes inside a quoted name, emoji names", () => {
+		expect(splitAddressList(`"Ops; Night \\"Owl\\"" <ops@x.com>; 🦉 Owl <owl@x.com>`)).toEqual([
+			{ name: 'Ops; Night "Owl"', address: "ops@x.com" },
+			{ name: "🦉 Owl", address: "owl@x.com" },
+		]);
+	});
+});
+
+describe("formatAddress", () => {
+	test("plain names stay plain; bare addresses stay bare", () => {
+		expect(formatAddress({ name: "Maya Chen", address: "maya@x.com" })).toBe("Maya Chen <maya@x.com>");
+		expect(formatAddress({ address: "a@x.com" })).toBe("a@x.com");
+	});
+
+	test("a name with a separator or quote is quoted, and reads back whole", () => {
+		const list = [
+			{ name: "Chen, Maya", address: "maya@x.com" },
+			{ name: 'Ops; Night "Owl"', address: "ops@x.com" },
+			{ name: "Back\\slash", address: "b@x.com" },
+		];
+		const field = list.map(formatAddress).join(", ");
+		expect(field).toBe(`"Chen, Maya" <maya@x.com>, "Ops; Night \\"Owl\\"" <ops@x.com>, "Back\\\\slash" <b@x.com>`);
+		expect(splitAddressList(field)).toEqual(list);
 	});
 });

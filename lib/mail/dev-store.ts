@@ -12,6 +12,7 @@ import { threadHeaderIds } from "@/lib/mail/thread";
 import { dateHeader, generateSyntheticMail } from "@/lib/mail/dev-seed";
 import { fixtureBytes } from "@/lib/mail/dev-fixtures";
 import { searchText } from "@/lib/search/text";
+import { splitAddressList } from "@/lib/format";
 
 export function isDevSession(session: { dev?: boolean }): boolean {
   return session.dev === true && process.env.NODE_ENV !== "production";
@@ -599,15 +600,7 @@ function escapeHtml(input: string): string {
 }
 
 function parseAddressList(raw: string): MailAddress[] {
-  return raw
-    .split(/[,;]/)
-    .map((part) => part.trim())
-    .filter(Boolean)
-    .map((entry) => {
-      const match = entry.match(/^(.*?)<([^>]+)>$/);
-      if (match) return addr(match[2]!.trim(), match[1]?.trim() || undefined);
-      return addr(entry);
-    });
+  return splitAddressList(raw).map((a) => addr(a.address, a.name));
 }
 
 function draftToMessage(

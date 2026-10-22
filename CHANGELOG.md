@@ -54,6 +54,12 @@ as you work — it ships inside the app.
   You start typing above it. A draft you open again keeps the one it
   has, so you never get two. Your signature is saved on this device
   only.
+- To, Cc and Bcc now suggest people as you type, picked from who you've
+  written to and heard from in the last 30 days, most recent and
+  frequent first. Use the arrow keys and Enter, or click. Each address
+  becomes a chip you can remove, and pasting a list adds them all.
+  Backspace in an empty box takes the last one back to edit. An address
+  that doesn't look right turns red, and Send tells you which one.
 - A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
   any folder or page, open a settings section, switch between Ember and
   Nebula, search your mail, or act on the open message. Each action
@@ -68,6 +74,11 @@ as you work — it ships inside the app.
 
 ### Fixed
 
+- A name with a comma in it, like "Chen, Maya", no longer splits into
+  two recipients when you reply all, reopen a draft or send. Raven used
+  to drop such names from a reopened draft; now it keeps them.
+- An avatar for a name that starts with an emoji now shows the emoji
+  instead of a broken character.
 - A message with another email attached to it now shows the paperclip
   and counts toward attachment storage on the Overview. Before, an
   attached email that held only text was missed.

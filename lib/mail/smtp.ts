@@ -4,6 +4,7 @@ import MailComposer from "nodemailer/lib/mail-composer";
 import type { MailSession } from "@/lib/session";
 import type { ComposeDraft } from "@/lib/mail/types";
 import { isLoopbackHost } from "@/lib/auth/ip";
+import { splitAddressList } from "@/lib/format";
 
 function createTransport(session: MailSession) {
   return nodemailer.createTransport({
@@ -24,11 +25,9 @@ function createTransport(session: MailSession) {
   });
 }
 
-function parseAddressList(raw: string): string[] {
-  return raw
-    .split(/[,;]/)
-    .map((part) => part.trim())
-    .filter(Boolean);
+// Objects, not strings: nodemailer then encodes each name itself, commas and all.
+function parseAddressList(raw: string): ({ name: string; address: string } | string)[] {
+  return splitAddressList(raw).map((a) => (a.name ? { name: a.name, address: a.address } : a.address));
 }
 
 /** `keepBcc` is for saved drafts only: sent mail must never carry the Bcc header. */

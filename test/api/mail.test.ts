@@ -6,13 +6,14 @@ import { GET as PRELOAD } from "@/app/api/mail/preload/route";
 import { GET as ATTACHMENT } from "@/app/api/mail/attachment/route";
 import { POST as ACTIONS } from "@/app/api/mail/actions/route";
 import { GET as THREAD } from "@/app/api/mail/thread/route";
+import { GET as CONTACTS } from "@/app/api/mail/contacts/route";
 import { devAllMessages } from "@/lib/mail/dev-store";
 import { attachmentHref } from "@/lib/mail/attachment";
 import { SESSION_COOKIE } from "@/lib/session";
 import type { MailFolder, MailMessage, MailSummary } from "@/lib/mail/types";
 import type { PreloadResult } from "@/lib/mail/preload";
 import { call, readJson, req } from "../helpers/request";
-import { sessionCookie } from "../helpers/session";
+import { makeSession, sessionCookie } from "../helpers/session";
 
 type Ok<T> = { ok: true; data: T };
 type Err = { ok: false; error: string; code: string };
@@ -40,6 +41,7 @@ const handlers = [
 	["preload", PRELOAD, "/api/mail/preload?folder=INBOX&uids=1"],
 	["attachment", ATTACHMENT, "/api/mail/attachment?folder=INBOX&uid=1&part=2"],
 	["thread", THREAD, "/api/mail/thread?folder=INBOX&uid=1"],
+	["contacts", CONTACTS, "/api/mail/contacts"],
 ] as const;
 
 describe("auth", () => {
@@ -430,5 +432,23 @@ describe("whole-thread actions", () => {
 			req("/api/mail/actions", { json: { kind: "trash", folder: "INBOX", uids: ["1"], threadIds: ["1 OR ALL"] } }),
 		);
 		expect(res.status).toBe(400);
+	});
+});
+
+describe("GET /api/mail/contacts", () => {
+	type Contact = { name?: string; address: string; score: number };
+
+	test("ranked people from recent mail: no self, no no-reply, best first", async () => {
+		// The real dev login is dev@localhost, the seeded mailbox owner.
+		const res = await call(CONTACTS, req("/api/mail/contacts", { session: makeSession({ email: "dev@localhost" }) }));
+		expect(res.status).toBe(200);
+		const contacts = (await readJson<Ok<Contact[]>>(res)).data;
+		expect(contacts.length).toBeGreaterThan(5);
+		const addresses = contacts.map((c) => c.address.toLowerCase());
+		expect(addresses.some((a) => a.includes("no-reply") || a.includes("noreply"))).toBe(false);
+		expect(addresses).not.toContain("dev@localhost");
+		const scores = contacts.map((c) => c.score);
+		expect(scores).toEqual([...scores].sort((a, b) => b - a));
+		expect(contacts.some((c) => c.name)).toBe(true);
 	});
 });

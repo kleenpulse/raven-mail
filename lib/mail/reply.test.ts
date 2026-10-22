@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { buildReplyDraft, draftBody, draftFromMessage, prefixSubject, replyOptions } from "@/lib/mail/reply";
+import { splitAddressList } from "@/lib/format";
 import type { ComposeDraft, MailMessage } from "@/lib/mail/types";
 
 const message: MailMessage = {
@@ -120,8 +121,8 @@ describe("draftFromMessage", () => {
   test("fills every field compose has, threading included", () => {
     expect(draftFromMessage(saved)).toEqual({
       to: "Maya Chen <maya@northwind.example>",
-      cc: "sam@northwind.example, lead@northwind.example",
-      bcc: "boss@northwind.example",
+      cc: '"Okafor, Sam" <sam@northwind.example>, lead@northwind.example',
+      bcc: '"The \\"Boss\\"" <boss@northwind.example>',
       subject: "Re: Q3 roadmap",
       text: "Looks good.\n\nOn Tue, Maya wrote:\n> Need sign-off.",
       inReplyTo: "<m1@northwind>",
@@ -129,9 +130,13 @@ describe("draftFromMessage", () => {
     });
   });
 
-  test("names that would split the address list keep only the address", () => {
-    const cc = draftFromMessage(saved).cc!;
-    expect(cc.split(/[,;]/).map((s) => s.trim())).toEqual(["sam@northwind.example", "lead@northwind.example"]);
+  test("names that hold a separator are quoted, so the list reads back whole", () => {
+    const { cc, bcc } = draftFromMessage(saved);
+    expect(splitAddressList(cc!)).toEqual([
+      { name: "Okafor, Sam", address: "sam@northwind.example" },
+      { address: "lead@northwind.example" },
+    ]);
+    expect(splitAddressList(bcc!)).toEqual([{ name: 'The "Boss"', address: "boss@northwind.example" }]);
   });
 
   test("the empty-subject placeholder comes back empty", () => {
@@ -140,5 +145,26 @@ describe("draftFromMessage", () => {
 
   test("an HTML-only draft falls back to its text", () => {
     expect(draftFromMessage({ ...saved, text: "", html: "<p>Hi <b>there</b></p>" }).text).toBe("Hi  there");
+  });
+});
+
+describe("display names with commas", () => {
+  const exchange: MailMessage = {
+    ...message,
+    from: { name: "Chen, Maya", address: "maya@northwind.example" },
+    to: [{ address: "me@raven.dev" }, { name: "Okafor, Sam", address: "sam@northwind.example" }],
+    cc: [],
+  };
+
+  test("reply all keeps each person whole (no recipient called Chen)", () => {
+    const draft = buildReplyDraft(exchange, "replyAll", "me@raven.dev");
+    expect(splitAddressList(`${draft.to}, ${draft.cc}`)).toEqual([
+      { name: "Chen, Maya", address: "maya@northwind.example" },
+      { name: "Okafor, Sam", address: "sam@northwind.example" },
+    ]);
+  });
+
+  test("a reopened draft keeps the names instead of dropping them", () => {
+    expect(draftFromMessage({ ...exchange, to: [exchange.from] }).to).toBe('"Chen, Maya" <maya@northwind.example>');
   });
 });

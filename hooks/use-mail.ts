@@ -17,6 +17,7 @@ import { qk } from "@/lib/query-keys";
 import { PERSIST_MAX_AGE } from "@/lib/query-persist";
 import type { MailFlags, MailFolder, MailMessage, MailSummary, MailThread } from "@/lib/mail/types";
 import type { PreloadResult } from "@/lib/mail/preload";
+import type { Contact } from "@/lib/mail/contact-match";
 import { stale } from "@/lib/prefs/query";
 import { usePref } from "@/lib/prefs/store";
 import { mapCachedPages, type MessagesCache, type MessagesPage } from "@/lib/mail/cache-pages";
@@ -44,6 +45,18 @@ export function useFolders() {
     queryKey: qk.folders(email),
     queryFn: ({ signal }) => getJson<MailFolder[]>("/api/mail/folders", signal),
     staleTime: stale(60_000),
+    gcTime: PERSIST_MAX_AGE,
+  });
+}
+
+/** To/Cc/Bcc suggestions; fetched once compose opens, then kept a while. */
+export function useContacts(enabled: boolean) {
+  const { email } = useAccount();
+  return useQuery({
+    queryKey: qk.contacts(email),
+    queryFn: ({ signal }) => getJson<Contact[]>("/api/mail/contacts", signal),
+    enabled,
+    staleTime: 10 * 60_000,
     gcTime: PERSIST_MAX_AGE,
   });
 }

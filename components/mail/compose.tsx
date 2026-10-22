@@ -23,9 +23,10 @@ import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { discardDraftAction, saveDraftAction } from "@/lib/actions/mail";
 import { useComposeStore } from "@/lib/store/compose";
 import { useMounted } from "@/hooks/use-mounted";
-import { useFolders, useInvalidateMail } from "@/hooks/use-mail";
+import { useContacts, useFolders, useInvalidateMail } from "@/hooks/use-mail";
+import { RecipientField } from "@/components/mail/recipient-field";
 import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
-import { formatBytes } from "@/lib/format";
+import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { bytesToBase64 } from "@/lib/mail/attachment";
 import { onlySignature } from "@/lib/mail/signature";
@@ -166,6 +167,7 @@ export function ComposeDock() {
   const { invalidateMessages, invalidateFolders } = useInvalidateMail();
   const draftsFolder = resolveSpecialFolder(folders ?? [], "\\Drafts");
   const send = useUndoSend({ draftsFolder });
+  const { data: contacts = [] } = useContacts(open);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const savedRef = React.useRef<string>("");
 
@@ -210,9 +212,18 @@ export function ComposeDock() {
 
   // Compose closes at once; the send waits out the undo window, and its local
   // copy stays until the server says it went.
+  // Read from the store: a recipient typed then sent with ⌘/Ctrl+Enter joins it in the same keypress.
   function handleSend() {
+    const { draft } = useComposeStore.getState();
     if (!draft.to.trim()) {
       toast.error("Add at least one recipient.");
+      return;
+    }
+    const bad = splitAddressList([draft.to, draft.cc, draft.bcc].filter(Boolean).join(", ")).find(
+      (a) => !looksLikeAddress(a.address),
+    );
+    if (bad) {
+      toast.error(`"${bad.address}" isn't an email address.`);
       return;
     }
     send({ mode, draft, draftUid, attachments });
@@ -222,6 +233,7 @@ export function ComposeDock() {
   async function handleSaveDraft() {
     setBusy("draft");
     try {
+      const { draft } = useComposeStore.getState();
       const res = await saveDraftAction(toOutgoing({ draft, draftUid, attachments }));
       if (!res.ok) throw new Error(res.error);
       // Without a uid (no UIDPLUS, lookup missed) the next save adds a copy rather than guess.
@@ -352,13 +364,14 @@ export function ComposeDock() {
       <div className="flex min-h-0 flex-1 flex-col dark:bg-background/50">
         <div className="shrink-0 border-b border-border dark:border-glass-border">
           <Field label="To" htmlFor={`${fieldId}-to`}>
-            <Input
+            <RecipientField
               id={`${fieldId}-to`}
+              label="To"
               value={draft.to}
-              onChange={(e) => setDraft({ to: e.target.value })}
-              placeholder="alice@example.com, bob@example.com"
+              onChange={(to) => setDraft({ to })}
+              contacts={contacts}
+              placeholder="Name or email"
               autoFocus={focusTo}
-              className={fieldInput}
             />
             <button
               type="button"
@@ -372,19 +385,21 @@ export function ComposeDock() {
           {ccVisible && (
             <>
               <Field label="Cc" htmlFor={`${fieldId}-cc`}>
-                <Input
+                <RecipientField
                   id={`${fieldId}-cc`}
+                  label="Cc"
                   value={draft.cc ?? ""}
-                  onChange={(e) => setDraft({ cc: e.target.value })}
-                  className={fieldInput}
+                  onChange={(cc) => setDraft({ cc })}
+                  contacts={contacts}
                 />
               </Field>
               <Field label="Bcc" htmlFor={`${fieldId}-bcc`}>
-                <Input
+                <RecipientField
                   id={`${fieldId}-bcc`}
+                  label="Bcc"
                   value={draft.bcc ?? ""}
-                  onChange={(e) => setDraft({ bcc: e.target.value })}
-                  className={fieldInput}
+                  onChange={(bcc) => setDraft({ bcc })}
+                  contacts={contacts}
                 />
               </Field>
             </>
