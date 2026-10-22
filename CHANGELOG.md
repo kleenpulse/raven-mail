@@ -25,6 +25,8 @@ as you work — it ships inside the app.
   it for good in Settings → Appearance. Ctrl+K or ⌘K still opens Ask Jev.
 - A "buy me a coffee" button now sits in the top-right corner of the
   Overview and Mail top bars, if you'd like to support Raven.
+- The "not found" page now glows with the same gold aurora as the
+  bottom of the landing page.
 
 ### Fixed
 
