@@ -4,6 +4,7 @@ import * as React from "react";
 import { parseAsStringLiteral, useQueryState } from "nuqs";
 import { useAccount } from "@/components/providers/account-provider";
 import { useDeepTriageMap } from "@/hooks/use-deep-triage";
+import { useBlockedSender } from "@/hooks/use-blocks";
 import { usePref } from "@/lib/prefs/store";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 import { groupThreads, singleRows, type ThreadRow } from "@/lib/mail/thread";
@@ -15,8 +16,8 @@ const tabParser = parseAsStringLiteral(SPLIT_TABS).withDefault("important").with
 /**
  * The rows the list shows and j/k walks: conversations when threading is on,
  * one per message for search results or when it's off, and only the open
- * tab's rows when the Inbox is split. The list and the shell must agree, so
- * both read it here.
+ * tab's rows when the Inbox is split, minus blocked senders in the Inbox. The
+ * list and the shell must agree, so both read it here.
  */
 export function useMailRows(
 	messages: MailSummary[] | undefined,
@@ -44,9 +45,15 @@ export function useMailRows(
 		[deep],
 	);
 
+	// Blocked senders leave the Inbox at once; search still finds them.
+	const blocked = useBlockedSender();
+	const hideBlocked = inbox && !search;
 	const group = React.useCallback(
-		(list: MailSummary[]): ThreadRow[] => (threading ? groupThreads(list, email) : singleRows(list, email)),
-		[threading, email],
+		(raw: MailSummary[]): ThreadRow[] => {
+			const list = hideBlocked ? raw.filter((m) => !blocked(m.from.address)) : raw;
+			return threading ? groupThreads(list, email) : singleRows(list, email);
+		},
+		[threading, email, hideBlocked, blocked],
 	);
 	const toRows = React.useCallback(
 		(list: MailSummary[]): ThreadRow[] => {

@@ -81,6 +81,11 @@ as you work — it ships inside the app.
   After you confirm, Raven asks the sender to take you off the list, with
   no page to visit. If the sender only offers a web page or an email,
   the button opens their page or writes the email for you.
+- Block a sender from the ⋯ menu on any message: just that address, or
+  everyone at a company's domain. Their mail leaves your Inbox at once,
+  and Undo brings it back. Search still finds it. See and unblock
+  everyone in Settings → Mail → Blocked senders. Blocking needs a
+  database (DATABASE_URL), since your list is saved to your account.
 
 ### Changed
 

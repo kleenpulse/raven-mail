@@ -4,6 +4,7 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "@/components/providers/account-provider";
 import { getJson, useInvalidateMail, type MessagesPage } from "@/hooks/use-mail";
+import { useBlockedSender } from "@/hooks/use-blocks";
 import { detectArrivals } from "@/lib/mail/arrivals";
 import { usePref } from "@/lib/prefs/store";
 import { qk } from "@/lib/query-keys";
@@ -24,6 +25,7 @@ export function useNewMail(onArrive: (messages: MailSummary[]) => void) {
 	const invalidate = useInvalidateMail();
 	const watermark = React.useRef<number | null>(null);
 	const arrive = React.useEffectEvent(onArrive);
+	const blocked = useBlockedSender();
 
 	const { data } = useQuery({
 		queryKey: qk.inboxWatch(email),
@@ -38,9 +40,10 @@ export function useNewMail(onArrive: (messages: MailSummary[]) => void) {
 		const next = detectArrivals(watermark.current, data.messages);
 		watermark.current = next.watermark;
 		if (!next.arrivals.length) return;
-		arrive(next.arrivals);
+		const wanted = next.arrivals.filter((m) => !blocked(m.from.address));
+		if (wanted.length) arrive(wanted);
 		// The list, unread badges and Overview should agree with the banner.
 		void invalidate.invalidateMessages("INBOX");
 		void invalidate.invalidateFolders();
-	}, [data, invalidate]);
+	}, [data, invalidate, blocked]);
 }

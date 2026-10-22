@@ -155,6 +155,15 @@ export const SETTINGS: SettingEntry[] = [
 		keywords: "reset split pane reading pane width wide reader",
 	},
 	{
+		id: "blocked",
+		section: "mail",
+		card: "Blocked senders",
+		label: "Blocked Senders",
+		description: "Their mail is hidden from your Inbox. Saved to your account, so it works on every device.",
+		keywords: "block blocked unblock spam sender domain screener",
+		stack: true,
+	},
+	{
 		id: "banner-position",
 		section: "notifications",
 		card: "New mail",

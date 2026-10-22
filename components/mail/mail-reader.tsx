@@ -42,6 +42,7 @@ import { messageKeyAction, type MessageKeyAction } from "@/lib/keyboard";
 import { registerMessageCommands } from "@/components/shell/palette-store";
 import { Conversation, useConversation } from "@/components/mail/conversation";
 import { UnsubscribeButton } from "@/components/mail/unsubscribe-button";
+import { ReaderMoreMenu } from "@/components/mail/reader-more-menu";
 import { conversationTargets } from "@/lib/mail/thread";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
@@ -367,6 +368,13 @@ function MailReaderInner({
 						<Trash2 />
 					</ToolCircle>
 					<ShareMenu folder={folder} message={message} />
+					<ReaderMoreMenu
+						message={message}
+						accountEmail={accountEmail}
+						// Blocked senders are hidden from the Inbox only.
+						onBlocked={() => folder.toUpperCase() === "INBOX" && onRemoved(uid)}
+						onUnblocked={() => onRestored?.(folder, uid)}
+					/>
 					<ToolCircle label="Print" className="hidden @lg/reader:inline-flex" onClick={() => window.print()}>
 						<Printer />
 					</ToolCircle>
