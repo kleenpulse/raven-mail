@@ -5,8 +5,10 @@ export function isTyping(target: EventTarget | null): boolean {
 	return Boolean(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable));
 }
 
-// Dialogs, sheets, menus and the compose dock own the keyboard while focus is in them.
-const OVERLAY = '[role="dialog"], [aria-modal="true"], [role="menu"], [role="listbox"], [data-compose]';
+// Dialogs, sheets, menus, the compose dock and other floating panels ([data-overlay],
+// e.g. the Ask Jev tray) own the keyboard while focus is in them.
+const OVERLAY =
+	'[role="dialog"], [aria-modal="true"], [role="menu"], [role="listbox"], [data-compose], [data-overlay]';
 
 export function inOverlay(target: EventTarget | null): boolean {
 	const el = target as Element | null;

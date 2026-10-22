@@ -130,6 +130,8 @@ export function AskTray() {
 		<div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-40 flex justify-center px-3 md:bottom-5 md:pl-[84px]">
 			<section
 				aria-label="Ask Jev"
+				// Not a dialog, but mail shortcuts must still stand down while focus is in it (lib/keyboard).
+				data-overlay
 				className="glass pointer-events-auto flex max-h-[min(78vh,760px)] w-full max-w-[760px] flex-col rounded-card p-3 shadow-lift entrance"
 			>
 				<header className="flex items-center justify-between px-2 pt-1 pb-2">

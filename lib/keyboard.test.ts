@@ -101,6 +101,7 @@ describe("messageKeyAction", () => {
 		["a menu", { role: "menu" }],
 		["a listbox (select, palette)", { role: "listbox" }],
 		["the compose dock (focus on its Attach button)", { "data-compose": "" }],
+		["the Ask Jev tray (a panel, not a dialog)", { "data-overlay": "" }],
 	])("nothing fires with focus inside %s", (_name, ancestor) => {
 		const target = inside({ tagName: "BUTTON" }, ancestor);
 		expect(messageKeyAction(press("e", { target }))).toBeNull();
