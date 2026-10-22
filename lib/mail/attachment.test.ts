@@ -49,8 +49,21 @@ describe("contentDisposition", () => {
     expect(asciiName(contentDisposition("\r\n"))).toBe("attachment");
   });
 
-  test("very long names are capped", () => {
-    expect(extName(contentDisposition(`${"a".repeat(500)}.pdf`)).length).toBe(200);
+  test("very long names are capped, keeping the extension", () => {
+    const name = extName(contentDisposition(`${"a".repeat(500)}.pdf`));
+    expect(name.length).toBe(200);
+    expect(name.endsWith("a.pdf")).toBe(true);
+  });
+
+  test("the cap counts characters, so emoji aren't split into broken halves", () => {
+    const name = extName(contentDisposition(`${"📎".repeat(300)}.docx`));
+    expect([...name]).toHaveLength(200);
+    expect(name.endsWith("📎.docx")).toBe(true);
+  });
+
+  test("a long 'extension' isn't one, so the plain cap applies", () => {
+    const name = extName(contentDisposition(`report.${"x".repeat(300)}`));
+    expect(name).toBe(`report.${"x".repeat(193)}`);
   });
 });
 

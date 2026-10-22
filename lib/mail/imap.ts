@@ -30,6 +30,9 @@ import { acceptTerms, neededTerms, parseQuery, termKey, type Term } from "@/lib/
 
 // Gmail allows ~15 concurrent IMAP connections per account; stay well under.
 const connections = createKeyedSemaphore(4);
+// Downloads hold a connection for the whole stream; capping them below `connections`
+// keeps slots free for the list, poll, reader and send.
+const downloads = createKeyedSemaphore(2);
 const folderIndex = createTtlCache<MailFolder[]>({ ttlMs: 5 * 60_000, maxEntries: 100 });
 
 function createClient(session: MailSession): ImapFlow {
@@ -431,14 +434,19 @@ export async function downloadAttachment(
   part: string,
   signal?: AbortSignal,
 ): Promise<AttachmentDownload> {
-  const { client, release } = await acquireClient(session);
+  const freeDownload = await downloads.acquire(sessionKey(session));
+  let release = () => {};
   let unlock: (() => void) | undefined;
   const done = () => {
     unlock?.();
     unlock = undefined;
     release();
+    freeDownload();
   };
   try {
+    const held = await acquireClient(session);
+    release = held.release;
+    const client = held.client;
     await client.connect();
     const lock = await client.getMailboxLock(folder, { readOnly: true });
     unlock = () => lock.release();

@@ -11,14 +11,23 @@ export function attachmentHref(folder: string, uid: string, part: string): strin
   return `/api/mail/attachment?${params}`;
 }
 
+const MAX_NAME = 200;
+
 /** Control characters, path separators and anything a header or shell would read. */
 function cleanFilename(raw: string | undefined): string {
-  const name = (raw ?? "")
-    .replace(/[\u0000-\u001f\u007f-\u009f]/g, "")
-    .replace(/[/\\]/g, "_")
-    .trim()
-    .replace(/^\.+/, "");
-  return name.slice(0, 200) || "attachment";
+  const chars = [
+    ...(raw ?? "")
+      .replace(/[\u0000-\u001f\u007f-\u009f]/g, "")
+      .replace(/[/\\]/g, "_")
+      .trim()
+      .replace(/^\.+/, ""),
+  ];
+  if (chars.length === 0) return "attachment";
+  if (chars.length <= MAX_NAME) return chars.join("");
+  // Cut the stem, never the extension, or the saved file loses its type.
+  const dot = chars.lastIndexOf(".");
+  const ext = dot > 0 && chars.length - dot <= 11 ? chars.slice(dot) : [];
+  return [...chars.slice(0, MAX_NAME - ext.length), ...ext].join("");
 }
 
 // encodeURIComponent leaves these, but RFC 5987 attr-char doesn't allow them.
