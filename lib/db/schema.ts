@@ -20,6 +20,9 @@ import {
 	type LastError,
 } from "../integrations/types"; // relative: drizzle-kit loads this file outside Next's alias resolution
 import { TOUR_VOICES } from "../tour/types";
+import { RULE_ACTIONS } from "../rules/types";
+import { BLOCK_KINDS } from "../blocks/types";
+import { FOLLOW_UP_STATUSES } from "../follow-ups/types";
 
 /*
  * Tenancy: every row carries `account_key` — an HMAC of the mailbox identity
@@ -93,5 +96,60 @@ export const tourProgress = pgTable("tour_progress", {
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
 
+/*
+ * Rules, blocked senders and reminders. What the user typed or what came from
+ * mail (criteria, addresses, subjects) is sealed per row (lib/db/sealed.ts),
+ * bound to `account_key|id`, so no address is stored in the clear.
+ */
+
+export const mailRules = pgTable(
+	"mail_rules",
+	{
+		// App-generated: the id is bound into the seal before insert.
+		id: uuid("id").primaryKey(),
+		accountKey: text("account_key").notNull(),
+		/** Sealed JSON `{ criteria, folder? }`. */
+		sealed: text("sealed").notNull(),
+		action: text("action", { enum: RULE_ACTIONS }).notNull(),
+		enabled: boolean("enabled").notNull().default(true),
+		/** Rules run in this order. */
+		position: integer("position").notNull(),
+		...timestamps,
+	},
+	(t) => [index("mail_rules_account_idx").on(t.accountKey, t.position)],
+);
+
+export const blockedSenders = pgTable(
+	"blocked_senders",
+	{
+		id: uuid("id").primaryKey(),
+		accountKey: text("account_key").notNull(),
+		kind: text("kind", { enum: BLOCK_KINDS }).notNull(),
+		/** Keyed HMAC of the normalised value: dedupe without storing it. */
+		fingerprint: text("fingerprint").notNull(),
+		/** Sealed address or domain, for the Settings list. */
+		sealed: text("sealed").notNull(),
+		createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+	},
+	(t) => [uniqueIndex("blocked_senders_account_fingerprint_idx").on(t.accountKey, t.fingerprint)],
+);
+
+export const followUps = pgTable(
+	"follow_ups",
+	{
+		id: uuid("id").primaryKey(),
+		accountKey: text("account_key").notNull(),
+		/** Sealed JSON `FollowUpTarget`: the sent message to watch for a reply. */
+		sealed: text("sealed").notNull(),
+		dueAt: timestamp("due_at", { withTimezone: true }).notNull(),
+		status: text("status", { enum: FOLLOW_UP_STATUSES }).notNull().default("open"),
+		...timestamps,
+	},
+	(t) => [index("follow_ups_account_due_idx").on(t.accountKey, t.status, t.dueAt)],
+);
+
 export type IntegrationRow = typeof integrations.$inferSelect;
 export type IntegrationEventRow = typeof integrationEvents.$inferSelect;
+export type MailRuleRow = typeof mailRules.$inferSelect;
+export type BlockedSenderRow = typeof blockedSenders.$inferSelect;
+export type FollowUpRow = typeof followUps.$inferSelect;

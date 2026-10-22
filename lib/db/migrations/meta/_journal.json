@@ -15,6 +15,13 @@
       "when": 1790693899386,
       "tag": "0001_tour_progress",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1792682688463,
+      "tag": "0002_rules_blocks_followups",
+      "breakpoints": true
     }
   ]
 }

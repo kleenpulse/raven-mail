@@ -114,6 +114,10 @@ export const ERROR_COPY = {
 		"Integrations need a database.",
 		"Set DATABASE_URL (Neon) in your environment, then run bun run db:migrate.",
 	),
+	store_needs_db: copy(
+		"Rules, blocked senders and reminders need a database.",
+		"Set DATABASE_URL, then run bun run db:migrate.",
+	),
 	db_not_migrated: copy("The database isn't set up yet.", "Run bun run db:migrate, then reload."),
 	db_unavailable: copy("Couldn't reach the database.", "It may be waking up. Try again in a few seconds.", true),
 	too_many_requests: copy("Slow down a little.", "Too many attempts in a minute. Try again shortly.", true),
@@ -195,6 +199,7 @@ function defaultStatus(code: IntegrationErrorCode): number {
 		case "too_many_requests":
 			return 429;
 		case "db_not_configured":
+		case "store_needs_db":
 		case "db_not_migrated":
 		case "db_unavailable":
 			return 503;
