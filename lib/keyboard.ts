@@ -29,4 +29,5 @@ export const SHORTCUTS: Shortcut[] = [
 	{ keys: ["G"], label: "Go to Inbox", scope: "Mail", single: true },
 	{ keys: ["F"], label: "Wide reader on or off", scope: "Mail", single: true },
 	{ keys: ["Esc"], label: "Close message", scope: "Mail", single: false },
+	{ keys: ["mod", "Z"], label: "Undo archive, move or delete", scope: "Mail", single: false },
 ];

@@ -35,9 +35,9 @@ import { promptAlwaysLoadImages, useRemoteImagesPref } from "@/components/mail/r
 import { ShareMenu } from "@/components/integrations/deliver-menu";
 import { replyOptions } from "@/lib/mail/reply";
 import { useTheme } from "next-themes";
-import { useDeferredMailDelete } from "@/hooks/use-deferred-mail-delete";
-import { useMessage, useFolders, useInvalidateMail, useSetFlags } from "@/hooks/use-mail";
-import { deleteMessagesAction, moveMessagesAction } from "@/lib/actions/mail";
+import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
+import { useMessage, useFolders, useSetFlags } from "@/hooks/use-mail";
+import type { DeferredKind } from "@/lib/mail/deferred-actions";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
@@ -162,6 +162,8 @@ type ReaderProps = {
 	onBack: () => void;
 	/** The open message was archived, moved or deleted. */
 	onRemoved: (uid: string) => void;
+	/** Undo brought it back; reopen it if its folder is still the one showing. */
+	onRestored?: (folder: string, uid: string) => void;
 	onOpenReply: (mode: "reply" | "replyAll" | "forward", message: MailMessage) => void;
 };
 
@@ -188,14 +190,13 @@ function MailReaderInner({
 	onToggleWide,
 	onBack,
 	onRemoved,
+	onRestored,
 	onOpenReply,
 }: ReaderProps) {
 	const { data: message, isPending, isError, error } = useMessage(folder, uid);
 	const { data: folders } = useFolders();
-	const invalidate = useInvalidateMail();
-	const { deleteWithUndo } = useDeferredMailDelete();
+	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
-	const [busy, setBusy] = React.useState(false);
 	const [showDetails, setShowDetails] = React.useState(false);
 	const [loadRemote, setLoadRemote] = React.useState(false);
 	const remotePref = useRemoteImagesPref();
@@ -231,23 +232,14 @@ function MailReaderInner({
 		mutateFlags({ folder, uids: [message.uid], seen: true });
 	}, [message, folder, mutateFlags]);
 
-	async function act(
-		fn: () => Promise<{ ok: boolean; error?: string }>,
-		success: string,
-	) {
-		setBusy(true);
-		try {
-			const res = await fn();
-			if (!res.ok) throw new Error(res.error);
-			toast.success(success);
-			invalidate.invalidateMessages(folder);
-			invalidate.invalidateFolders();
-			onRemoved(uid);
-		} catch (err) {
-			toast.error(err instanceof Error ? err.message : "Action failed");
-		} finally {
-			setBusy(false);
+	/** Leaves the reader now; the server call waits out the undo window. */
+	function move(kind: DeferredKind, destination?: string | null) {
+		if (destination === null) {
+			toast.error(kind === "archive" ? "No Archive folder" : "No Inbox folder");
+			return;
 		}
+		const id = defer({ kind, folder, uids: [uid], destination }, { onUndo: () => onRestored?.(folder, uid) });
+		if (id) onRemoved(uid);
 	}
 
 	if (isPending) {
@@ -290,7 +282,6 @@ function MailReaderInner({
 					<ToolCircle
 						label="Star"
 						aria-pressed={starred}
-						disabled={busy}
 						onClick={() =>
 							mutateFlags({
 								folder,
@@ -305,18 +296,7 @@ function MailReaderInner({
 					{canArchive && (
 						<ToolCircle
 							label="Archive"
-							disabled={busy}
-							onClick={() =>
-								act(async () => {
-									if (!archivePath)
-										return { ok: false, error: "No Archive folder" };
-									return moveMessagesAction({
-										folder,
-										uids: [message.uid],
-										destination: archivePath,
-									});
-								}, "Archived")
-							}
+							onClick={() => move("archive", archivePath)}
 						>
 							<Archive />
 						</ToolCircle>
@@ -324,37 +304,15 @@ function MailReaderInner({
 					{canRestoreInbox && (
 						<ToolCircle
 							label="Move to Inbox"
-							disabled={busy}
-							onClick={() =>
-								act(
-									() =>
-										moveMessagesAction({
-											folder,
-											uids: [message.uid],
-											destination: inboxPath!,
-										}),
-									"Moved to Inbox",
-								)
-							}
+							onClick={() => move("inbox", inboxPath)}
 						>
 							<Inbox />
 						</ToolCircle>
 					)}
 					<ToolCircle
 						label={isTrash ? "Delete forever" : "Move to trash"}
-						disabled={busy}
 						className="hover:text-destructive"
-						onClick={() => {
-							if (isTrash) {
-								deleteWithUndo(folder, [message.uid]);
-								onRemoved(uid);
-								return;
-							}
-							void act(
-								() => deleteMessagesAction({ folder, uids: [message.uid] }),
-								"Moved to trash",
-							);
-						}}
+						onClick={() => move(isTrash ? "deleteForever" : "trash")}
 					>
 						<Trash2 />
 					</ToolCircle>

@@ -4,6 +4,7 @@ import { GET as MESSAGES } from "@/app/api/mail/messages/route";
 import { GET as MESSAGE } from "@/app/api/mail/message/route";
 import { GET as PRELOAD } from "@/app/api/mail/preload/route";
 import { GET as ATTACHMENT } from "@/app/api/mail/attachment/route";
+import { POST as ACTIONS } from "@/app/api/mail/actions/route";
 import { devAllMessages } from "@/lib/mail/dev-store";
 import { attachmentHref } from "@/lib/mail/attachment";
 import { SESSION_COOKIE } from "@/lib/session";
@@ -310,5 +311,44 @@ describe("GET /api/mail/attachment", () => {
 		const res = await get(`/api/mail/attachment?${query}`);
 		expect(res.status).toBe(400);
 		expect((await readJson<Err>(res)).code).toBe("bad_request");
+	});
+});
+
+describe("POST /api/mail/actions (keepalive commit)", () => {
+	const post = (json: unknown, opts: Parameters<typeof req>[1] = {}) =>
+		call(ACTIONS, req("/api/mail/actions", { json, ...opts }));
+	const inbox = () => devAllMessages().filter((m) => m.folder === "INBOX");
+
+	test("archives on the dev mailbox", async () => {
+		const uid = inbox()[0]!.uid;
+		const res = await post({ kind: "archive", folder: "INBOX", uids: [uid], destination: "Archive" });
+		expect(res.status).toBe(200);
+		expect(devAllMessages().find((m) => m.uid === uid)!.folder).toBe("Archive");
+	});
+
+	test("trash moves to Trash", async () => {
+		const uid = inbox()[0]!.uid;
+		expect((await post({ kind: "trash", folder: "INBOX", uids: [uid] })).status).toBe(200);
+		expect(devAllMessages().find((m) => m.uid === uid)!.folder).toBe("Trash");
+	});
+
+	test("401 without a session", async () => {
+		expect((await post({ kind: "trash", folder: "INBOX", uids: ["1"] }, { session: null })).status).toBe(401);
+	});
+
+	test("403 cross-origin", async () => {
+		const res = await post({ kind: "trash", folder: "INBOX", uids: ["1"] }, { origin: "https://evil.example" });
+		expect(res.status).toBe(403);
+	});
+
+	test.each([
+		["unknown kind", { kind: "nuke", folder: "INBOX", uids: ["1"] }],
+		["star range", { kind: "trash", folder: "INBOX", uids: ["1:*"] }],
+		["no uids", { kind: "trash", folder: "INBOX", uids: [] }],
+		["archive without destination", { kind: "archive", folder: "INBOX", uids: ["1"] }],
+	])("400: %s", async (_name, body) => {
+		const before = inbox().length;
+		expect((await post(body)).status).toBe(400);
+		expect(inbox()).toHaveLength(before);
 	});
 });

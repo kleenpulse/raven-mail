@@ -97,8 +97,8 @@ export const SETTINGS: SettingEntry[] = [
 		section: "mail",
 		card: "Deleting",
 		label: "Undo Time",
-		description: "How long you have to undo a delete.",
-		keywords: "delete trash grace timer",
+		description: "How long you have to undo an archive, move or delete.",
+		keywords: "delete trash archive move grace timer",
 		prefs: ["mail.undoMs"],
 	},
 	{

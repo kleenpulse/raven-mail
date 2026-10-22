@@ -22,6 +22,12 @@ as you work — it ships inside the app.
   opens in the compose window with its recipients, subject, text and
   files, ready to edit and send.
 - Discarding a draft now offers Undo, in case you clicked by mistake.
+- Archive, Move to Trash and Move to Inbox can now be undone, for one
+  message or many. The message leaves the list at once, and Undo puts
+  it back in the same place, still selected. Press Ctrl+Z (⌘Z on a Mac)
+  to undo the last one. You set how long you have in Settings → Mail.
+  If you close the tab before the time runs out, the action still
+  goes through.
 
 ### Fixed
 

@@ -146,6 +146,18 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 		[openCompose, account.email],
 	);
 
+	// Undo fires seconds later, from a closure of the render that removed the message.
+	const folderRef = React.useRef(activeFolder);
+	React.useEffect(() => {
+		folderRef.current = activeFolder;
+	}, [activeFolder]);
+	const handleRestored = React.useCallback(
+		(restoredFolder: string, restoredUid: string) => {
+			if (folderRef.current === restoredFolder) void setUid(restoredUid);
+		},
+		[setUid],
+	);
+
 	// Archive / delete / move: with the list out of view there's nothing to fall
 	// back to, so step to a neighbour instead of dropping to an empty pane.
 	const handleRemoved = (removedUid: string) => {
@@ -259,6 +271,7 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 							onToggleWide={toggleWide}
 							onBack={() => void setUid(null)}
 							onRemoved={handleRemoved}
+							onRestored={handleRestored}
 							onOpenReply={handleReply}
 						/>
 					</section>

@@ -6,7 +6,6 @@ import {
   useMutation,
   useQuery,
   useQueryClient,
-  type InfiniteData,
   type QueryKey,
 } from "@tanstack/react-query";
 import { useSearchParams } from "next/navigation";
@@ -20,8 +19,9 @@ import type { MailFlags, MailFolder, MailMessage, MailSummary } from "@/lib/mail
 import type { PreloadResult } from "@/lib/mail/preload";
 import { stale } from "@/lib/prefs/query";
 import { usePref } from "@/lib/prefs/store";
+import { mapCachedPages, type MessagesCache, type MessagesPage } from "@/lib/mail/cache-pages";
 
-export type MessagesPage = { messages: MailSummary[]; count: number };
+export { mapCachedPages, type MessagesCache, type MessagesPage };
 
 /** GET a `{ ok, data }` route; 401 → back to login. Aborts via TanStack's signal. */
 export async function getJson<T>(url: string, signal?: AbortSignal): Promise<T> {
@@ -49,26 +49,6 @@ export function useFolders() {
 }
 
 const PAGE_SIZE = 50;
-
-/** A folder list in the cache: pages keyed by UID cursor (`before` = lowest UID already held). */
-export type MessagesCache = InfiniteData<MessagesPage, string | null>;
-
-/** Rewrite every cached page of a list; `countDelta` adjusts the folder total on each page. */
-export function mapCachedPages(
-  old: MessagesCache | undefined,
-  fn: (messages: MailSummary[], pageIndex: number) => MailSummary[],
-  countDelta = 0,
-): MessagesCache | undefined {
-  if (!old) return old;
-  return {
-    ...old,
-    pages: old.pages.map((page, i) => ({
-      ...page,
-      messages: fn(page.messages, i),
-      count: Math.max(0, page.count + countDelta),
-    })),
-  };
-}
 
 function flattenPages(data: MessagesCache): MessagesPage {
   const seen = new Set<string>();

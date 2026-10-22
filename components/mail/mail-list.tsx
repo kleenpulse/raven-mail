@@ -15,13 +15,9 @@ import {
 	useInvalidateMail,
 	useSetFlags,
 } from "@/hooks/use-mail";
-import { useDeferredMailDelete } from "@/hooks/use-deferred-mail-delete";
+import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { usePreloadInView } from "@/hooks/use-preload-in-view";
-import {
-	deleteMessagesAction,
-	moveMessagesAction,
-	setFlagsAction,
-} from "@/lib/actions/mail";
+import { setFlagsAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import type { MailFolder, MailSummary } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
@@ -149,7 +145,7 @@ function MailListInner({
 		useMessages(folder, search || undefined);
 	const { data: folders } = useFolders();
 	const invalidate = useInvalidateMail();
-	const { deleteWithUndo } = useDeferredMailDelete();
+	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
 	const [checked, setChecked] = React.useState<Set<string>>(new Set());
 	const [busy, setBusy] = React.useState(false);
@@ -193,9 +189,24 @@ function MailListInner({
 			return;
 		}
 
-		if (kind === "deleteForever") {
-			const batchId = deleteWithUndo(folder, uids);
-			if (batchId) {
+		if (kind !== "read" && kind !== "unread") {
+			const destination = kind === "archive" ? archivePath : kind === "inbox" ? inboxPath : undefined;
+			if (destination === null) {
+				toast.error(kind === "archive" ? "No Archive folder" : "No Inbox folder");
+				return;
+			}
+			const before = { checked, selectedUid };
+			const id = defer(
+				{ kind, folder, uids, destination },
+				{
+					// Undo puts the selection back too, not just the rows.
+					onUndo: () => {
+						setChecked(new Set(before.checked));
+						if (before.selectedUid && uids.includes(before.selectedUid)) onSelectUid(before.selectedUid);
+					},
+				},
+			);
+			if (id) {
 				setChecked(new Set());
 				if (selectedUid && uids.includes(selectedUid)) onSelectUid(null);
 			}
@@ -204,37 +215,13 @@ function MailListInner({
 
 		setBusy(true);
 		try {
-			if (kind === "archive") {
-				if (!archivePath) throw new Error("No Archive folder");
-				const res = await moveMessagesAction({
-					folder,
-					uids,
-					destination: archivePath,
-				});
-				if (!res.ok) throw new Error(res.error);
-				toast.success(`Archived ${uids.length}`);
-			} else if (kind === "inbox") {
-				if (!inboxPath) throw new Error("No Inbox folder");
-				const res = await moveMessagesAction({
-					folder,
-					uids,
-					destination: inboxPath,
-				});
-				if (!res.ok) throw new Error(res.error);
-				toast.success(`Moved ${uids.length} to Inbox`);
-			} else if (kind === "trash") {
-				const res = await deleteMessagesAction({ folder, uids });
-				if (!res.ok) throw new Error(res.error);
-				toast.success(`Moved ${uids.length} to Trash`);
-			} else {
-				const res = await setFlagsAction({
-					folder,
-					uids,
-					seen: kind === "read",
-				});
-				if (!res.ok) throw new Error(res.error);
-				toast.success(kind === "read" ? "Marked read" : "Marked unread");
-			}
+			const res = await setFlagsAction({
+				folder,
+				uids,
+				seen: kind === "read",
+			});
+			if (!res.ok) throw new Error(res.error);
+			toast.success(kind === "read" ? "Marked read" : "Marked unread");
 			setChecked(new Set());
 			if (selectedUid && uids.includes(selectedUid)) onSelectUid(null);
 			invalidate.invalidateMessages(folder);
