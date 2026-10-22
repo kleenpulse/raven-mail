@@ -66,6 +66,12 @@ as you work — it ships inside the app.
   list or "> " for a quote. Every message also goes out as plain text,
   with list markers and link addresses kept, for mail apps that don't
   show formatting.
+- Inbox tabs: Important, Updates, Newsletters, Receipts, Promotions and
+  Social, each with its unread count. Mail from people, and anything
+  that doesn't fit a tab, stays in Important. A quiet tab loads more
+  mail by itself until it has enough to show. J and K stay inside the
+  tab you're in. Pick which tabs show, or turn them off, in Settings →
+  Mail. Search and other folders aren't split.
 - A command menu: press Ctrl+K (⌘K on a Mac) anywhere to compose, go to
   any folder or page, open a settings section, switch between Ember and
   Nebula, search your mail, or act on the open message. Each action

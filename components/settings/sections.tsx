@@ -23,6 +23,7 @@ import {
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { SIGNATURE_MAX } from "@/lib/mail/signature";
+import { OPTIONAL_TABS, TAB_LABEL } from "@/lib/mail/split-inbox";
 import { useAccount } from "@/components/providers/account-provider";
 import { centerOf, revealTheme, type ThemeChoice } from "@/components/shell/theme-toggle";
 import { sectionEntries, type SectionId, type SettingEntry } from "@/components/settings";
@@ -153,6 +154,41 @@ function UndoRow() {
 					onChange={(next) => setPref("mail.undoMs", Number(next) as 5000 | 10_000 | 20_000 | 30_000)}
 					labelledBy={labelId}
 				/>
+			)}
+		</SettingRow>
+	);
+}
+
+function SplitTabsRow() {
+	const shown = usePref("mail.splitTabs");
+	const on = usePref("mail.splitInbox");
+	return (
+		<SettingRow id="split-tabs" layout="stack">
+			{(labelId) => (
+				<div role="group" aria-labelledby={labelId} className={cn("flex flex-wrap gap-1.5", !on && "opacity-50")}>
+					{OPTIONAL_TABS.map((tab) => {
+						const pressed = shown.includes(tab);
+						return (
+							<button
+								key={tab}
+								type="button"
+								aria-pressed={pressed}
+								disabled={!on}
+								onClick={() =>
+									setPref("mail.splitTabs", pressed ? shown.filter((t) => t !== tab) : OPTIONAL_TABS.filter((t) => t === tab || shown.includes(t)))
+								}
+								className={cn(
+									"h-8 rounded-pill px-3.5 text-[13px] ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
+									pressed
+										? "bg-inverse text-inverse-foreground ring-transparent dark:bg-signal-soft dark:text-signal"
+										: "text-ink-2 ring-border hover:text-foreground dark:ring-glass-border",
+								)}
+							>
+								{TAB_LABEL[tab]}
+							</button>
+						);
+					})}
+				</div>
 			)}
 		</SettingRow>
 	);
@@ -684,6 +720,8 @@ const ROWS: Record<string, React.ComponentType> = {
 	"remote-images": () => <PrefSwitchRow id="remote-images" pref="mail.remoteImages" />,
 	preload: () => <PrefSwitchRow id="preload" pref="mail.preload" />,
 	threading: () => <PrefSwitchRow id="threading" pref="mail.threading" />,
+	"split-inbox": () => <PrefSwitchRow id="split-inbox" pref="mail.splitInbox" />,
+	"split-tabs": SplitTabsRow,
 	undo: UndoRow,
 	"undo-send": UndoSendRow,
 	signature: SignatureRow,

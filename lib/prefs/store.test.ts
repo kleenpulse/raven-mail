@@ -37,3 +37,13 @@ describe("prefs store", () => {
 		expect(overrides()).toEqual({});
 	});
 });
+
+describe("list prefs", () => {
+	test("turning every Inbox tab back on, in any order, counts as the default again", () => {
+		setPref("mail.splitTabs", ["updates"]);
+		expect(overrides()).toEqual({ "mail.splitTabs": ["updates"] });
+		setPref("mail.splitTabs", ["social", "promotions", "receipts", "newsletters", "updates"]);
+		expect(overrides()).toEqual({});
+		expect(getPref("mail.splitTabs")).toHaveLength(5);
+	});
+});

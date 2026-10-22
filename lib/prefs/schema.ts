@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { SIGNATURE_MAX } from "@/lib/mail/signature";
+import { OPTIONAL_TABS } from "@/lib/mail/split-inbox";
 
 /**
  * Every tunable in one flat map. Keys are a stable contract: never reuse one
@@ -20,6 +21,10 @@ export const PREF_SCHEMAS = {
 	"mail.preload": z.boolean(),
 	/** Group the list into conversations and show the rest of each one in the reader. */
 	"mail.threading": z.boolean(),
+	/** Inbox tabs by kind of mail (lib/mail/split-inbox). */
+	"mail.splitInbox": z.boolean(),
+	/** Which tabs show next to Important, in no particular order; a hidden kind folds into Important. */
+	"mail.splitTabs": z.array(z.enum(OPTIONAL_TABS)).max(OPTIONAL_TABS.length),
 	"sync.focusRefetch": z.boolean(),
 	"sync.freshness": z.enum(["live", "balanced", "saver"]),
 	"sync.offlineCache": z.boolean(),
@@ -46,6 +51,8 @@ export const DEFAULTS: Prefs = {
 	"mail.signature": "",
 	"mail.preload": true,
 	"mail.threading": true,
+	"mail.splitInbox": true,
+	"mail.splitTabs": [...OPTIONAL_TABS],
 	"sync.focusRefetch": true,
 	"sync.freshness": "balanced",
 	"sync.offlineCache": true,

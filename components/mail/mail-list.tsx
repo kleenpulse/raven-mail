@@ -21,6 +21,9 @@ import { useMailRows } from "@/hooks/use-mail-rows";
 import { setFlagsAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { rowOf, type ThreadRow } from "@/lib/mail/thread";
+import { TAB_FILL, TAB_LABEL, type SplitTab } from "@/lib/mail/split-inbox";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { motion } from "motion/react";
 import type { MailFolder } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
 
@@ -103,6 +106,47 @@ function folderLabel(folders: MailFolder[] | undefined, path: string): string {
 	return name.toUpperCase() === "INBOX" ? "Inbox" : name;
 }
 
+/** A sparse tab loads more by itself up to this many Inbox messages; past it, Load more is a click. */
+const AUTO_FILL_LIMIT = 350;
+
+/** Inbox tabs as moving-pill toggles; the scroller lets the pill track its tab on phones. */
+function SplitTabs({ split, onChange }: { split: NonNullable<ReturnType<typeof useMailRows>["split"]>; onChange: (tab: SplitTab) => void }) {
+	const ref = React.useRef<HTMLDivElement>(null);
+	// A tab opened from a link may start off-screen on a phone, and counts growing as pages load shift it again.
+	const widths = split.tabs.map((t) => t.unread).join();
+	React.useEffect(() => {
+		ref.current?.querySelector('[aria-pressed="true"]')?.scrollIntoView({ block: "nearest", inline: "nearest" });
+	}, [split.tab, widths]);
+	return (
+		<motion.div ref={ref} layoutScroll className="auto-scroll shrink-0 overflow-x-auto px-3 pb-1 @md/list:px-4">
+			<ToggleGroup
+				aria-label="Inbox tabs"
+				value={[split.tab]}
+				onValueChange={(next) => {
+					const value = next[0] as SplitTab | undefined;
+					if (value) onChange(value);
+				}}
+				variant="pill"
+				size="pill"
+				spacing={0}
+				className="w-max rounded-pill bg-card p-1 dark:bg-background/40"
+			>
+				{split.tabs.map((t) => (
+					<ToggleGroupItem key={t.id} value={t.id} className="gap-1.5 rounded-pill px-3 text-[13px]">
+						{t.label}
+						{t.unread > 0 && (
+							<span className="font-mono text-[10.5px] text-signal-ink tabular dark:text-signal">
+								{t.unread}
+								<span className="sr-only"> unread</span>
+							</span>
+						)}
+					</ToggleGroupItem>
+				))}
+			</ToggleGroup>
+		</motion.div>
+	);
+}
+
 /** Loads the next page when it scrolls into view; the button covers keyboard users and failed loads. */
 function LoadMore({ loading, remaining, onLoad }: { loading: boolean; remaining: number; onLoad: () => void }) {
 	const ref = React.useRef<HTMLButtonElement>(null);
@@ -154,8 +198,15 @@ function MailListInner({
 	const [busy, setBusy] = React.useState(false);
 	const rowsRef = React.useRef<HTMLDivElement>(null);
 	const preloadRoot = usePreloadInView(folder, data?.messages, selectedUid);
-	const { rows } = useMailRows(data?.messages, search);
+	const { rows, split, setTab } = useMailRows(data?.messages, search, { inbox: folder.toUpperCase() === "INBOX" });
 	const selectedRow = rows[rowOf(rows, selectedUid)];
+
+	// A sparse tab pulls in a few more pages by itself, then leaves it to Load more.
+	const filling =
+		Boolean(split) && rows.length < TAB_FILL && hasNextPage && (data?.messages.length ?? 0) < AUTO_FILL_LIMIT;
+	React.useEffect(() => {
+		if (filling && !isFetchingNextPage) void fetchNextPage();
+	}, [filling, isFetchingNextPage, fetchNextPage]);
 
 	const role = folderSpecialUse(folders, folder);
 	const isTrash = role === "\\Trash";
@@ -374,8 +425,29 @@ function MailListInner({
 				</TooltipGroup>
 			</div>
 
+			{split && messages.length > 0 && (
+				<SplitTabs
+					split={split}
+					onChange={(next) => {
+						setChecked(new Set());
+						void setTab(next);
+					}}
+				/>
+			)}
+
 			{messages.length === 0 ? (
 				<PaneState title={empty.title}>{empty.body}</PaneState>
+			) : split && rows.length === 0 && filling ? (
+				<MailListSkeleton />
+			) : split && rows.length === 0 ? (
+				<PaneState title={`Nothing in ${TAB_LABEL[split.tab]}`}>
+					{split.tab === "important"
+						? "Mail from people, and anything not sorted into another tab, shows up here."
+						: `${TAB_LABEL[split.tab]} land here as they arrive. Choose your tabs in Settings → Mail.`}
+					{hasNextPage && (
+						<LoadMore loading={isFetchingNextPage} remaining={total - messages.length} onLoad={() => void fetchNextPage()} />
+					)}
+				</PaneState>
 			) : (
 				<AutoScroll
 					ref={preloadRoot}

@@ -67,6 +67,12 @@ export function useIsModified(key: PrefKey): boolean {
 	return usePrefsStore((s) => key in s.overrides);
 }
 
+/** Lists (Inbox tabs) match by members, so turning every tab back on clears the dot. */
+function sameValue(a: unknown, b: unknown): boolean {
+	if (Array.isArray(a) && Array.isArray(b)) return a.length === b.length && a.every((v) => b.includes(v));
+	return a === b;
+}
+
 /** Keys where an explicit answer differs from never having been asked. */
 const ANSWER_KEYS: ReadonlySet<PrefKey> = new Set(["mail.remoteImages"]);
 
@@ -74,7 +80,7 @@ export function setPref<K extends PrefKey>(key: K, value: Prefs[K]) {
 	usePrefsStore.setState((s) => {
 		const next = { ...s.overrides, [key]: value };
 		// Choosing the default is the same as never changing it: no dot, and future default changes still apply.
-		if (value === DEFAULTS[key] && !ANSWER_KEYS.has(key)) delete next[key];
+		if (sameValue(value, DEFAULTS[key]) && !ANSWER_KEYS.has(key)) delete next[key];
 		return { overrides: next };
 	});
 	try {

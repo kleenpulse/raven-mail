@@ -67,7 +67,8 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 	React.useEffect(() => writeMailLayoutCookie(layout), [layout]);
 
 	// j/k, prev/next and "step to a neighbour" walk the list's rows: conversations when threading is on.
-	const { rows, toRows } = useMailRows(data?.messages, querySearch);
+	// IMAP names the Inbox INBOX in any case (RFC 3501), so this holds before folders load.
+	const { rows, toRows } = useMailRows(data?.messages, querySearch, { inbox: activeFolder.toUpperCase() === "INBOX" });
 	const index = rowOf(rows, selectedUid);
 	// Next first: reading runs down the list.
 	usePrefetchNeighbours(activeFolder, index < 0 ? [] : [rows[index + 1]?.key, rows[index - 1]?.key]);
