@@ -323,6 +323,7 @@ export function ComposeDock() {
       <button
         type="button"
         onClick={restore}
+        data-compose
         aria-label={`Restore draft: ${draft.subject || title}`}
         className="fixed right-4 bottom-[5.75rem] z-40 flex h-12 w-64 max-w-[calc(100vw-2rem)] animate-rise-in items-center gap-3 rounded-pill bg-sheet pr-3 pl-4 text-sm shadow-lift ring-1 ring-border outline-none transition-colors hover:bg-card focus-visible:ring-2 focus-visible:ring-ring md:right-6 md:bottom-6 dark:glass dark:ring-0 dark:hover:bg-accent"
       >
@@ -345,6 +346,8 @@ export function ComposeDock() {
   return (
     <div
       role="dialog"
+      // Single-key shortcuts stand down while focus is anywhere in the dock (lib/keyboard).
+      data-compose
       aria-label={title}
       onKeyDown={handleKeyDown}
       className={cn(

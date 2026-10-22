@@ -101,32 +101,34 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 
 	const onKey = React.useEffectEvent((e: KeyboardEvent) => {
 		if (!allowSingleKey(e)) return;
-		if (e.key === "Escape") {
+		// Caps Lock shouldn't matter; Shift+letter belongs to the reader's keys (Shift+U, Shift+F).
+		const key = e.key.length === 1 ? (e.shiftKey ? "" : e.key.toLowerCase()) : e.key;
+		if (key === "Escape") {
 			void setUid(null);
 			return;
 		}
-		if (e.key === "u" || e.key === "Backspace") {
+		if (key === "u" || key === "Backspace") {
 			e.preventDefault();
 			void setUid(null);
 			return;
 		}
-		if (e.key === "g") {
+		if (key === "g") {
 			e.preventDefault();
 			void setFolder(null);
 			return;
 		}
-		if (e.key === "f") {
+		if (key === "f") {
 			if (!desktop || !readerVisible) return;
 			e.preventDefault();
 			toggleWide();
 			return;
 		}
 		if (!messages?.length) return;
-		if (e.key === "j" || e.key === "ArrowDown") {
+		if (key === "j" || key === "ArrowDown") {
 			e.preventDefault();
 			if (index < 0) void setUid(messages[0]!.uid);
 			else void goNext();
-		} else if (e.key === "k" || e.key === "ArrowUp") {
+		} else if (key === "k" || key === "ArrowUp") {
 			e.preventDefault();
 			if (index < 0) void setUid(messages[0]!.uid);
 			else goPrev();

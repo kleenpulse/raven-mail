@@ -23,6 +23,19 @@ const press = (key: string, mods: Mods = {}) => ({
 
 afterEach(() => resetPrefs());
 
+/** A stand-in element whose ancestors carry `attrs`; `closest` understands `[name]` and `[name="value"]`. */
+function inside(el: { tagName: string }, attrs: Record<string, string>) {
+	const matches = (sel: string) => {
+		const m = sel.trim().match(/^\[([\w-]+)(?:="([^"]*)")?\]$/);
+		return Boolean(m && m[1]! in attrs && (m[2] === undefined || attrs[m[1]!] === m[2]));
+	};
+	return {
+		...el,
+		isContentEditable: false,
+		closest: (selector: string) => (selector.split(",").some(matches) ? {} : null),
+	};
+}
+
 describe("allowSingleKey", () => {
 	test("character and named keys pass by default", () => {
 		expect(allowSingleKey(press("c"))).toBe(true);
@@ -80,6 +93,39 @@ describe("messageKeyAction", () => {
 		for (const [key, shiftKey] of [["e", false], ["#", true], ["s", false], ["U", true], ["r", false], ["a", false], ["F", true]] as const) {
 			expect(messageKeyAction(press(key, { shiftKey, target }))).toBeNull();
 		}
+	});
+
+	test.each([
+		["a dialog (settings sheet, Ask Jev tray)", { role: "dialog" }],
+		["a modal", { "aria-modal": "true" }],
+		["a menu", { role: "menu" }],
+		["a listbox (select, palette)", { role: "listbox" }],
+		["the compose dock (focus on its Attach button)", { "data-compose": "" }],
+	])("nothing fires with focus inside %s", (_name, ancestor) => {
+		const target = inside({ tagName: "BUTTON" }, ancestor);
+		expect(messageKeyAction(press("e", { target }))).toBeNull();
+		expect(messageKeyAction(press("#", { target, shiftKey: true }))).toBeNull();
+		expect(messageKeyAction(press("r", { target }))).toBeNull();
+		expect(allowSingleKey(press("j", { target }))).toBe(false);
+		// Escape still closes things from in there.
+		expect(allowSingleKey(press("Escape", { target }))).toBe(true);
+	});
+
+	test("an element outside any overlay still gets the keys", () => {
+		expect(messageKeyAction(press("e", { target: inside({ tagName: "DIV" }, { role: "main" }) }))).toBe("archive");
+	});
+
+	test("Caps Lock doesn't matter: case comes from Shift alone", () => {
+		expect(messageKeyAction(press("E"))).toBe("archive");
+		expect(messageKeyAction(press("S"))).toBe("star");
+		expect(messageKeyAction(press("R"))).toBe("reply");
+		expect(messageKeyAction(press("A"))).toBe("replyAll");
+		// Caps Lock + Shift sends lowercase with shiftKey set.
+		expect(messageKeyAction(press("u", { shiftKey: true }))).toBe("unread");
+		expect(messageKeyAction(press("f", { shiftKey: true }))).toBe("forward");
+		// Caps Lock alone on F and U is still the wide toggle and back-to-list.
+		expect(messageKeyAction(press("F"))).toBeNull();
+		expect(messageKeyAction(press("U"))).toBeNull();
 	});
 
 	test("nothing fires in a contenteditable (the rich editor later)", () => {

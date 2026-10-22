@@ -31,8 +31,9 @@ as you work — it ships inside the app.
 - New keys for the open message: E to archive, # to move to Trash, S to
   star, Shift+U to mark unread, R to reply, A to reply all and Shift+F
   to forward. Archive and Trash can be undone. They never fire while
-  you type, and they follow the Single-Key Shortcuts setting. See them
-  all in Settings → Keyboard.
+  you type or while a menu, panel or the compose window has focus, they
+  work with Caps Lock on, and they follow the Single-Key Shortcuts
+  setting. See them all in Settings → Keyboard.
 
 ### Fixed
 

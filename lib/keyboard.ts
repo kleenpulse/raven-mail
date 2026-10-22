@@ -5,13 +5,24 @@ export function isTyping(target: EventTarget | null): boolean {
 	return Boolean(el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable));
 }
 
+// Dialogs, sheets, menus and the compose dock own the keyboard while focus is in them.
+const OVERLAY = '[role="dialog"], [aria-modal="true"], [role="menu"], [role="listbox"], [data-compose]';
+
+export function inOverlay(target: EventTarget | null): boolean {
+	const el = target as Element | null;
+	return Boolean(el && typeof el.closest === "function" && el.closest(OVERLAY));
+}
+
 /**
  * Gate for unmodified shortcuts. Character keys (c, j, /…) obey the
  * Single-Key Shortcuts setting; named keys (Escape, arrows) always pass.
+ * Nothing but Escape gets through while focus is in an overlay, so a key
+ * meant for a menu or the compose dock never acts on the mail behind it.
  * Modifier combos are the caller's business and never reach here.
  */
 export function allowSingleKey(e: Pick<KeyboardEvent, "key" | "target" | "metaKey" | "ctrlKey" | "altKey">): boolean {
 	if (e.metaKey || e.ctrlKey || e.altKey || isTyping(e.target)) return false;
+	if (e.key !== "Escape" && inOverlay(e.target)) return false;
 	return e.key.length !== 1 || getPref("keyboard.singleKey");
 }
 
@@ -28,12 +39,14 @@ export function messageKeyAction(
 	if (e.repeat || !allowSingleKey(e)) return null;
 	// "#" is Shift+3 on US keyboards and its own key elsewhere, so Shift doesn't matter for it.
 	if (e.key === "#") return "trash";
+	// Case follows Caps Lock as well as Shift, so only shiftKey decides which set applies.
+	const key = e.key.toLowerCase();
 	if (e.shiftKey) {
-		if (e.key === "F") return "forward";
-		if (e.key === "U") return "unread";
+		if (key === "f") return "forward";
+		if (key === "u") return "unread";
 		return null;
 	}
-	switch (e.key) {
+	switch (key) {
 		case "e":
 			return "archive";
 		case "s":
