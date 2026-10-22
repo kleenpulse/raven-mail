@@ -7,6 +7,7 @@ const bodySchema = z.object({
   folder: z.string(),
   uids: z.array(z.string()),
   destination: z.string().optional(),
+  threadIds: z.array(z.string()).optional(),
 });
 
 /**
@@ -16,11 +17,11 @@ const bodySchema = z.object({
  */
 export const POST = route(async (request) => {
   await requireApiSession();
-  const { kind, folder, uids, destination } = await readJson(request, bodySchema);
+  const { kind, folder, uids, destination, threadIds } = await readJson(request, bodySchema);
   const res =
     kind === "archive" || kind === "inbox"
-      ? await moveMessagesAction({ folder, uids, destination: destination ?? "" })
-      : await deleteMessagesAction({ folder, uids });
+      ? await moveMessagesAction({ folder, uids, destination: destination ?? "", threadIds })
+      : await deleteMessagesAction({ folder, uids, threadIds });
   if (!res.ok) throw new HttpError(400, res.error, "bad_request");
   return json({ ok: true, data: null });
 });

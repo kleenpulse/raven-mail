@@ -17,6 +17,11 @@ export type DeferredMove = {
   uids: string[];
   /** archive / inbox only. */
   destination?: string;
+  /**
+   * Server thread ids of the rows acted on. The commit reaches every message of
+   * those threads in the folder, loaded or not; undo restores the rows that showed.
+   */
+  threadIds?: string[];
 };
 
 type RemovedItem = { message: MailSummary; page: number; index: number };

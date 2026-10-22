@@ -6,7 +6,9 @@ import type {
   MailFolder,
   MailMessage,
   MailSummary,
+  MailThread,
 } from "@/lib/mail/types";
+import { threadHeaderIds } from "@/lib/mail/thread";
 import { dateHeader, generateSyntheticMail } from "@/lib/mail/dev-seed";
 import { fixtureBytes } from "@/lib/mail/dev-fixtures";
 import { searchText } from "@/lib/search/text";
@@ -23,7 +25,7 @@ type DevDb = {
 };
 
 // Versioned so a running dev server (store lives on globalThis across HMR) picks up the synthetic seed.
-const STORE_KEY = "__em_dev_mail_store_v7__";
+const STORE_KEY = "__em_dev_mail_store_v8__";
 
 /** Section numbers like a multipart/mixed message: the body is part 1. */
 function withParts(attachments: AttachmentMeta[]): AttachmentMeta[] {
@@ -61,6 +63,8 @@ type SeedInput = {
   messageId?: string;
   inReplyTo?: string;
   references?: string[];
+  /** Like Gmail's X-GM-THRID: a server thread id, so dev runs that path too. */
+  threadId?: string;
 };
 
 function seedMessage(input: SeedInput): MailMessage {
@@ -94,6 +98,7 @@ function seedMessage(input: SeedInput): MailMessage {
     messageId: input.messageId ?? `<dev-${input.uid}@localhost>`,
     inReplyTo: input.inReplyTo,
     references: input.references,
+    threadId: input.threadId,
     headers: {
       from: `${input.from.name ? `${input.from.name} <` : ""}${input.from.address}${input.from.name ? ">" : ""}`,
       date: dateHeader(Date.parse(input.date)),
@@ -292,6 +297,109 @@ function seed(now: number): DevDb {
       text: "This month in archives…",
       seen: true,
     }),
+    // Threading cases (task 1.5). A Gmail-style thread: only the server id ties it together,
+    // and its first message sits beyond the first page, so whole-thread archive must reach it.
+    seedMessage({
+      uid: 30,
+      folder: "INBOX",
+      subject: "Launch checklist",
+      from: addr("priya@orbit.example", "Priya Nair"),
+      date: hoursAgo(now, 240),
+      text: "Here's the launch checklist. Can you own the comms section?",
+      seen: true,
+      threadId: "dev-thread-7301",
+    }),
+    seedMessage({
+      uid: 31,
+      folder: "Sent",
+      subject: "Re: Launch checklist",
+      from: addr("dev@localhost", "You"),
+      to: [addr("priya@orbit.example", "Priya Nair")],
+      date: hoursAgo(now, 200),
+      text: "Yes, I'll take comms. Draft by Thursday.",
+      seen: true,
+      threadId: "dev-thread-7301",
+    }),
+    seedMessage({
+      uid: 32,
+      folder: "INBOX",
+      subject: "Re: Launch checklist",
+      from: addr("priya@orbit.example", "Priya Nair"),
+      date: hoursAgo(now, 2),
+      text: "Thanks! One more item: the press list needs a final pass.",
+      threadId: "dev-thread-7301",
+    }),
+    // A reply from a phone client that sent no In-Reply-To or References: joins on subject.
+    seedMessage({
+      uid: 33,
+      folder: "INBOX",
+      subject: "Venue options for the offsite",
+      from: addr("leo@harbor.example", "Leo Park"),
+      date: hoursAgo(now, 30),
+      text: "Three venues made the shortlist. Prices attached later today.",
+      seen: true,
+    }),
+    seedMessage({
+      uid: 34,
+      folder: "INBOX",
+      subject: "Re: Venue options for the offsite",
+      from: addr("leo@harbor.example", "Leo Park"),
+      date: hoursAgo(now, 5),
+      text: "Sent from my phone. The lake venue just dropped its price.",
+    }),
+    // Same sender, same subject, no reply prefix: two receipts, never one thread.
+    seedMessage({
+      uid: 35,
+      folder: "INBOX",
+      subject: "Your receipt",
+      from: addr("orders@shop.example", "Shop"),
+      date: hoursAgo(now, 20),
+      text: "Order #5521: 1 × desk lamp.",
+      seen: true,
+    }),
+    seedMessage({
+      uid: 36,
+      folder: "INBOX",
+      subject: "Your receipt",
+      from: addr("orders@shop.example", "Shop"),
+      date: hoursAgo(now, 44),
+      text: "Order #5498: 2 × notebooks.",
+      seen: true,
+    }),
+    // A thread whose middle message was archived: the Inbox and the reader show the rest.
+    seedMessage({
+      uid: 37,
+      folder: "INBOX",
+      subject: "Contract redlines",
+      from: addr("ana@northwind.example", "Ana Ruiz"),
+      date: hoursAgo(now, 50),
+      text: "Redlines attached. Section 4 is the one to look at.",
+      seen: true,
+      messageId: "<dev-redlines-1@northwind.example>",
+    }),
+    seedMessage({
+      uid: 38,
+      folder: "Archive",
+      subject: "Re: Contract redlines",
+      from: addr("ana@northwind.example", "Ana Ruiz"),
+      date: hoursAgo(now, 30),
+      text: "Legal signed off on section 4.",
+      seen: true,
+      messageId: "<dev-redlines-2@northwind.example>",
+      inReplyTo: "<dev-redlines-1@northwind.example>",
+      references: ["<dev-redlines-1@northwind.example>"],
+    }),
+    seedMessage({
+      uid: 39,
+      folder: "INBOX",
+      subject: "Re: Contract redlines",
+      from: addr("ana@northwind.example", "Ana Ruiz"),
+      date: hoursAgo(now, 6),
+      text: "Final version is ready to sign.",
+      messageId: "<dev-redlines-3@northwind.example>",
+      inReplyTo: "<dev-redlines-2@northwind.example>",
+      references: ["<dev-redlines-1@northwind.example>", "<dev-redlines-2@northwind.example>"],
+    }),
   ];
 
   messages.push(...generateSyntheticMail({ now }));
@@ -350,6 +458,7 @@ function toSummary(message: MailMessage): MailSummary {
     messageId: message.messageId,
     inReplyTo: message.inReplyTo,
     references: message.references,
+    threadId: message.threadId,
   };
 }
 
@@ -392,6 +501,49 @@ export function devGetMessage(folder: string, uid: string): MailMessage {
   const found = db.messages.find((m) => m.folder === folder && m.uid === uid);
   if (!found) throw new Error("Message not found");
   return found;
+}
+
+/** Same search as IMAP `getThread`: the folder plus Sent (Inbox plus Sent from Sent). */
+export function devGetThread(folder: string, uid: string): MailThread {
+  const anchor = devGetMessage(folder, uid);
+  const folders = new Set([folder, folder === "Sent" ? "INBOX" : "Sent"]);
+  const pool = getDb().messages.filter((m) => folders.has(m.folder));
+  let hits: MailMessage[];
+  if (anchor.threadId) {
+    hits = pool.filter((m) => m.threadId === anchor.threadId);
+  } else {
+    const chain = threadHeaderIds(anchor);
+    if (chain.length === 0) return { messages: [] };
+    const ids = new Set(chain);
+    const root = chain[0];
+    hits = pool.filter(
+      (m) =>
+        (m.messageId && ids.has(m.messageId)) ||
+        (root && m.references?.includes(root)) ||
+        (anchor.messageId && m.inReplyTo === anchor.messageId),
+    );
+  }
+  const byId = new Map<string, MailMessage>();
+  for (const m of hits) {
+    const id = m.messageId ?? `${m.folder}:${m.uid}`;
+    const held = byId.get(id);
+    if (!held || (held.folder !== folder && m.folder === folder)) byId.set(id, m);
+  }
+  const messages = [...byId.values()]
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .slice(-50)
+    .map(toSummary);
+  return { messages };
+}
+
+/** Like IMAP `expandThreadUids`: `uids` plus every message in `folder` with one of the thread ids. */
+export function devExpandThread(folder: string, uids: string[], threadIds: string[]): string[] {
+  if (threadIds.length === 0) return uids;
+  const wanted = new Set(threadIds);
+  const more = getDb()
+    .messages.filter((m) => m.folder === folder && m.threadId && wanted.has(m.threadId))
+    .map((m) => m.uid);
+  return [...new Set([...uids, ...more])];
 }
 
 /** An attachment's bytes: what compose uploaded, or a fixture for seeded mail. */

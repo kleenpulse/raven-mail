@@ -42,6 +42,16 @@ export type MailSummary = {
   messageId?: string;
   references?: string[];
   inReplyTo?: string;
+  /** The server's conversation id (Gmail X-GM-THRID, RFC 8474 THREADID), when it has one. */
+  threadId?: string;
+};
+
+/** A conversation around one message, across its folder and Sent (GET /api/mail/thread). */
+export type MailThread = {
+  /** Oldest first. Includes the message it was asked for. */
+  messages: MailSummary[];
+  /** Searching the rest timed out or failed; only the one message is here. */
+  partial?: boolean;
 };
 
 export type MailMessage = {
@@ -61,6 +71,7 @@ export type MailMessage = {
   messageId?: string;
   inReplyTo?: string;
   references?: string[];
+  threadId?: string;
   headers: Record<string, string>;
   /** True when the HTML references remote (http/https) images or CSS. */
   remoteContent?: boolean;

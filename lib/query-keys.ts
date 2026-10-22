@@ -13,6 +13,9 @@ export const qk = {
 	messageRoot: (account: string) => ["acct", account, "message"] as const,
 	message: (account: string, folder: string, uid: string) =>
 		["acct", account, "message", folder, uid] as const,
+	/** Under messageRoot, so whatever invalidates messages refreshes conversations too. */
+	thread: (account: string, folder: string, uid: string) =>
+		["acct", account, "message", "thread", folder, uid] as const,
 	overview: (account: string, days: number, tz: string) =>
 		["acct", account, "overview", days, tz] as const,
 	integrations: (account: string) => ["acct", account, "integrations"] as const,

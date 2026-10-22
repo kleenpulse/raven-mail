@@ -13,6 +13,8 @@ export const PREF_SCHEMAS = {
 	"mail.remoteImages": z.boolean(),
 	"mail.undoMs": z.union([z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
 	"mail.preload": z.boolean(),
+	/** Group the list into conversations and show the rest of each one in the reader. */
+	"mail.threading": z.boolean(),
 	"sync.focusRefetch": z.boolean(),
 	"sync.freshness": z.enum(["live", "balanced", "saver"]),
 	"sync.offlineCache": z.boolean(),
@@ -36,6 +38,7 @@ export const DEFAULTS: Prefs = {
 	"mail.remoteImages": false,
 	"mail.undoMs": 5000,
 	"mail.preload": true,
+	"mail.threading": true,
 	"sync.focusRefetch": true,
 	"sync.freshness": "balanced",
 	"sync.offlineCache": true,

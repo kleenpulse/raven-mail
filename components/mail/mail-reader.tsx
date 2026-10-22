@@ -39,6 +39,8 @@ import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { useMessage, useFolders, useSetFlags } from "@/hooks/use-mail";
 import type { DeferredKind } from "@/lib/mail/deferred-actions";
 import { messageKeyAction } from "@/lib/keyboard";
+import { Conversation, useConversation } from "@/components/mail/conversation";
+import { conversationTargets } from "@/lib/mail/thread";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
@@ -198,6 +200,7 @@ function MailReaderInner({
 	const { data: folders } = useFolders();
 	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
+	const thread = useConversation(folder, uid);
 	const [showDetails, setShowDetails] = React.useState(false);
 	const [loadRemote, setLoadRemote] = React.useState(false);
 	const remotePref = useRemoteImagesPref();
@@ -239,7 +242,9 @@ function MailReaderInner({
 			toast.error(kind === "archive" ? "No Archive folder" : "No Inbox folder");
 			return;
 		}
-		const id = defer({ kind, folder, uids: [uid], destination }, { onUndo: () => onRestored?.(folder, uid) });
+		// The whole conversation in this folder goes, as on a list row.
+		const { uids, threadIds } = conversationTargets(thread, folder, uid);
+		const id = defer({ kind, folder, uids, destination, threadIds }, { onUndo: () => onRestored?.(folder, uid) });
 		if (id) onRemoved(uid);
 	}
 
@@ -440,6 +445,8 @@ function MailReaderInner({
 						</div>
 					</header>
 
+					<Conversation thread={thread} folder={folder} uid={uid} part="before" onOpenReply={onOpenReply} />
+
 					<section aria-label="Message" className="bento mt-5 p-2">
 						<div className="flex flex-wrap items-start gap-x-3 gap-y-1.5 px-3 pt-3 pb-3.5">
 							<SenderAvatar
@@ -572,6 +579,8 @@ function MailReaderInner({
 							)}
 						</div>
 					</section>
+
+					<Conversation thread={thread} folder={folder} uid={uid} part="after" onOpenReply={onOpenReply} />
 				</article>
 			</AutoScroll>
 		</ReaderPane>

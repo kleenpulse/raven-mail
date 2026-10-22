@@ -34,6 +34,14 @@ as you work — it ships inside the app.
   you type or while a menu, panel or the compose window has focus, they
   work with Caps Lock on, and they follow the Single-Key Shortcuts
   setting. See them all in Settings → Keyboard.
+- Conversations: replies now group into one row in your mail list, with
+  the people in it and how many messages it has. Open it to see the
+  earlier messages above the newest one, including your own replies
+  from Sent. Click any of them to read it in place. Archive, Trash and
+  read or unread act on the whole conversation in that folder, and J
+  and K move from one conversation to the next. Search results still
+  show one row per message. Turn it off in Settings → Mail →
+  Conversations.
 
 ### Fixed
 

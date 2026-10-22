@@ -16,10 +16,13 @@ import type {
   MailFlags,
   MailMessage,
   MailSummary,
+  MailThread,
 } from "@/lib/mail/types";
+import { threadHeaderIds } from "@/lib/mail/thread";
 import { labelSpecialUse, resolveSpecialFolder, shortFolderName } from "@/lib/mail/folders";
 import { hasRemoteContent, sanitizeBody } from "@/lib/mail/sanitize";
 import { attachmentSections, hasAttachments } from "@/lib/mail/mime";
+import { parseHeaderBlock, parseReferences } from "@/lib/mail/headers";
 import { fetchPreviews } from "@/lib/mail/preview";
 import { planPreload, type PreloadResult } from "@/lib/mail/preload";
 import { isLoopbackHost } from "@/lib/auth/ip";
@@ -187,6 +190,9 @@ const SUMMARY_QUERY: FetchQueryObject = {
   internalDate: true,
   bodyStructure: true,
   size: true,
+  // Conversation grouping (lib/mail/thread). threadId is only asked of servers that have one.
+  threadId: true,
+  headers: ["references"],
 };
 
 function toSummary(msg: FetchMessageObject, folder: string, preview: string): MailSummary {
@@ -204,6 +210,8 @@ function toSummary(msg: FetchMessageObject, folder: string, preview: string): Ma
     hasAttachments: hasAttachments(msg.bodyStructure),
     messageId: envelope?.messageId,
     inReplyTo: envelope?.inReplyTo,
+    references: parseReferences(parseHeaderBlock(msg.headers).get("references")),
+    threadId: msg.threadId,
   };
 }
 
@@ -309,6 +317,7 @@ const MESSAGE_QUERY: FetchQueryObject = {
   source: true,
   internalDate: true,
   bodyStructure: true,
+  threadId: true,
 };
 
 /** Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox. */
@@ -363,6 +372,7 @@ async function toMailMessage(msg: FetchMessageObject, source: Buffer, folder: st
         ? parsed.references
         : String(parsed.references).split(/\s+/).filter(Boolean)
       : undefined,
+    threadId: msg.threadId,
     headers,
     remoteContent: hasRemoteContent(html),
   };
@@ -484,6 +494,104 @@ export async function findUidByMessageId(
     },
     { readOnly: true },
   );
+}
+
+const THREAD_LIMIT = 50;
+const THREAD_SINCE_MS = 180 * 86_400_000;
+
+/**
+ * The conversation around one message, in its folder plus Sent (or Inbox plus
+ * Sent when it was opened from Sent): one SEARCH per folder. Servers with a
+ * thread id answer exactly; others match the header chain, bounded by SINCE
+ * so a big unindexed folder isn't scanned end to end.
+ */
+export async function getThread(session: MailSession, folder: string, uid: string): Promise<MailThread> {
+  const anchor = await withMailbox(
+    session,
+    folder,
+    (client) => client.fetchOne(uid, { uid: true, envelope: true, internalDate: true, threadId: true, headers: ["references"] }, { uid: true }),
+    { readOnly: true },
+  );
+  if (!anchor) throw new Error("Message not found");
+
+  let criteria: SearchObject;
+  if (anchor.threadId) {
+    criteria = { threadId: anchor.threadId };
+  } else {
+    const ids = threadHeaderIds({
+      messageId: anchor.envelope?.messageId,
+      inReplyTo: anchor.envelope?.inReplyTo,
+      references: parseReferences(parseHeaderBlock(anchor.headers).get("references")),
+    });
+    const root = ids[0];
+    const self = anchor.envelope?.messageId;
+    const any: SearchObject[] = [
+      ...ids.map((id) => ({ header: { "message-id": id } })),
+      ...(root ? [{ header: { references: root } }] : []),
+      ...(self ? [{ header: { "in-reply-to": self } }] : []),
+    ];
+    if (any.length === 0) return { messages: [] };
+    const since = new Date(new Date(anchor.internalDate ?? Date.now()).getTime() - THREAD_SINCE_MS);
+    criteria = { since, ...(any.length === 1 ? any[0] : { or: any }) };
+  }
+
+  const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
+  const other = folder === sent ? (inbox ?? "INBOX") : sent;
+  const folders = [...new Set([folder, other].filter((f): f is string => Boolean(f)))];
+
+  const found: MailSummary[] = [];
+  for (const path of folders) {
+    found.push(
+      ...(await withMailbox(
+        session,
+        path,
+        async (client) => {
+          const hits = await client.search(criteria, { uid: true });
+          const uids = (Array.isArray(hits) ? hits : []).sort((a, b) => b - a).slice(0, THREAD_LIMIT);
+          if (uids.length === 0) return [];
+          const fetched = await client.fetchAll(uids, SUMMARY_QUERY, { uid: true });
+          const mailbox = client.mailbox;
+          const scope = `${sessionKey(session)}:${path}:${mailbox ? String(mailbox.uidValidity) : "0"}`;
+          const previews = await fetchPreviews(client, scope, fetched);
+          return fetched.map((m) => toSummary(m, path, previews.get(m.uid) ?? ""));
+        },
+        { readOnly: true },
+      )),
+    );
+  }
+  return { messages: dedupeThread(found, folder) };
+}
+
+/** Oldest first, newest THREAD_LIMIT kept; a copy in the asked folder beats one elsewhere (mail to yourself). */
+function dedupeThread(found: MailSummary[], folder: string): MailSummary[] {
+  const byId = new Map<string, MailSummary>();
+  for (const m of found) {
+    const id = m.messageId ?? `${m.folder}:${m.uid}`;
+    const held = byId.get(id);
+    if (!held || (held.folder !== folder && m.folder === folder)) byId.set(id, m);
+  }
+  return [...byId.values()]
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+    .slice(-THREAD_LIMIT);
+}
+
+/**
+ * Every UID in `folder` belonging to the given server thread ids, plus `uids`.
+ * Whole-thread archive/trash/read act on messages the list never loaded.
+ */
+export async function expandThreadUids(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  threadIds: string[],
+): Promise<string[]> {
+  if (threadIds.length === 0) return uids;
+  const criteria: SearchObject =
+    threadIds.length === 1 ? { threadId: threadIds[0] } : { or: threadIds.map((threadId) => ({ threadId })) };
+  const hits = await withMailbox(session, folder, (client) => client.search(criteria, { uid: true }), {
+    readOnly: true,
+  });
+  return [...new Set([...uids, ...(Array.isArray(hits) ? hits : []).map(String)])];
 }
 
 export async function setFlags(

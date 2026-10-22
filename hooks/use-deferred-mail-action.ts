@@ -31,10 +31,11 @@ async function commitMove(move: DeferredMove, { keepalive }: { keepalive: boolea
 		});
 		return;
 	}
+	const { folder, uids, threadIds } = move;
 	const res =
 		move.kind === "archive" || move.kind === "inbox"
-			? await moveMessagesAction({ folder: move.folder, uids: move.uids, destination: move.destination ?? "" })
-			: await deleteMessagesAction({ folder: move.folder, uids: move.uids });
+			? await moveMessagesAction({ folder, uids, destination: move.destination ?? "", threadIds })
+			: await deleteMessagesAction({ folder, uids, threadIds });
 	if (!res.ok) throw new Error(res.error);
 }
 

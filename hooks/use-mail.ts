@@ -15,7 +15,7 @@ import { useAccount } from "@/components/providers/account-provider";
 import { readApiError } from "@/lib/api-error";
 import { qk } from "@/lib/query-keys";
 import { PERSIST_MAX_AGE } from "@/lib/query-persist";
-import type { MailFlags, MailFolder, MailMessage, MailSummary } from "@/lib/mail/types";
+import type { MailFlags, MailFolder, MailMessage, MailSummary, MailThread } from "@/lib/mail/types";
 import type { PreloadResult } from "@/lib/mail/preload";
 import { stale } from "@/lib/prefs/query";
 import { usePref } from "@/lib/prefs/store";
@@ -105,6 +105,19 @@ export function useMessage(folder: string, uid: string | null) {
   return useQuery({
     ...messageQuery(email, folder, uid ?? "", mid),
     enabled: Boolean(folder && uid),
+  });
+}
+
+/** The conversation around the open message (its folder plus Sent). Off when threading is. */
+export function useThread(folder: string, uid: string | null) {
+  const { email } = useAccount();
+  const threading = usePref("mail.threading");
+  return useQuery({
+    queryKey: qk.thread(email, folder, uid ?? ""),
+    queryFn: ({ signal }) =>
+      getJson<MailThread>(`/api/mail/thread?${new URLSearchParams({ folder, uid: uid ?? "" })}`, signal),
+    enabled: threading && Boolean(folder && uid),
+    staleTime: stale(5 * 60_000),
   });
 }
 

@@ -53,6 +53,7 @@ export function SenderAvatar({
  */
 export function MailRow({
 	message,
+	thread,
 	active,
 	selected,
 	onSelectRow,
@@ -60,6 +61,8 @@ export function MailRow({
 	onToggleStar,
 }: {
 	message: MailSummary;
+	/** A conversation row: who took part (oldest first) and how many messages are loaded. */
+	thread?: { people: string[]; count: number };
 	active: boolean;
 	selected: boolean;
 	onSelectRow: (uid: string) => void;
@@ -74,6 +77,8 @@ export function MailRow({
 	const unread = !message.flags.seen;
 	const starred = message.flags.flagged;
 	const sender = message.from.name || message.from.address || "(unknown)";
+	// First names keep a three-way conversation readable in a narrow list.
+	const people = thread ? thread.people.map((p) => (p.includes("@") ? p : p.split(" ")[0])).join(", ") : sender;
 
 	return (
 		<div
@@ -102,7 +107,7 @@ export function MailRow({
 				<Checkbox
 					checked={selected}
 					onCheckedChange={(next) => onToggleSelect(message.uid, Boolean(next))}
-					aria-label={`Select message from ${sender}`}
+					aria-label={thread ? `Select conversation with ${people}` : `Select message from ${sender}`}
 					className={cn(
 						"absolute inset-0 z-10 m-auto opacity-0 transition-opacity duration-150 group-hover/row:opacity-100 group-has-focus-visible/row:opacity-100 group-data-[selecting=true]/list:opacity-100",
 						selected && "opacity-100",
@@ -129,8 +134,14 @@ export function MailRow({
 						)}
 					>
 						{unread && <span className="sr-only">Unread: </span>}
-						{sender}
+						{people}
 					</span>
+					{thread && (
+						<span className="shrink-0 font-mono text-[11px] text-ink-2 tabular">
+							{thread.count}
+							<span className="sr-only"> messages</span>
+						</span>
+					)}
 				</span>
 
 				<span className="flex items-center gap-2 justify-self-end @3xl/list:col-start-3 @3xl/list:row-start-1">

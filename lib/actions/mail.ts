@@ -5,6 +5,7 @@ import { requireSession } from "@/lib/actions/auth";
 import {
   appendRaw,
   deleteMessages,
+  expandThreadUids,
   findUidByMessageId,
   moveMessages,
   resolveSpecial,
@@ -16,6 +17,7 @@ import { resolveSpecialFolder } from "@/lib/mail/folders";
 import {
   devAllMessages,
   devDeleteMessages,
+  devExpandThread,
   devListFolders,
   devMoveMessages,
   devSaveDraft,
@@ -37,15 +39,39 @@ const uidSchema = z.string().regex(/^\d{1,10}$/, "Invalid message id.");
 // Unvalidated uids were joined straight into an IMAP sequence set — "1:*" hit a whole folder.
 const uidsSchema = z.array(uidSchema).min(1).max(500);
 const draftUidSchema = uidSchema.optional();
+// Server thread ids (Gmail X-GM-THRID digits, RFC 8474 THREADID tokens): act on the whole thread.
+const threadIdsSchema = z
+  .array(z.string().regex(/^[\w.:-]{1,64}$/, "Invalid thread id."))
+  .max(50)
+  .optional();
 
 const setFlagsSchema = z.object({
   folder: folderSchema,
   uids: uidsSchema,
   seen: z.boolean().optional(),
   flagged: z.boolean().optional(),
+  threadIds: threadIdsSchema,
 });
-const moveSchema = z.object({ folder: folderSchema, uids: uidsSchema, destination: folderSchema });
-const deleteSchema = z.object({ folder: folderSchema, uids: uidsSchema });
+const moveSchema = z.object({
+  folder: folderSchema,
+  uids: uidsSchema,
+  destination: folderSchema,
+  threadIds: threadIdsSchema,
+});
+const deleteSchema = z.object({ folder: folderSchema, uids: uidsSchema, threadIds: threadIdsSchema });
+
+/** The uids plus every other message of those server threads in the folder, loaded or not. */
+async function wholeThreads(
+  session: MailSession,
+  folder: string,
+  uids: string[],
+  threadIds: string[] = [],
+): Promise<string[]> {
+  if (threadIds.length === 0) return uids;
+  return isDevSession(session)
+    ? devExpandThread(folder, uids, threadIds)
+    : expandThreadUids(session, folder, uids, threadIds);
+}
 
 const addressField = z.string().max(4000);
 const draftSchema = z.object({
@@ -90,8 +116,9 @@ export async function setFlagsAction(input: z.input<typeof setFlagsSchema>): Pro
   const session = await requireSession();
   const parsed = setFlagsSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { folder, uids, seen, flagged } = parsed.data;
+  const { folder, seen, flagged, threadIds } = parsed.data;
   try {
+    const uids = await wholeThreads(session, folder, parsed.data.uids, threadIds);
     if (isDevSession(session)) {
       devSetFlags(folder, uids, { seen, flagged });
       return { ok: true, data: null };
@@ -114,8 +141,9 @@ export async function moveMessagesAction(input: z.input<typeof moveSchema>): Pro
   const session = await requireSession();
   const parsed = moveSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { folder, uids, destination } = parsed.data;
+  const { folder, destination, threadIds } = parsed.data;
   try {
+    const uids = await wholeThreads(session, folder, parsed.data.uids, threadIds);
     if (isDevSession(session)) {
       devMoveMessages(folder, uids, destination);
       return { ok: true, data: null };
@@ -132,8 +160,9 @@ export async function deleteMessagesAction(input: z.input<typeof deleteSchema>):
   const session = await requireSession();
   const parsed = deleteSchema.safeParse(input);
   if (!parsed.success) return invalid(parsed.error);
-  const { folder, uids } = parsed.data;
+  const { folder, threadIds } = parsed.data;
   try {
+    const uids = await wholeThreads(session, folder, parsed.data.uids, threadIds);
     if (isDevSession(session)) {
       devDeleteMessages(folder, uids, resolveSpecialFolder(devListFolders(), "\\Trash"));
       return { ok: true, data: null };

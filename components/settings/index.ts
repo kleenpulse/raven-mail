@@ -93,6 +93,15 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["mail.preload"],
 	},
 	{
+		id: "threading",
+		section: "mail",
+		card: "Reading",
+		label: "Conversations",
+		description: "Group replies into one row, and show the whole conversation when you open a message.",
+		keywords: "threads threading conversation group replies",
+		prefs: ["mail.threading"],
+	},
+	{
 		id: "undo",
 		section: "mail",
 		card: "Deleting",

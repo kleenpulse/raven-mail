@@ -10,6 +10,8 @@ import { MailReader, type ReaderNav } from "@/components/mail/mail-reader";
 import { ListSplitter } from "@/components/mail/list-splitter";
 import { useComposeStore } from "@/lib/store/compose";
 import { useFolders, useMessages, usePrefetchNeighbours } from "@/hooks/use-mail";
+import { useMailRows } from "@/hooks/use-mail-rows";
+import { rowOf } from "@/lib/mail/thread";
 import { useResumeDraft } from "@/hooks/use-resume-draft";
 import { folderSpecialUse } from "@/lib/mail/folders";
 import { useDebouncedValue } from "@/hooks/use-debounced-value";
@@ -64,37 +66,38 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 
 	React.useEffect(() => writeMailLayoutCookie(layout), [layout]);
 
-	const messages = data?.messages;
-	const index = selectedUid && messages ? messages.findIndex((m) => m.uid === selectedUid) : -1;
+	// j/k, prev/next and "step to a neighbour" walk the list's rows: conversations when threading is on.
+	const { rows, toRows } = useMailRows(data?.messages, querySearch);
+	const index = rowOf(rows, selectedUid);
 	// Next first: reading runs down the list.
-	usePrefetchNeighbours(activeFolder, index < 0 ? [] : [messages?.[index + 1]?.uid, messages?.[index - 1]?.uid]);
+	usePrefetchNeighbours(activeFolder, index < 0 ? [] : [rows[index + 1]?.key, rows[index - 1]?.key]);
 	const selectedRef = React.useRef(selectedUid);
 	React.useEffect(() => {
 		selectedRef.current = selectedUid;
 	}, [selectedUid]);
 
 	const goPrev = () => {
-		const prev = index > 0 ? messages?.[index - 1] : undefined;
-		if (prev) void setUid(prev.uid);
+		const prev = index > 0 ? rows[index - 1] : undefined;
+		if (prev) void setUid(prev.key);
 	};
 
 	const goNext = async () => {
-		if (!messages || index < 0) return;
+		if (index < 0) return;
 		const from = selectedUid;
-		const next = messages[index + 1];
+		const next = rows[index + 1];
 		if (next) {
-			void setUid(next.uid);
+			void setUid(next.key);
 			// Stepping onto the last loaded row pulls the next page in behind it.
-			if (index + 2 >= messages.length && hasNextPage && !isFetchingNextPage) void fetchNextPage();
+			if (index + 2 >= rows.length && hasNextPage && !isFetchingNextPage) void fetchNextPage();
 			return;
 		}
 		if (!hasNextPage) return;
 		// At the end of what's loaded: wait for the next page, then step — unless
 		// the reader moved on meanwhile.
 		const res = await fetchNextPage({ cancelRefetch: false });
-		const loaded = res.data?.messages ?? [];
-		const after = loaded[loaded.findIndex((m) => m.uid === from) + 1];
-		if (after && selectedRef.current === from) void setUid(after.uid);
+		const loaded = toRows(res.data?.messages ?? []);
+		const after = loaded[rowOf(loaded, from) + 1];
+		if (after && selectedRef.current === from) void setUid(after.key);
 	};
 
 	const toggleWide = () => setLayout((l) => ({ ...l, wide: !l.wide }));
@@ -123,14 +126,14 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 			toggleWide();
 			return;
 		}
-		if (!messages?.length) return;
+		if (!rows.length) return;
 		if (key === "j" || key === "ArrowDown") {
 			e.preventDefault();
-			if (index < 0) void setUid(messages[0]!.uid);
+			if (index < 0) void setUid(rows[0]!.key);
 			else void goNext();
 		} else if (key === "k" || key === "ArrowUp") {
 			e.preventDefault();
-			if (index < 0) void setUid(messages[0]!.uid);
+			if (index < 0) void setUid(rows[0]!.key);
 			else goPrev();
 		}
 	});
@@ -164,21 +167,21 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 	// back to, so step to a neighbour instead of dropping to an empty pane.
 	const handleRemoved = (removedUid: string) => {
 		if (selectedRef.current !== removedUid) return;
-		if (!wide || !desktop || !messages) {
+		if (!wide || !desktop) {
 			void setUid(null);
 			return;
 		}
-		const at = messages.findIndex((m) => m.uid === removedUid);
-		const neighbour = at < 0 ? undefined : (messages[at + 1] ?? messages[at - 1]);
-		void setUid(neighbour?.uid ?? null);
+		const at = rowOf(rows, removedUid);
+		const neighbour = at < 0 ? undefined : (rows[at + 1] ?? rows[at - 1]);
+		void setUid(neighbour?.key ?? null);
 	};
 
 	const nav: ReaderNav | null =
 		wide && desktop
 			? {
 					canPrev: index > 0,
-					canNext: index >= 0 && (index + 1 < (messages?.length ?? 0) || hasNextPage),
-					loadingNext: isFetchingNextPage && index + 1 >= (messages?.length ?? 0),
+					canNext: index >= 0 && (index + 1 < rows.length || hasNextPage),
+					loadingNext: isFetchingNextPage && index + 1 >= rows.length,
 					onPrev: goPrev,
 					onNext: () => void goNext(),
 				}

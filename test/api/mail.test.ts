@@ -5,6 +5,7 @@ import { GET as MESSAGE } from "@/app/api/mail/message/route";
 import { GET as PRELOAD } from "@/app/api/mail/preload/route";
 import { GET as ATTACHMENT } from "@/app/api/mail/attachment/route";
 import { POST as ACTIONS } from "@/app/api/mail/actions/route";
+import { GET as THREAD } from "@/app/api/mail/thread/route";
 import { devAllMessages } from "@/lib/mail/dev-store";
 import { attachmentHref } from "@/lib/mail/attachment";
 import { SESSION_COOKIE } from "@/lib/session";
@@ -38,6 +39,7 @@ const handlers = [
 	["message", MESSAGE, "/api/mail/message?folder=INBOX&uid=1"],
 	["preload", PRELOAD, "/api/mail/preload?folder=INBOX&uids=1"],
 	["attachment", ATTACHMENT, "/api/mail/attachment?folder=INBOX&uid=1&part=2"],
+	["thread", THREAD, "/api/mail/thread?folder=INBOX&uid=1"],
 ] as const;
 
 describe("auth", () => {
@@ -350,5 +352,83 @@ describe("POST /api/mail/actions (keepalive commit)", () => {
 		const before = inbox().length;
 		expect((await post(body)).status).toBe(400);
 		expect(inbox()).toHaveLength(before);
+	});
+});
+
+describe("GET /api/mail/thread", () => {
+	type Thread = { messages: MailSummary[]; partial?: boolean };
+	const thread = async (folder: string, uid: string) => {
+		const res = await call(THREAD, req(`/api/mail/thread?folder=${encodeURIComponent(folder)}&uid=${uid}`));
+		expect(res.status).toBe(200);
+		return (await readJson<Ok<Thread>>(res)).data;
+	};
+	const bySubject = (subject: string, folder = "INBOX") =>
+		devAllMessages().find((m) => m.subject === subject && m.folder === folder)!;
+
+	test("header chain: Inbox plus Sent, oldest first, the archived middle left out", async () => {
+		const last = bySubject("Re: Contract redlines");
+		const t = await thread("INBOX", last.uid);
+		expect(t.messages.map((m) => m.messageId)).toEqual([
+			"<dev-redlines-1@northwind.example>",
+			"<dev-redlines-3@northwind.example>",
+		]);
+	});
+
+	test("server thread id: every member across Inbox and Sent, no headers needed", async () => {
+		const latest = devAllMessages().find((m) => m.threadId === "dev-thread-7301" && m.folder === "INBOX" && !m.flags.seen)!;
+		const t = await thread("INBOX", latest.uid);
+		expect(t.messages.map((m) => [m.folder, m.subject])).toEqual([
+			["INBOX", "Launch checklist"],
+			["Sent", "Re: Launch checklist"],
+			["INBOX", "Re: Launch checklist"],
+		]);
+		expect(t.messages.every((m) => m.threadId === "dev-thread-7301")).toBe(true);
+	});
+
+	test("a synthetic seed thread comes back whole and in order", async () => {
+		const reply = devAllMessages().find((m) => m.folder === "INBOX" && (m.references?.length ?? 0) >= 2)!;
+		const t = await thread("INBOX", reply.uid);
+		expect(t.messages.length).toBeGreaterThanOrEqual(3);
+		const dates = t.messages.map((m) => Date.parse(m.date));
+		expect([...dates].sort((a, b) => a - b)).toEqual(dates);
+		expect(t.messages.some((m) => m.folder === "Sent")).toBe(true);
+		expect(t.messages.some((m) => m.uid === reply.uid)).toBe(true);
+	});
+
+	test("unknown message → 404, bad params → 400", async () => {
+		expect((await call(THREAD, req("/api/mail/thread?folder=INBOX&uid=999999"))).status).toBe(404);
+		expect((await call(THREAD, req("/api/mail/thread?folder=INBOX&uid=1:*"))).status).toBe(400);
+		expect((await call(THREAD, req("/api/mail/thread?uid=1"))).status).toBe(400);
+	});
+});
+
+describe("whole-thread actions", () => {
+	const launch = () => devAllMessages().filter((m) => m.threadId === "dev-thread-7301");
+
+	test("archiving a thread row reaches members the list never loaded (server thread id)", async () => {
+		const latest = launch().find((m) => m.folder === "INBOX" && !m.flags.seen)!;
+		const res = await call(
+			ACTIONS,
+			req("/api/mail/actions", {
+				json: { kind: "archive", folder: "INBOX", uids: [latest.uid], destination: "Archive", threadIds: ["dev-thread-7301"] },
+			}),
+		);
+		expect(res.status).toBe(200);
+		expect(launch().map((m) => m.folder).sort()).toEqual(["Archive", "Archive", "Sent"]);
+	});
+
+	test("without thread ids only the listed uids move (header-chain servers)", async () => {
+		const last = devAllMessages().find((m) => m.subject === "Re: Contract redlines" && m.folder === "INBOX")!;
+		await call(ACTIONS, req("/api/mail/actions", { json: { kind: "trash", folder: "INBOX", uids: [last.uid] } }));
+		const first = devAllMessages().find((m) => m.subject === "Contract redlines")!;
+		expect(first.folder).toBe("INBOX");
+	});
+
+	test("a malformed thread id is refused", async () => {
+		const res = await call(
+			ACTIONS,
+			req("/api/mail/actions", { json: { kind: "trash", folder: "INBOX", uids: ["1"], threadIds: ["1 OR ALL"] } }),
+		);
+		expect(res.status).toBe(400);
 	});
 });

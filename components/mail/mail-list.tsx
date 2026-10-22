@@ -17,9 +17,11 @@ import {
 } from "@/hooks/use-mail";
 import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { usePreloadInView } from "@/hooks/use-preload-in-view";
+import { useMailRows } from "@/hooks/use-mail-rows";
 import { setFlagsAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
-import type { MailFolder, MailSummary } from "@/lib/mail/types";
+import { rowOf, type ThreadRow } from "@/lib/mail/thread";
+import type { MailFolder } from "@/lib/mail/types";
 import { cn } from "@/lib/utils";
 
 const EMPTY_COPY: Record<NonNullable<MailFolder["specialUse"]> | "other", { title: string; body: string }> = {
@@ -147,10 +149,13 @@ function MailListInner({
 	const invalidate = useInvalidateMail();
 	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
+	// Row keys (a conversation's newest uid); bulk actions expand them to every member.
 	const [checked, setChecked] = React.useState<Set<string>>(new Set());
 	const [busy, setBusy] = React.useState(false);
 	const rowsRef = React.useRef<HTMLDivElement>(null);
 	const preloadRoot = usePreloadInView(folder, data?.messages, selectedUid);
+	const { rows } = useMailRows(data?.messages, search);
+	const selectedRow = rows[rowOf(rows, selectedUid)];
 
 	const role = folderSpecialUse(folders, folder);
 	const isTrash = role === "\\Trash";
@@ -183,11 +188,16 @@ function MailListInner({
 	async function runBulk(
 		kind: "archive" | "trash" | "read" | "unread" | "inbox" | "deleteForever",
 	) {
-		const uids = checked.size ? [...checked] : selectedUid ? [selectedUid] : [];
+		const keys = new Set(checked.size ? checked : selectedRow ? [selectedRow.key] : []);
+		const picked = rows.filter((r) => keys.has(r.key));
+		const uids = picked.flatMap((r) => r.members.map((m) => m.uid));
 		if (uids.length === 0) {
 			toast.message("Select messages first");
 			return;
 		}
+		// With a server thread id the commit also reaches members this list never loaded.
+		const ids = [...new Set(picked.flatMap((r) => r.threadIds))];
+		const threadIds = ids.length ? ids : undefined;
 
 		if (kind !== "read" && kind !== "unread") {
 			const destination = kind === "archive" ? archivePath : kind === "inbox" ? inboxPath : undefined;
@@ -197,7 +207,7 @@ function MailListInner({
 			}
 			const before = { checked, selectedUid };
 			const id = defer(
-				{ kind, folder, uids, destination },
+				{ kind, folder, uids, destination, threadIds },
 				{
 					// Undo puts the selection back too, not just the rows.
 					onUndo: () => {
@@ -219,6 +229,7 @@ function MailListInner({
 				folder,
 				uids,
 				seen: kind === "read",
+				threadIds,
 			});
 			if (!res.ok) throw new Error(res.error);
 			toast.success(kind === "read" ? "Marked read" : "Marked unread");
@@ -233,8 +244,14 @@ function MailListInner({
 		}
 	}
 
-	function toggleStar(message: MailSummary) {
-		mutateFlags({ folder, uids: [message.uid], flagged: !message.flags.flagged });
+	/** A starred conversation unstars every starred message; otherwise the newest gets the star. */
+	function toggleStar(row: ThreadRow) {
+		if (row.flagged) {
+			const starred = row.members.filter((m) => m.flags.flagged).map((m) => m.uid);
+			mutateFlags({ folder, uids: starred, flagged: false });
+		} else {
+			mutateFlags({ folder, uids: [row.latest.uid], flagged: true });
+		}
 	}
 
 	const solo = !selectedUid;
@@ -272,7 +289,7 @@ function MailListInner({
 
 	const messages = data?.messages ?? [];
 	const selectedCount = checked.size;
-	const allChecked = messages.length > 0 && selectedCount === messages.length;
+	const allChecked = rows.length > 0 && selectedCount === rows.length;
 	const total = data?.count ?? messages.length;
 	const unread = search ? 0 : (folders?.find((f) => f.path === folder)?.unread ?? 0);
 	const empty = search
@@ -290,9 +307,7 @@ function MailListInner({
 						checked={allChecked}
 						indeterminate={selectedCount > 0 && !allChecked}
 						disabled={messages.length === 0}
-						onCheckedChange={(next) =>
-							setChecked(next ? new Set(messages.map((m) => m.uid)) : new Set())
-						}
+						onCheckedChange={(next) => setChecked(next ? new Set(rows.map((r) => r.key)) : new Set())}
 						aria-label="Select all"
 					/>
 					<p aria-live="polite" className="flex min-w-0 items-baseline gap-2 text-[13px]">
@@ -371,19 +386,26 @@ function MailListInner({
 						data-selecting={selectedCount > 0 ? "true" : undefined}
 						className="group/list space-y-(--row-gap) px-3 pt-2.5 pb-24 @md/list:px-4"
 					>
-						{messages.map((message) => (
-							<MailRow
-								key={message.uid}
-								message={message}
-								active={message.uid === selectedUid}
-								selected={checked.has(message.uid)}
-								onSelectRow={(uid) =>
-									onSelectUid(uid === selectedUid ? null : uid)
-								}
-								onToggleSelect={toggleSelect}
-								onToggleStar={toggleStar}
-							/>
-						))}
+						{rows.map((row) => {
+							const active = row === selectedRow;
+							return (
+								<MailRow
+									key={row.key}
+									// The newest message stands for the row, with the whole conversation's state.
+									message={{
+										...row.latest,
+										flags: { ...row.latest.flags, seen: !row.unread, flagged: row.flagged },
+										hasAttachments: row.hasAttachments,
+									}}
+									thread={row.members.length > 1 ? { people: row.people, count: row.members.length } : undefined}
+									active={active}
+									selected={checked.has(row.key)}
+									onSelectRow={(uid) => onSelectUid(active ? null : uid)}
+									onToggleSelect={toggleSelect}
+									onToggleStar={() => toggleStar(row)}
+								/>
+							);
+						})}
 						{hasNextPage && (
 							<LoadMore
 								loading={isFetchingNextPage}
