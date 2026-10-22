@@ -84,20 +84,24 @@ export function EmailFrame({
 		[html, allowRemote, designed, dark],
 	);
 
+	const setupDoc = React.useRef<Document | null>(null);
+
 	React.useEffect(() => {
 		const frame = ref.current;
 		if (!frame) return;
 		let observer: ResizeObserver | null = null;
 		let win: Window | null = null;
+		let raf = 0;
 
 		function forwardKey(e: KeyboardEvent) {
 			if (e.metaKey || e.ctrlKey || e.altKey || !FORWARDED_KEYS.has(e.key)) return;
 			window.dispatchEvent(new KeyboardEvent("keydown", { key: e.key, code: e.code, shiftKey: e.shiftKey }));
 		}
 
-		function onLoad() {
+		function setup() {
 			const doc = frame?.contentDocument;
-			if (!doc) return;
+			if (!doc?.body) return;
+			setupDoc.current = doc;
 			// Body box, not documentElement.scrollHeight — that never reports less than the
 			// frame's current height, so a short note could never shrink it.
 			const measure = () => {
@@ -124,15 +128,23 @@ export function EmailFrame({
 			win?.addEventListener("keydown", forwardKey);
 		}
 
-		frame.addEventListener("load", onLoad);
-		// srcdoc can finish loading before this effect attaches the listener.
-		if (frame.contentDocument?.readyState === "complete") onLoad();
+		// `load` waits for every remote image, so a newsletter would sit at the 48px
+		// default with an inner scrollbar for seconds. Size it as soon as the new srcdoc
+		// is parsed instead; the ResizeObserver follows images as they arrive.
+		function waitForParse() {
+			const doc = frame?.contentDocument;
+			if (doc && doc !== setupDoc.current && doc.readyState !== "loading" && doc.URL === "about:srcdoc") setup();
+			else raf = requestAnimationFrame(waitForParse);
+		}
+		waitForParse();
+		frame.addEventListener("load", setup);
 		return () => {
-			frame.removeEventListener("load", onLoad);
+			cancelAnimationFrame(raf);
+			frame.removeEventListener("load", setup);
 			observer?.disconnect();
 			win?.removeEventListener("keydown", forwardKey);
 		};
-	}, []);
+	}, [srcDoc]);
 
 	return (
 		<iframe

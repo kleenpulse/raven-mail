@@ -41,6 +41,9 @@ as you work — it ships inside the app.
   screen when the page gets shorter as you switch. It now slides
   straight to the tab you picked, on the Overview cards, in Settings,
   in the Export panel and on the mail folder list.
+- Emails with images no longer open squashed into a thin strip with
+  their own scrollbar. The message now opens at its full height right
+  away, instead of waiting for every image to finish loading.
 
 ### Security
 
