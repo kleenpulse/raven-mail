@@ -40,6 +40,7 @@ import { usePaletteStore } from "@/components/shell/palette-store";
 import { revealTheme } from "@/components/shell/theme-toggle";
 import { useAskStore } from "@/components/jev/ask-store";
 import { useAsk } from "@/components/jev/use-ask";
+import { useAskName } from "@/components/jev/ask-name";
 import { SECTION_IDS, SECTIONS, searchSettings } from "@/components/settings";
 import { useFolders } from "@/hooks/use-mail";
 import { useComposeStore } from "@/lib/store/compose";
@@ -75,7 +76,7 @@ const SECTIONS_LIST = SECTION_IDS.map((id) => ({ id, label: SECTIONS[id].label, 
 
 /**
  * ⌘K / Ctrl+K: compose, jump, search, switch theme, act on the open message,
- * or ask Jev. A dialog, so the single-key shortcuts stand down while it's open.
+ * or ask Jev (Kage without a key). A dialog, so the single-key shortcuts stand down while it's open.
  */
 export function CommandPalette() {
 	const open = usePaletteStore((s) => s.open);
@@ -87,6 +88,7 @@ export function CommandPalette() {
 	const router = useRouter();
 	const pathname = usePathname();
 	const ask = useAsk();
+	const askName = useAskName();
 	// Runs once the dialog has closed, so the command's own focus isn't taken back.
 	const pending = React.useRef<PaletteAction | null>(null);
 
@@ -97,6 +99,7 @@ export function CommandPalette() {
 		message,
 		sections: SECTIONS_LIST,
 		settingsHits: query.trim() ? [...new Set(searchSettings(query).map((s) => s.section))] : [],
+		askName,
 	});
 
 	function perform(action: PaletteAction) {
@@ -147,11 +150,11 @@ export function CommandPalette() {
 				if (action) perform(action);
 			}}
 			title="Command palette"
-			description="Search, jump to a page, or ask Jev."
+			description={`Search, jump to a page, or ask ${askName}.`}
 			className="sm:max-w-xl"
 		>
 			<Command shouldFilter={false} loop>
-				<CommandInput value={query} onValueChange={setQuery} placeholder="Search, jump or ask Jev…" />
+				<CommandInput value={query} onValueChange={setQuery} placeholder={`Search, jump or ask ${askName}…`} />
 				<CommandList className="max-h-[min(24rem,60svh)]">
 					{groups.map((group) => (
 						<CommandGroup key={group.heading} heading={group.heading}>

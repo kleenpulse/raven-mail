@@ -1,6 +1,7 @@
 import "server-only";
 import { choice, noul, type Questions } from "@typesafe-ai/sdk";
 import type { Jev } from "@/lib/jev/client";
+import { answeredBy } from "@/lib/kage";
 import { DEFAULT_TIMEFRAME, INTENT_META, TIMEFRAME_META } from "@/lib/jev/ask/catalog";
 import { forcePlan, heuristicPlan } from "@/lib/jev/ask/heuristic-plan";
 import { explicitTimeframe } from "@/lib/jev/ask/timeframe";
@@ -15,6 +16,8 @@ type LooseAnswer = {
 };
 
 const SENDER_POOL = 60;
+/** Intents too generic to survive a named contact when Kage answered. */
+const YIELDS_TO_SENDER = new Set<Intent>(["other", "find_topic", "unread_summary"]);
 
 /**
  * One Jev call decides intent, time range, scope, contact, and unread-only.
@@ -62,10 +65,31 @@ export async function planAsk(
   try {
     const res = await jev.client.systemOne({ state: { question: request.question }, questions }, { signal });
     const answers = res.answers as Record<string, LooseAnswer>;
+    const source = answeredBy(res);
+    let sender = heuristic.sender;
+    let senderConfidence = heuristic.senderConfidence;
+    const senderAnswer = answers.sender;
+    // Kage matches contacts on words, so "receipts" would pick receipts@stripe.com; the name matcher is sharper.
+    const trustSender = source !== "kage" && !(heuristic.senderConfidence && heuristic.senderConfidence >= 0.95);
+    if (trustSender && senderAnswer?.choice && senderAnswer.choice !== "none") {
+      const idx = Number(senderAnswer.choice.slice(1));
+      if (pool[idx] && (senderAnswer.confidence ?? 0) >= 0.5) {
+        sender = pool[idx];
+        senderConfidence = senderAnswer.confidence;
+      }
+    }
+    if (sender && (senderConfidence ?? 0) < 0.5) sender = undefined;
+
     const intentAnswer = answers.intent!;
-    const intent = (INTENTS as readonly string[]).includes(intentAnswer.choice ?? "")
+    let intent = (INTENTS as readonly string[]).includes(intentAnswer.choice ?? "")
       ? (intentAnswer.choice as Intent)
       : heuristic.intent;
+    // Kage reads words, not people: a named contact outranks its generic guesses.
+    let intentConfidence = intentAnswer.confidence ?? 0.5;
+    if (source === "kage" && sender && (senderConfidence ?? 0) >= 0.8 && YIELDS_TO_SENDER.has(intent)) {
+      intent = "from_person";
+      intentConfidence = 0.7;
+    }
     const alternatives = Object.entries(intentAnswer.probabilities ?? {})
       .filter(([k]) => k !== intent && k !== "other")
       .sort((a, b) => b[1] - a[1])
@@ -77,22 +101,10 @@ export async function planAsk(
       explicitTimeframe(request.question) ??
       (jevTimeframe && jevTimeframe !== "any" ? jevTimeframe : DEFAULT_TIMEFRAME[intent]);
 
-    let sender = heuristic.sender;
-    let senderConfidence = heuristic.senderConfidence;
-    const senderAnswer = answers.sender;
-    if (!(heuristic.senderConfidence && heuristic.senderConfidence >= 0.95) && senderAnswer?.choice && senderAnswer.choice !== "none") {
-      const idx = Number(senderAnswer.choice.slice(1));
-      if (pool[idx] && (senderAnswer.confidence ?? 0) >= 0.5) {
-        sender = pool[idx];
-        senderConfidence = senderAnswer.confidence;
-      }
-    }
-    if (sender && (senderConfidence ?? 0) < 0.5) sender = undefined;
-
     const scopeChoice = answers.scope?.choice;
     return {
       intent,
-      intentConfidence: Math.round((intentAnswer.confidence ?? 0.5) * 100) / 100,
+      intentConfidence: Math.round(intentConfidence * 100) / 100,
       alternatives,
       timeframe,
       scope: intent === "awaiting_others" ? "sent" : scopeChoice === "sent" ? "sent" : scopeChoice === "all" ? "all" : "inbox",
@@ -100,7 +112,7 @@ export async function planAsk(
       senderConfidence,
       unreadOnly: (answers.unreadOnly?.noul ?? 0) >= 0.6 || heuristic.unreadOnly,
       keywords: heuristic.keywords,
-      source: "jev",
+      source,
     };
   } catch {
     return heuristic;

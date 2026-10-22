@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowRight, CalendarDays, Cloud, CloudLightning, CloudRain, CloudSun, Sun } from "lucide-react";
 import { HeroAsk } from "@/components/jev/hero-ask";
 import type { WeatherState } from "@/lib/insights/types";
+import type { DecisionEngine } from "@/lib/jev/client";
 import { cn } from "@/lib/utils";
 
 const WEATHER_ICON: Record<WeatherState, typeof Sun> = {
@@ -37,14 +38,14 @@ function useToday(): Date | null {
 
 export function HeroBand({
 	firstName,
-	jevLive,
+	engine,
 	suggestions,
 	invites,
 	weather,
 	onAsk,
 }: {
 	firstName: string;
-	jevLive: boolean;
+	engine: DecisionEngine | null;
 	suggestions: string[];
 	invites: number;
 	weather?: { state: WeatherState; label: string; forecast: string };
@@ -106,7 +107,7 @@ export function HeroBand({
 			</div>
 
 			<div className="min-w-0 flex-1 entrance" style={{ ["--i" as string]: 1 }}>
-				<HeroAsk firstName={firstName} jevLive={jevLive} suggestions={suggestions} onAsk={onAsk} />
+				<HeroAsk firstName={firstName} engine={engine} suggestions={suggestions} onAsk={onAsk} />
 			</div>
 		</section>
 	);

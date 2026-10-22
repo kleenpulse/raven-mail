@@ -12,6 +12,7 @@ import { RhythmSparkCard } from "@/components/overview/rhythm-spark-card";
 import { MailMixCard } from "@/components/overview/mail-mix-card";
 import { ThreadsRadar } from "@/components/overview/threads-radar";
 import { DailyBrief } from "@/components/overview/daily-brief";
+import type { DecisionEngine } from "@/lib/jev/client";
 import { ReplyDebtCard } from "@/components/overview/reply-debt-card";
 import { HygieneCard } from "@/components/overview/hygiene-card";
 import { RhythmCard } from "@/components/overview/rhythm-card";
@@ -27,6 +28,7 @@ import { smartChips } from "@/lib/jev/ask/chips";
 import { formatRelative, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 const FALLBACK_SUGGESTIONS = ["Who’s waiting on my reply?", "What did I miss today?", "Newsletters I never open"];
 
@@ -56,7 +58,7 @@ function BoardSkeleton() {
 	);
 }
 
-export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLive: boolean }) {
+export function OverviewBoard({ firstName, engine }: { firstName: string; engine: DecisionEngine | null }) {
 	const account = useAccount();
 	const introRef = useIntroGate<HTMLDivElement>();
 	const { data, isPending, isError, error, refetch, isFetching } = useOverview(30);
@@ -68,7 +70,7 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 	const todayKey = data?.volume.days.at(-1)?.date;
 
 	return (
-		<div ref={introRef} className="h-full overflow-y-auto">
+		<LayoutScroll ref={introRef} className="h-full overflow-y-auto">
 			<div className="mx-auto max-w-[calc(1900px-84px)] px-5 pt-6 md:px-8">
 				<header className="entrance flex items-center justify-between gap-4">
 					<div className="min-w-0">
@@ -103,7 +105,7 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 				<div className="mt-9 pb-10">
 					<HeroBand
 						firstName={firstName}
-						jevLive={jevLive}
+						engine={engine}
 						suggestions={suggestions}
 						invites={data?.invites.length ?? 0}
 						weather={data?.weather}
@@ -173,7 +175,7 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 								/>
 							</div>
 							<div className="order-1 col-span-12 flex flex-col gap-4 md:col-span-6 xl:order-none xl:col-span-3 [&>section:first-child]:flex-1">
-								<DailyBrief items={data.brief} todayKey={todayKey} jevLive={jevLive} i={8} />
+								<DailyBrief items={data.brief} todayKey={todayKey} engine={engine} i={8} />
 								<RhythmSparkCard overview={data} i={9} />
 							</div>
 
@@ -197,6 +199,6 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 					)}
 				</div>
 			</div>
-		</div>
+		</LayoutScroll>
 	);
 }

@@ -14,6 +14,7 @@ for (const key of [
 	"NEON_API_KEY",
 	"TYPESAFE_API_KEY",
 	"TYPESAFE_DEFAULT_MODEL",
+	"KAGE",
 	"INTEGRATIONS_SECRET",
 	"APP_URL",
 	"SEO_INDEX",
@@ -54,19 +55,24 @@ mock.module("next/server", () => ({
 	},
 }));
 
-// Mirrors lib/jev/client.ts: the session's own key wins, then the "server" key (fakeJev.enabled).
+// Mirrors lib/jev/client.ts: the session's own key wins, then the "server" key (fakeJev.enabled),
+// then Kage (fakeJev.kage — off by default so suites keep testing the heuristic path).
 type KeyedSession = { jevKey?: string } | null;
+const { kage } = await import("../lib/kage");
+const typesafeFor = (session: KeyedSession) =>
+	session?.jevKey
+		? { client: fakeJev.client, source: "user" }
+		: fakeJev.enabled
+			? { client: fakeJev.client, source: "server" }
+			: null;
 mock.module(path.resolve(import.meta.dir, "../lib/jev/client.ts"), () => ({
-	jevFor: (session: KeyedSession) =>
-		session?.jevKey
-			? { client: fakeJev.client, source: "user" }
-			: fakeJev.enabled
-				? { client: fakeJev.client, source: "server" }
-				: null,
+	typesafeFor,
+	jevFor: (session: KeyedSession) => typesafeFor(session) ?? (fakeJev.kage ? { client: kage, source: "kage" } : null),
+	decisionEngine: (session: KeyedSession) => (typesafeFor(session) ? "jev" : fakeJev.kage ? "kage" : null),
 	jevStatus: (session: KeyedSession) =>
 		session?.jevKey
-			? { source: "user", hint: session.jevKey.slice(-4) }
-			: { source: fakeJev.enabled ? "server" : null, hint: null },
+			? { source: "user", hint: session.jevKey.slice(-4), kage: fakeJev.kage }
+			: { source: fakeJev.enabled ? "server" : null, hint: null, kage: fakeJev.kage },
 	verifyJevKey: (key: string) => fakeJev.verifyKey(key),
 }));
 

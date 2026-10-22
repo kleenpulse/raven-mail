@@ -36,6 +36,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { allowSingleKey } from "@/lib/keyboard";
 import { TAB_SPRING } from "@/lib/motion";
 import { cn } from "@/lib/utils";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 const ICONS: Record<SectionId, LucideIcon> = {
 	appearance: Palette,
@@ -350,7 +351,7 @@ export function SettingsBoard() {
 	const listOnly = raw === null && !results;
 
 	return (
-		<div ref={scrollRef} className="h-full overflow-y-auto">
+		<LayoutScroll ref={scrollRef} className="h-full overflow-y-auto">
 			<div className="mx-auto max-w-[1120px] px-5 pt-6 md:px-8">
 				<header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
 					<div className="min-w-0">
@@ -428,6 +429,6 @@ export function SettingsBoard() {
 					</div>
 				</div>
 			</div>
-		</div>
+		</LayoutScroll>
 	);
 }

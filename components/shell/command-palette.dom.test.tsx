@@ -3,6 +3,7 @@ import { afterEach, describe, expect, mock, test } from "bun:test";
 import path from "node:path";
 
 const asked: string[] = [];
+let askName: "Jev" | "Kage" = "Jev";
 const useMailPath = path.resolve(import.meta.dir, "../../hooks/use-mail.ts");
 const realUseMail = await import(useMailPath);
 mock.module(useMailPath, () => ({
@@ -19,6 +20,7 @@ mock.module(path.resolve(import.meta.dir, "../jev/use-ask.ts"), () => ({
 		asked.push(q);
 	},
 }));
+mock.module(path.resolve(import.meta.dir, "../jev/ask-name.ts"), () => ({ useAskName: () => askName }));
 mock.module("next-themes", () => ({ useTheme: () => ({ resolvedTheme: "light", setTheme: () => {} }) }));
 
 const { render, screen, fireEvent, cleanup, waitFor, act } = await import("@testing-library/react");
@@ -29,6 +31,7 @@ const { useComposeStore } = await import("@/lib/store/compose");
 afterEach(() => {
 	cleanup();
 	asked.length = 0;
+	askName = "Jev";
 	router.push.mockClear();
 	usePaletteStore.setState({ open: false, message: null });
 	useComposeStore.getState().closeCompose();
@@ -51,6 +54,13 @@ describe("CommandPalette", () => {
 		expect(rows).toContain("Compose" + "C");
 		expect(rows).toContain("Projects");
 		expect(rows).toContain("Mail settings");
+	});
+
+	test("without a Jev key the palette asks Kage", () => {
+		askName = "Kage";
+		const input = openPalette();
+		expect(options()[0]).toBe("Ask Kage");
+		expect(input.placeholder).toBe("Search, jump or ask Kage…");
 	});
 
 	test("Ask and Search rows stay whatever is typed", () => {

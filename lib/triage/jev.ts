@@ -3,6 +3,7 @@ import { choice, noul, score } from "@typesafe-ai/sdk";
 import type { TriageResult } from "@/lib/mail/types";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 import type { Jev } from "@/lib/jev/client";
+import { answeredBy } from "@/lib/kage";
 
 export async function jevTriage(
   input: {
@@ -63,7 +64,7 @@ export async function jevTriage(
       urgency: Math.max(0, Math.min(1, response.answers.urgency.score / 3)),
       needsReply: response.answers.needsReply.noul >= 0.6,
       confidence,
-      source: "jev",
+      source: answeredBy(response),
     };
   } catch {
     return heuristicTriage(input);

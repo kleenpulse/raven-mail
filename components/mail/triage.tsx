@@ -98,8 +98,8 @@ export function TriageBadge({
 			<span className="font-mono text-[10.5px] tracking-[0.08em] text-foreground uppercase">
 				{CATEGORY_LABEL[result.category]}
 			</span>
-			{result.source === "jev" && (
-				<span className="font-mono text-[10.5px] tracking-[0.08em] uppercase">· Jev</span>
+			{result.source !== "heuristic" && (
+				<span className="font-mono text-[10.5px] tracking-[0.08em] uppercase">· {result.source === "kage" ? "Kage" : "Jev"}</span>
 			)}
 		</span>
 	);

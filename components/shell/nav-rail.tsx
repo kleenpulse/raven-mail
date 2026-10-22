@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { motion } from "motion/react";
 import { useStore } from "zustand";
-import { Blocks, FlaskConical, Inbox, LayoutGrid, Plus, Settings, Sparkles, type LucideIcon } from "lucide-react";
+import { Blocks, FlaskConical, Gauge, Inbox, LayoutGrid, Plus, Settings, Sparkles, type LucideIcon } from "lucide-react";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { Kbd } from "@/components/ui/kbd";
 import { RavenMark } from "@/components/shell/raven-mark";
@@ -18,6 +18,7 @@ import { useComposeStore } from "@/lib/store/compose";
 import { cn, modKeyLabel } from "@/lib/utils";
 import { TAB_SPRING } from "@/lib/motion";
 import { TOUR_TARGET, tourAttr, type TourTargetId } from "@/components/tour/anchors";
+import { useAskName } from "@/components/jev/ask-name";
 
 export type NavItem = { href: string; label: string; icon: LucideIcon; tour?: TourTargetId };
 
@@ -26,7 +27,12 @@ export const NAV_ITEMS: NavItem[] = [
 	{ href: "/mail", label: "Mail", icon: Inbox, tour: TOUR_TARGET.navMail },
 	{ href: "/integrations", label: "Integrations", icon: Blocks, tour: TOUR_TARGET.navIntegrations },
 	// NODE_ENV is inlined into server and client bundles alike, so this can't mismatch on hydration.
-	...(process.env.NODE_ENV === "production" ? [] : [{ href: "/dev/tests", label: "Tests", icon: FlaskConical }]),
+	...(process.env.NODE_ENV === "production"
+		? []
+		: [
+				{ href: "/dev/tests", label: "Tests", icon: FlaskConical },
+				{ href: "/dev/kage", label: "Kage", icon: Gauge },
+			]),
 ];
 
 export function useInboxUnread(): number {
@@ -86,6 +92,7 @@ export function NavRail({ onAsk, className }: { onAsk: () => void; className?: s
 	const openCompose = useComposeStore((s) => s.openCompose);
 	const indicatorId = React.useId();
 	const settingsActive = pathname.startsWith("/settings");
+	const askName = useAskName();
 	const mod = React.useSyncExternalStore(
 		() => () => {},
 		() => modKeyLabel(),
@@ -170,7 +177,7 @@ export function NavRail({ onAsk, className }: { onAsk: () => void; className?: s
 					</button>
 				</RailTip>
 
-				<RailTip label="Ask Jev">
+				<RailTip label={`Ask ${askName}`}>
 					<button
 						type="button"
 						onClick={onAsk}
@@ -181,7 +188,7 @@ export function NavRail({ onAsk, className }: { onAsk: () => void; className?: s
 						)}
 					>
 						<Sparkles className="[&>path:first-child]:fill-current" />
-						<span className="sr-only">Ask Jev</span>
+						<span className="sr-only">Ask {askName}</span>
 					</button>
 				</RailTip>
 

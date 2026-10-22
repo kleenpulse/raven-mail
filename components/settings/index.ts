@@ -75,6 +75,16 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["appearance.reduceTransparency"],
 	},
 	{
+		id: "ask-pill",
+		section: "appearance",
+		card: "Ask Jev",
+		label: "Show Ask Jev Button",
+		description:
+			"The button at the bottom of the page. It hides while you scroll down and comes back when you scroll up. The Ask button in the side bar still opens it when it's off.",
+		keywords: "jev floating pill button hide show scroll assistant",
+		prefs: ["appearance.askPill"],
+	},
+	{
 		id: "remote-images",
 		section: "mail",
 		card: "Reading",

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight } from "lucide-react";
+import { NotFoundAurora } from "@/components/shell/not-found-aurora";
 import { RavenMark } from "@/components/shell/raven-mark";
 
 export const metadata: Metadata = { title: "Not found" };
@@ -8,7 +9,8 @@ export const metadata: Metadata = { title: "Not found" };
 /** Unmatched URLs and notFound() calls — in the app's skin rather than Next's bare default. */
 export default function NotFound() {
 	return (
-		<main className="flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+		<main className="relative isolate flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-background px-6 text-center">
+			<NotFoundAurora />
 			{/* Both buttons need a session; signed-out visitors get home through the mark. */}
 			<Link
 				href="/"

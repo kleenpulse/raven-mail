@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { useAskStore } from "@/components/jev/ask-store";
+import type { DecisionEngine } from "@/lib/jev/client";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 
@@ -14,19 +15,21 @@ import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 export function HeroAsk({
 	firstName,
 	suggestions,
-	jevLive,
+	engine,
 	onAsk,
 }: {
 	firstName: string;
 	suggestions: string[];
-	jevLive: boolean;
+	/** Which engine answers Ask; null means keyword rules only. */
+	engine: DecisionEngine | null;
 	onAsk: (question: string) => void;
 }) {
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const formRef = React.useRef<HTMLFormElement>(null);
 	const [value, setValue] = React.useState("");
 	const [focused, setFocused] = React.useState(false);
-	const typed = useTypewriter(["Just ask Jev anything!", ...suggestions], { paused: focused || value.length > 0 });
+	const name = engine === "kage" ? "Kage" : "Jev";
+	const typed = useTypewriter([`Just ask ${name} anything!`, ...suggestions], { paused: focused || value.length > 0 });
 	const setHeroVisible = useAskStore((s) => s.setHeroVisible);
 
 	// While the hero prompt is on screen, the floating "Ask Jev" pill stays out of the way.
@@ -69,7 +72,7 @@ export function HeroAsk({
 						onChange={(e) => setValue(e.target.value)}
 						onFocus={() => setFocused(true)}
 						onBlur={() => setFocused(false)}
-						aria-label="Ask Jev about your inbox"
+						aria-label={`Ask ${name} about your inbox`}
 						autoComplete="off"
 						className="peer w-full bg-transparent font-display text-[clamp(1.9rem,3.2vw,2.75rem)] leading-[1.12] tracking-[-0.025em] text-foreground caret-signal outline-none"
 					/>
@@ -86,8 +89,8 @@ export function HeroAsk({
 
 			<button
 				type="submit"
-				aria-label={value ? "Ask Jev" : jevLive ? "Jev is live" : "Jev runs in heuristic mode"}
-				title={jevLive ? "Jev · live" : "Jev · heuristic mode (no API key)"}
+				aria-label={value ? `Ask ${name}` :engine === "jev" ? "Jev is live" : engine === "kage" ? "Kage is live" : "Jev runs in heuristic mode"}
+				title={engine === "jev" ? "Jev · live" : engine === "kage" ? "Kage · built-in engine, no key needed" : "Jev · heuristic mode (no API key)"}
 				className={cn(
 					"group relative hidden size-[88px] shrink-0 place-items-center rounded-full bg-sheet ring-1 ring-border transition-[transform,box-shadow] duration-300 sm:grid",
 					"hover:shadow-lift active:scale-95 dark:bg-card-nested dark:ring-glass-border dark:hover:shadow-glow",
@@ -101,7 +104,7 @@ export function HeroAsk({
 				<span
 					className={cn(
 						"absolute top-3.5 right-3.5 size-2.5 rounded-full ring-2 ring-sheet dark:ring-transparent",
-						jevLive ? "bg-ok" : "bg-ink-3",
+						engine ? "bg-ok" : "bg-ink-3",
 					)}
 				/>
 			</button>

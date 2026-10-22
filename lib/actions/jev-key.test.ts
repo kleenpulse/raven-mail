@@ -49,7 +49,7 @@ describe("saveJevKeyAction", () => {
 		const session = signIn();
 		const result = await saveJevKeyAction(`  ${KEY}\n`);
 		expect(fakeJev.verifyKey).toHaveBeenCalledWith(KEY);
-		expect(result).toEqual({ ok: true, data: { source: "user", hint: "WXYZ" } });
+		expect(result).toEqual({ ok: true, data: { source: "user", hint: "WXYZ", kage: false } });
 		expect(JSON.stringify(result)).not.toContain(KEY);
 		expect(saved()).toMatchObject({ email: session.email, jevKey: KEY });
 	});
@@ -59,7 +59,7 @@ describe("removeJevKeyAction", () => {
 	test("drops the key and keeps the rest of the session", async () => {
 		const session = signIn({ jevKey: KEY });
 		const result = await removeJevKeyAction();
-		expect(result).toEqual({ ok: true, data: { source: null, hint: null } });
+		expect(result).toEqual({ ok: true, data: { source: null, hint: null, kage: false } });
 		expect(saved()).toMatchObject({ email: session.email });
 		expect(saved()?.jevKey).toBeUndefined();
 	});
@@ -67,6 +67,6 @@ describe("removeJevKeyAction", () => {
 	test("falls back to the server key when there is one", async () => {
 		signIn({ jevKey: KEY });
 		fakeJev.enabled = true;
-		expect(await removeJevKeyAction()).toEqual({ ok: true, data: { source: "server", hint: null } });
+		expect(await removeJevKeyAction()).toEqual({ ok: true, data: { source: "server", hint: null, kage: false } });
 	});
 });

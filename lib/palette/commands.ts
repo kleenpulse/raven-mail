@@ -54,6 +54,8 @@ export type PaletteContext = {
   sections: { id: string; label: string; blurb: string }[];
   /** Sections whose settings rows match the text (`searchSettings`). */
   settingsHits: string[];
+  /** Who answers Ask: Kage when there's no Jev key (`askName`). */
+  askName?: "Jev" | "Kage";
 };
 
 const ROLES: [NonNullable<MailFolder["specialUse"]>, string][] = [
@@ -160,10 +162,11 @@ export function buildCommands(ctx: PaletteContext): PaletteGroup[] {
     },
   ];
 
+  const name = ctx.askName ?? "Jev";
   if (!terms.length) {
     const ask: PaletteGroup = {
-      heading: "Jev",
-      items: [{ id: "ask-open", label: "Ask Jev", keywords: "question", icon: "ask", action: { kind: "askOpen" } }],
+      heading: name,
+      items: [{ id: "ask-open", label: `Ask ${name}`, keywords: "question", icon: "ask", action: { kind: "askOpen" } }],
     };
     return [ask, ...fixed].filter((g) => g.items.length);
   }
@@ -177,8 +180,8 @@ export function buildCommands(ctx: PaletteContext): PaletteGroup[] {
     }))
     .filter((g) => g.items.length);
   const ask: PaletteGroup = {
-    heading: "Jev",
-    items: [{ id: "ask", label: `Ask Jev: "${query}"`, icon: "ask", action: { kind: "ask", question: query } }],
+    heading: name,
+    items: [{ id: "ask", label: `Ask ${name}: "${query}"`, icon: "ask", action: { kind: "ask", question: query } }],
   };
   const search: PaletteGroup = {
     heading: "Search",

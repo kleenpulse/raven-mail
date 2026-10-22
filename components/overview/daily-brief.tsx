@@ -10,6 +10,7 @@ import { useDeepTriage } from "@/hooks/use-deep-triage";
 import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { mailLink } from "@/lib/jev/ask/format";
 import type { BriefItem } from "@/lib/insights/types";
+import type { DecisionEngine } from "@/lib/jev/client";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "raven-brief-dismissed";
@@ -42,20 +43,20 @@ const arrowButton =
 
 function BriefSlide({
 	item,
-	jevLive,
+	engine,
 	deep,
 }: {
 	item: BriefItem;
-	jevLive: boolean;
+	engine: DecisionEngine | null;
 	deep: ReturnType<typeof useDeepTriage>;
 }) {
 	return (
 		<>
 			<p className="text-[12px] text-ink-2">
 				Daily brief · {item.from.name}
-				{item.source === "jev" && item.confidence !== undefined && (
+				{item.source !== "heuristic" && item.confidence !== undefined && (
 					<span className="ml-1.5 rounded-pill bg-signal-soft px-1.5 py-0.5 font-mono text-[10px] text-signal-ink dark:text-signal">
-						Jev {Math.round(item.confidence * 100)}%
+						{item.source === "kage" ? "Kage" : "Jev"} {Math.round(item.confidence * 100)}%
 					</span>
 				)}
 			</p>
@@ -76,7 +77,7 @@ function BriefSlide({
 					Open
 					<ArrowUpRight className="size-3.5" />
 				</Link>
-				{jevLive && (
+				{engine && (
 					<button
 						type="button"
 						onClick={deep.run}
@@ -94,7 +95,7 @@ function BriefSlide({
 
 /**
  * The reference's review carousel → today's short list. Heuristic by default;
- * "Deep triage" asks Jev to re-score the last 48h (paid, on demand).
+ * "Deep triage" asks Jev (or Kage, without a key) to re-score the last 48h, on demand.
  *
  * It plays itself gently (the active dot fills, then the next item slides in),
  * pauses while hovered, focused or in a background tab, and stops for good the
@@ -103,13 +104,13 @@ function BriefSlide({
 export function DailyBrief({
 	items,
 	todayKey,
-	jevLive,
+	engine,
 	demo = false,
 	i = 0,
 }: {
 	items: BriefItem[];
 	todayKey: string;
-	jevLive: boolean;
+	engine: DecisionEngine | null;
 	/** Landing demo: nowhere to send to, and dismissals must never touch a real list. */
 	demo?: boolean;
 	i?: number;
@@ -130,9 +131,9 @@ export function DailyBrief({
 	const ranked = React.useMemo(() => {
 		const withJev = items.map((item) => {
 			const jev = deep.byRef.get(`${item.folder}:${item.uid}`);
-			if (!jev || jev.source !== "jev") return item;
+			if (!jev || jev.source === "heuristic") return item;
 			const score = 0.5 * jev.urgency + 0.35 * (jev.needsReply ? 1 : 0) + 0.15 * item.score;
-			return { ...item, score, urgency: jev.urgency, needsReply: jev.needsReply, source: "jev" as const, confidence: jev.confidence };
+			return { ...item, score, urgency: jev.urgency, needsReply: jev.needsReply, source: jev.source, confidence: jev.confidence };
 		});
 		return withJev
 			.filter((item) => !dismissed.has(`${item.folder}:${item.uid}`))
@@ -284,7 +285,7 @@ export function DailyBrief({
 						inert
 						className="invisible col-start-1 row-start-1 flex flex-col"
 					>
-						<BriefSlide item={item} jevLive={jevLive} deep={deep} />
+						<BriefSlide item={item} engine={engine} deep={deep} />
 					</div>
 				))}
 				<AnimatePresence mode="wait" initial={false} custom={dir}>
@@ -299,7 +300,7 @@ export function DailyBrief({
 							transition={{ duration: 0.22, ease: [0.23, 1, 0.32, 1] }}
 							className="col-start-1 row-start-1 flex flex-col"
 						>
-							<BriefSlide item={current} jevLive={jevLive} deep={deep} />
+							<BriefSlide item={current} engine={engine} deep={deep} />
 						</motion.div>
 					) : (
 						<motion.div

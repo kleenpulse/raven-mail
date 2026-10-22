@@ -32,7 +32,8 @@ export function knownSenders(rows: EnrichedRow[], self: string): PersonRef[] {
 
 /** Stage detail once the plan is known, e.g. "Needs your reply · 92% via Jev". */
 export function understoodDetail(plan: AskPlan): string {
-  const via = plan.source === "jev" ? "Jev" : plan.source === "forced" ? "suggestion" : "keyword match";
+  const via =
+    plan.source === "jev" ? "Jev" : plan.source === "kage" ? "Kage" : plan.source === "forced" ? "suggestion" : "keyword match";
   return `${INTENT_META[plan.intent].label} · ${Math.round(plan.intentConfidence * 100)}% via ${via}`;
 }
 

@@ -13,12 +13,14 @@ import { AskTray } from "@/components/jev/ask-tray";
 import { useAskStore } from "@/components/jev/ask-store";
 import { CommandPalette } from "@/components/shell/command-palette";
 import { usePaletteStore } from "@/components/shell/palette-store";
+import { useAskName } from "@/components/jev/ask-name";
 import { useComposeStore } from "@/lib/store/compose";
 import { allowSingleKey } from "@/lib/keyboard";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 
 function MobileTabBar({ onAsk }: { onAsk: () => void }) {
+	const askName = useAskName();
 	const pathname = usePathname();
 	const badges = useNavBadges();
 	const openCompose = useComposeStore((s) => s.openCompose);
@@ -66,7 +68,7 @@ function MobileTabBar({ onAsk }: { onAsk: () => void }) {
 			</button>
 			<button type="button" onClick={onAsk} className={cn(item, "text-signal-ink dark:text-signal")}>
 				<Sparkles className="[&>path:first-child]:fill-current" />
-				<span className="sr-only">Ask Jev</span>
+				<span className="sr-only">Ask {askName}</span>
 			</button>
 			{/* Settings lives in this menu on phones. */}
 			<AccountMenu side="top" className="size-10" tour={TOUR_TARGET.navSettings} />

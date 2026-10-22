@@ -13,6 +13,17 @@ as you work — it ships inside the app.
 
 ### Added
 
+- Ask Jev and Deep triage now work without a Jev key. Raven has its own
+  built-in engine, Kage, that answers the same questions on your server,
+  with no account and no cost. If your Jev key stops working, Kage steps
+  in instead of plain keyword rules. Answers and badges say "Kage" when
+  Kage answered. Without a key, the Ask button and the Ask row in the
+  Ctrl+K menu say "Ask Kage", so you always know who is answering.
+- The floating Ask Jev button has a new frosted glass look. It now fades
+  away while you scroll down a page and comes back when you scroll up or
+  reach the top. You can hide
+  it for good in Settings → Appearance. The Ask button in the side bar
+  still opens it.
 - A "buy me a coffee" button now sits in the top-right corner of the
   Overview and Mail top bars, if you'd like to support Raven.
 - You can now download attachments straight from Raven. Click a file
@@ -86,6 +97,10 @@ as you work — it ships inside the app.
   and Undo brings it back. Search still finds it. See and unblock
   everyone in Settings → Mail → Blocked senders. Blocking needs a
   database (DATABASE_URL), since your list is saved to your account.
+- The "not found" page now glows with the same gold aurora as the
+  bottom of the landing page.
+- A refresh button now sits beside the folder name above your mail list.
+  It checks for new mail right away, and spins while the list syncs.
 
 ### Changed
 
@@ -112,6 +127,16 @@ as you work — it ships inside the app.
   typing out in the "need help?" box could push the page wider than
   the window. Long subjects now wrap and the buttons stack when the card
   is narrow.
+- The highlight on the selected tab no longer jumps up or down the
+  screen when the page gets shorter as you switch. It now slides
+  straight to the tab you picked, on the Overview cards, in Settings,
+  in the Export panel and on the mail folder list.
+- Emails with images no longer open squashed into a thin strip with
+  their own scrollbar. The message now opens at its full height right
+  away, instead of waiting for every image to finish loading.
+- The Reply and Forward buttons no longer push the close button off the
+  edge when the message pane is narrow. If they don't fit beside the
+  other tools, they move to their own row just below, labels and all.
 
 ### Security
 

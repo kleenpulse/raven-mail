@@ -42,6 +42,11 @@ describe("buildCommands", () => {
     expect(groups[1]!.items[0]!.action).toEqual({ kind: "search", query: "who is waiting on me" });
   });
 
+  test("without a Jev key the Ask rows name Kage", () => {
+    expect(buildCommands(ctx({ askName: "Kage" }))[0]!).toMatchObject({ heading: "Kage", items: [{ label: "Ask Kage" }] });
+    expect(buildCommands(ctx({ query: "who is waiting on me", askName: "Kage" }))[0]!.items[0]!.label).toBe('Ask Kage: "who is waiting on me"');
+  });
+
   test("a command word: matches first, then Search, then Ask Jev last", () => {
     const groups = buildCommands(ctx({ query: "tra" }));
     expect(ids(groups)).toEqual(["folder:[Gmail]/Trash", "search", "ask"]);

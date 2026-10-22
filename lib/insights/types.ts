@@ -127,7 +127,7 @@ export type BriefItem = ThreadRef & {
   urgency: number;
   needsReply: boolean;
   preview?: string;
-  source: "heuristic" | "jev";
+  source: "heuristic" | "jev" | "kage";
   confidence?: number;
 };
 

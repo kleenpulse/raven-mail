@@ -13,6 +13,7 @@ import { DotStrip } from "./dot-strip";
 import { FilesTable } from "./files-table";
 import { CoverageTable, Failures, Health, Kpis, Slowest } from "./panels";
 import { TestOrbit } from "./test-orbit";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 function LiveRun({ state }: { state: RunState }) {
 	const c = state.counts;
@@ -65,7 +66,7 @@ export function TestsBoard({ report: initial, history: initialHistory }: { repor
 	const start = () => void run();
 
 	return (
-		<div className="h-full overflow-y-auto">
+		<LayoutScroll className="h-full overflow-y-auto">
 			<div className="mx-auto max-w-[calc(1900px-84px)] px-5 pt-6 md:px-8">
 				<header className="entrance flex flex-wrap items-center justify-between gap-4 pb-6">
 					<div className="min-w-0">
@@ -112,6 +113,6 @@ export function TestsBoard({ report: initial, history: initialHistory }: { repor
 					)}
 				</div>
 			</div>
-		</div>
+		</LayoutScroll>
 	);
 }

@@ -22,7 +22,7 @@ const DEMO_ACCOUNT: Account = {
 	email: "demo@raven.invalid",
 	displayName: "Demo",
 	provider: "Demo mailbox",
-	jev: { source: null, hint: null },
+	jev: { source: null, hint: null, kage: false },
 };
 
 // Illustrative: the real streak is tracked on the visitor's own device, so the demo mailbox has none.
@@ -133,7 +133,7 @@ export function DemoBoard({ overview }: { overview: Overview }) {
 							/>
 						</div>
 						<div className="col-span-12 md:col-span-6 lg:col-span-3 *:h-full">
-							<DailyBrief items={overview.brief} todayKey={todayKey} jevLive={false} demo i={8} />
+							<DailyBrief items={overview.brief} todayKey={todayKey} engine={null} demo i={8} />
 						</div>
 					</AccountProvider>
 				)}

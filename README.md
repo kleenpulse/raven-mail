@@ -31,7 +31,15 @@ A self-hosted mail client for Gmail, Outlook, Yahoo, iCloud, Fastmail, Proton (B
 3. **Rank** — for topic searches, Jev picks which candidate emails best answer the question; the probabilities become the ranking.
 4. **Answer** — a templated answer plus the cited emails. Low confidence shows "did you mean" chips instead of guessing.
 
-Email text only ever reaches Jev as data to choose between, and Jev can't take actions, so a hostile email can at worst rank itself higher. Each user can bring their own TypeSafe key in **Settings → Account** (it is checked once, then kept only inside the encrypted session cookie, and wins over the server key). With no key at all, a keyword planner does the same job for free. **Deep triage** (a button, never automatic) asks Jev to re-score your last 48 hours.
+Email text only ever reaches Jev as data to choose between, and Jev can't take actions, so a hostile email can at worst rank itself higher. Each user can bring their own TypeSafe key in **Settings → Account** (it is checked once, then kept only inside the encrypted session cookie, and wins over the server key). **Deep triage** (a button, never automatic) asks Jev to re-score your last 48 hours.
+
+### Kage: the same questions, without a key
+
+Not everyone has a Jev key, so Raven ships **Kage** (`lib/kage/`), a built-in engine that answers Jev's exact `systemOne` contract (`choice`, `score`, `noul`) with no network and no account. It scores each option with BM25 over word stems plus a small mail lexicon ("invoice" ≈ "receipt", "owes me" ≈ "no reply"), turns the scores into probabilities, and like Jev it never writes text: email content is only evidence, so it can't add options or change the question.
+
+- With no key, Ask and Deep triage run on Kage, labelled **Kage** in the UI. If a Jev call fails (bad key, rate limit, outage), Kage answers it instead.
+- `KAGE=off` turns it off; then keyless sessions use the keyword rules.
+- `bun run eval:kage` (or **Kage** in the dev nav, `/dev/kage`) scores Kage against the keyword rules, and against Jev when `TYPESAFE_API_KEY` works, on labeled fixtures in `test/fixtures/kage/`. The **blind** split was written after tuning stopped. Read that one.
 
 An LLM "narrator" can be plugged in later at `lib/jev/ask/narrate.ts`; none ships today.
 
@@ -41,7 +49,7 @@ An LLM "narrator" can be plugged in later at `lib/jev/ask/narrate.ts`; none ship
 - **shadcn/ui** on Base UI + Tailwind CSS v4 (tokens in `app/globals.css`)
 - **TanStack Query** (reads via GET route handlers) · **nuqs** (URL state) · **Zustand** (compose, Ask history)
 - **imapflow** + **mailparser** to read, **nodemailer** to send
-- **@typesafe-ai/sdk** (Jev), with heuristic fallbacks everywhere
+- **@typesafe-ai/sdk** (Jev), with Kage and then keyword heuristics as fallbacks
 - **Neon Postgres** + **Drizzle** (integrations only) — `@neondatabase/serverless` over HTTP
 
 ## Quick start

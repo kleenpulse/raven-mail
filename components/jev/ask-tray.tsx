@@ -6,12 +6,56 @@ import { ArrowUp, Clock3, Inbox, Loader2, MailQuestion, Paperclip, Sparkles, Tim
 import { useAskStore } from "@/components/jev/ask-store";
 import { AnswerCard, StageTrail } from "@/components/jev/ask-answer";
 import { useAsk, type AskOptions } from "@/components/jev/use-ask";
+import { useAskName } from "@/components/jev/ask-name";
 import { useOverview } from "@/hooks/use-overview";
 import { useDeepTriage } from "@/hooks/use-deep-triage";
 import { INTENT_META, SUGGESTED_INTENTS } from "@/lib/jev/ask/catalog";
 import { formatDuration } from "@/lib/jev/ask/format";
 import { smartChips } from "@/lib/jev/ask/chips";
+import { usePref } from "@/lib/prefs/store";
 import { cn } from "@/lib/utils";
+
+/** Below this the page counts as "at the top"; per-event moves under JITTER_PX are ignored. */
+const TOP_PX = 8;
+const JITTER_PX = 6;
+
+/**
+ * Visible at the top and while scrolling up, hidden while scrolling down.
+ * Each page owns its scroller inside <main>, so this listens in the capture
+ * phase (scroll doesn't bubble) and tracks every scroller separately.
+ */
+function useShowOnScrollUp(resetKey: string) {
+	// Hidden only for the key it was hidden on, so a new page starts visible.
+	const [hiddenOn, setHiddenOn] = React.useState<string | null>(null);
+
+	React.useEffect(() => {
+		const setVisible = (on: boolean) => setHiddenOn(on ? null : resetKey);
+		const last = new WeakMap<Element, number>();
+		const onScroll = (e: Event) => {
+			const el = e.target;
+			if (!(el instanceof Element) || !el.closest("main")) return;
+			const top = el.scrollTop;
+			const prev = last.get(el);
+			if (top <= TOP_PX) {
+				last.set(el, top);
+				setVisible(true);
+				return;
+			}
+			if (prev === undefined) {
+				last.set(el, top);
+				return;
+			}
+			const delta = top - prev;
+			if (Math.abs(delta) < JITTER_PX) return;
+			last.set(el, top);
+			setVisible(delta < 0);
+		};
+		document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+		return () => document.removeEventListener("scroll", onScroll, { capture: true });
+	}, [resetKey]);
+
+	return hiddenOn !== resetKey;
+}
 
 function TurnView({ turn, onAsk, onNavigate }: { turn: ReturnType<typeof useAskStore.getState>["turns"][number]; onAsk: (q: string, o?: AskOptions) => void; onNavigate: () => void }) {
 	return (
@@ -55,6 +99,9 @@ export function AskTray() {
 	const [useContext, setUseContext] = React.useState(true);
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const listRef = React.useRef<HTMLOListElement>(null);
+	const showPill = usePref("appearance.askPill");
+	const name = useAskName();
+	const pillInView = useShowOnScrollUp(pathname);
 
 	const contextUid = pathname === "/mail" ? searchParams.get("uid") : null;
 	const contextFolder = searchParams.get("folder") ?? "INBOX";
@@ -108,15 +155,20 @@ export function AskTray() {
 
 	if (!open) {
 		// Over Mail the pill would sit on the list; the rail button and the palette cover it there.
-		if (heroVisible || pathname.startsWith("/mail")) return null;
+		if (!showPill || heroVisible || pathname.startsWith("/mail")) return null;
 		return (
 			<button
 				type="button"
 				onClick={requestFocus}
-				className="glass fixed bottom-6 left-1/2 z-30 hidden h-12 -translate-x-1/2 items-center gap-2.5 rounded-pill px-5 text-sm shadow-lift transition-[translate,box-shadow] hover:-translate-y-0.5 hover:shadow-glow md:left-[calc(50%+42px)] md:flex"
+				inert={!pillInView}
+				data-hidden={!pillInView || undefined}
+				className={cn(
+					"glass-frost fixed bottom-6 left-1/2 z-30 hidden h-12 -translate-x-1/2 items-center gap-2.5 rounded-pill px-5 text-sm shadow-lift inset-shadow-[0_1px_0_var(--glass-edge)] transition-[translate,box-shadow,opacity,filter] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-glow md:left-[calc(50%+42px)] md:flex",
+					"data-hidden:pointer-events-none data-hidden:translate-y-3 data-hidden:opacity-0 data-hidden:blur-sm",
+				)}
 			>
 				<Sparkles className="[&>path:first-child]:fill-current size-4 text-signal-ink dark:text-signal" />
-				Ask Jev
+				Ask {name}
 			</button>
 		);
 	}
@@ -124,14 +176,14 @@ export function AskTray() {
 	return (
 		<div className="pointer-events-none fixed inset-x-0 bottom-[92px] z-40 flex justify-center px-3 md:bottom-5 md:pl-[84px]">
 			<section
-				aria-label="Ask Jev"
+				aria-label={`Ask ${name}`}
 				// Not a dialog, but mail shortcuts must still stand down while focus is in it (lib/keyboard).
 				data-overlay
 				className="glass pointer-events-auto flex max-h-[min(78vh,760px)] w-full max-w-[760px] flex-col rounded-card p-3 shadow-lift entrance"
 			>
 				<header className="flex items-center justify-between px-2 pt-1 pb-2">
 					<p className="font-mono text-[11px] tracking-[0.14em] text-ink-2">
-						<span className="text-signal-ink dark:text-signal">JEV</span> ANALYSIS
+						<span className="text-signal-ink dark:text-signal">{name.toUpperCase()}</span> ANALYSIS
 					</p>
 					<div className="flex items-center gap-1">
 						{turns.length > 0 && (
@@ -147,7 +199,7 @@ export function AskTray() {
 						<button
 							type="button"
 							onClick={() => setOpen(false)}
-							aria-label="Close Ask Jev"
+							aria-label={`Close Ask ${name}`}
 							className="grid size-8 place-items-center rounded-full text-ink-2 hover:bg-card-nested hover:text-foreground"
 						>
 							<X className="size-4" />
@@ -164,7 +216,7 @@ export function AskTray() {
 				)}
 				<p aria-live="polite" className="sr-only">
 					{last?.status === "running"
-						? (last.stages[last.stages.length - 1]?.detail ?? "Jev is thinking")
+						? (last.stages[last.stages.length - 1]?.detail ?? `${name} is thinking`)
 						: last?.status === "done"
 							? last.answer?.headline
 							: ""}
@@ -190,7 +242,7 @@ export function AskTray() {
 						value={value}
 						onChange={(e) => setValue(e.target.value)}
 						placeholder="Ask about your inbox…"
-						aria-label="Ask Jev"
+						aria-label={`Ask ${name}`}
 						autoComplete="off"
 						maxLength={500}
 						className={cn(
