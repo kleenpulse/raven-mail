@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { Bento, BentoTitle } from "@/components/overview/bento";
 import { Orbit } from "@/components/overview/orbit";
 import { orbitEdgeCases, orbitFixtures } from "@/components/overview/orbit/fixtures";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 export const metadata: Metadata = { title: "Orbit lab" };
 
@@ -15,7 +16,7 @@ export default function OrbitLabPage() {
 	const edge = orbitEdgeCases();
 
 	return (
-		<div className="h-full overflow-y-auto">
+		<LayoutScroll className="h-full overflow-y-auto">
 			<div className="mx-auto flex max-w-[1480px] flex-col gap-4 px-5 py-6 md:px-8 md:py-8">
 				<header className="entrance flex items-end justify-between gap-4">
 					<div>
@@ -49,6 +50,6 @@ export default function OrbitLabPage() {
 					</Bento>
 				</div>
 			</div>
-		</div>
+		</LayoutScroll>
 	);
 }

@@ -23,6 +23,10 @@ as you work — it ships inside the app.
   typing out in the "need help?" box could push the page wider than
   the window. Long subjects now wrap and the buttons stack when the card
   is narrow.
+- The highlight on the selected tab no longer jumps up or down the
+  screen when the page gets shorter as you switch. It now slides
+  straight to the tab you picked, on the Overview cards, in Settings,
+  in the Export panel and on the mail folder list.
 
 ### Security
 

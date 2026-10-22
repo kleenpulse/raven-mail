@@ -27,6 +27,7 @@ import { smartChips } from "@/lib/jev/ask/chips";
 import { formatRelative, initials } from "@/lib/format";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 const FALLBACK_SUGGESTIONS = ["Who’s waiting on my reply?", "What did I miss today?", "Newsletters I never open"];
 
@@ -68,7 +69,7 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 	const todayKey = data?.volume.days.at(-1)?.date;
 
 	return (
-		<div ref={introRef} className="h-full overflow-y-auto">
+		<LayoutScroll ref={introRef} className="h-full overflow-y-auto">
 			<div className="mx-auto max-w-[calc(1900px-84px)] px-5 pt-6 md:px-8">
 				<header className="entrance flex items-center justify-between gap-4">
 					<div className="min-w-0">
@@ -197,6 +198,6 @@ export function OverviewBoard({ firstName, jevLive }: { firstName: string; jevLi
 					)}
 				</div>
 			</div>
-		</div>
+		</LayoutScroll>
 	);
 }

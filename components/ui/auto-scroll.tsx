@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { motion } from "motion/react";
 import { cn } from "@/lib/utils";
 
 /** Hover-reveal auto-hide scrollbar classes (also usable without this component). */
@@ -11,7 +12,7 @@ export function AutoScroll({
   children,
   onScroll,
   ...rest
-}: React.ComponentProps<"div">) {
+}: React.ComponentProps<typeof motion.div>) {
   const [scrolling, setScrolling] = React.useState(false);
   const timer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -22,8 +23,10 @@ export function AutoScroll({
     [],
   );
 
+  // layoutScroll: active pills inside (sidebar folders) stay put when the list's scroll snaps; see LayoutScroll.
   return (
-    <div
+    <motion.div
+      layoutScroll
       {...rest}
       data-scrolling={scrolling || undefined}
       onScroll={(e) => {
@@ -35,6 +38,6 @@ export function AutoScroll({
       className={cn("auto-scroll", className)}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }

@@ -8,6 +8,7 @@ import { ChatPanel } from "@/components/integrations/chat-panel";
 import { ExportPanel } from "@/components/integrations/export-panel";
 import { JevPanel, MailPanel } from "@/components/integrations/health-panel";
 import { SectionBoundary } from "@/components/integrations/section-boundary";
+import { LayoutScroll } from "@/components/ui/layout-scroll";
 import { CHAT, catalogEntry } from "@/lib/integrations/catalog";
 import type { CatalogId, IntegrationsOverview } from "@/lib/integrations/types";
 
@@ -84,11 +85,11 @@ export function IntegrationSheet({
 								<X className="size-4" />
 							</SheetClose>
 						</header>
-						<div ref={body} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-10 outline-none scrollbar-thin">
+						<LayoutScroll ref={body} tabIndex={-1} className="min-h-0 flex-1 overflow-y-auto px-6 pt-6 pb-10 outline-none scrollbar-thin">
 							<SectionBoundary title={entry.name}>
 								<Panel id={shown} data={data} onRetry={onRetry} />
 							</SectionBoundary>
-						</div>
+						</LayoutScroll>
 					</>
 				)}
 			</SheetContent>
