@@ -15,6 +15,38 @@ export function allowSingleKey(e: Pick<KeyboardEvent, "key" | "target" | "metaKe
 	return e.key.length !== 1 || getPref("keyboard.singleKey");
 }
 
+export type MessageKeyAction = "archive" | "trash" | "star" | "unread" | "reply" | "replyAll" | "forward";
+
+/**
+ * Triage keys for the focused message. Plain F and U stay the wide-view
+ * toggle and back-to-list (app-shell); their Shift forms forward and mark
+ * unread. A held key never repeats an action.
+ */
+export function messageKeyAction(
+	e: Pick<KeyboardEvent, "key" | "target" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey" | "repeat">,
+): MessageKeyAction | null {
+	if (e.repeat || !allowSingleKey(e)) return null;
+	// "#" is Shift+3 on US keyboards and its own key elsewhere, so Shift doesn't matter for it.
+	if (e.key === "#") return "trash";
+	if (e.shiftKey) {
+		if (e.key === "F") return "forward";
+		if (e.key === "U") return "unread";
+		return null;
+	}
+	switch (e.key) {
+		case "e":
+			return "archive";
+		case "s":
+			return "star";
+		case "r":
+			return "reply";
+		case "a":
+			return "replyAll";
+		default:
+			return null;
+	}
+}
+
 export type Shortcut = { keys: string[]; label: string; scope: "Anywhere" | "Mail" | "Search"; single: boolean };
 
 /** What the Keyboard settings list shows; keep in step with the handlers. */
@@ -29,5 +61,12 @@ export const SHORTCUTS: Shortcut[] = [
 	{ keys: ["G"], label: "Go to Inbox", scope: "Mail", single: true },
 	{ keys: ["F"], label: "Wide reader on or off", scope: "Mail", single: true },
 	{ keys: ["Esc"], label: "Close message", scope: "Mail", single: false },
+	{ keys: ["E"], label: "Archive", scope: "Mail", single: true },
+	{ keys: ["#"], label: "Move to Trash", scope: "Mail", single: true },
+	{ keys: ["S"], label: "Star or unstar", scope: "Mail", single: true },
+	{ keys: ["Shift", "U"], label: "Mark unread", scope: "Mail", single: true },
+	{ keys: ["R"], label: "Reply", scope: "Mail", single: true },
+	{ keys: ["A"], label: "Reply all", scope: "Mail", single: true },
+	{ keys: ["Shift", "F"], label: "Forward", scope: "Mail", single: true },
 	{ keys: ["mod", "Z"], label: "Undo archive, move or delete", scope: "Mail", single: false },
 ];

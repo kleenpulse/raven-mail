@@ -38,6 +38,7 @@ import { useTheme } from "next-themes";
 import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { useMessage, useFolders, useSetFlags } from "@/hooks/use-mail";
 import type { DeferredKind } from "@/lib/mail/deferred-actions";
+import { messageKeyAction } from "@/lib/keyboard";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
@@ -241,6 +242,36 @@ function MailReaderInner({
 		const id = defer({ kind, folder, uids: [uid], destination }, { onUndo: () => onRestored?.(folder, uid) });
 		if (id) onRemoved(uid);
 	}
+
+	// Triage keys act on the open message, which is also the list's selection.
+	const onKey = React.useEffectEvent((e: KeyboardEvent) => {
+		const action = messageKeyAction(e);
+		if (!action || !message) return;
+		e.preventDefault();
+		switch (action) {
+			case "archive":
+				if (canArchive) move("archive", archivePath);
+				return;
+			case "trash":
+				move(isTrash ? "deleteForever" : "trash");
+				return;
+			case "star":
+				mutateFlags({ folder, uids: [message.uid], flagged: !message.flags.flagged });
+				return;
+			case "unread":
+				mutateFlags({ folder, uids: [message.uid], seen: false });
+				toast.success("Marked unread");
+				return;
+			default:
+				onOpenReply(action, message);
+		}
+	});
+
+	React.useEffect(() => {
+		const handler = (e: KeyboardEvent) => onKey(e);
+		window.addEventListener("keydown", handler);
+		return () => window.removeEventListener("keydown", handler);
+	}, []);
 
 	if (isPending) {
 		return (

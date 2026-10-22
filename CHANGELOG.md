@@ -28,6 +28,11 @@ as you work — it ships inside the app.
   to undo the last one. You set how long you have in Settings → Mail.
   If you close the tab before the time runs out, the action still
   goes through.
+- New keys for the open message: E to archive, # to move to Trash, S to
+  star, Shift+U to mark unread, R to reply, A to reply all and Shift+F
+  to forward. Archive and Trash can be undone. They never fire while
+  you type, and they follow the Single-Key Shortcuts setting. See them
+  all in Settings → Keyboard.
 
 ### Fixed
 
