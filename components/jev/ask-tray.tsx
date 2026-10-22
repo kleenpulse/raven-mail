@@ -13,9 +13,52 @@ import { useDeepTriage } from "@/hooks/use-deep-triage";
 import { INTENT_META, SUGGESTED_INTENTS } from "@/lib/jev/ask/catalog";
 import { formatDuration } from "@/lib/jev/ask/format";
 import { smartChips } from "@/lib/jev/ask/chips";
+import { usePref } from "@/lib/prefs/store";
 import { cn, modKeyLabel } from "@/lib/utils";
 
 const subscribeNoop = () => () => {};
+
+/** Below this the page counts as "at the top"; per-event moves under JITTER_PX are ignored. */
+const TOP_PX = 8;
+const JITTER_PX = 6;
+
+/**
+ * Visible at the top and while scrolling up, hidden while scrolling down.
+ * Each page owns its scroller inside <main>, so this listens in the capture
+ * phase (scroll doesn't bubble) and tracks every scroller separately.
+ */
+function useShowOnScrollUp(resetKey: string) {
+	// Hidden only for the key it was hidden on, so a new page starts visible.
+	const [hiddenOn, setHiddenOn] = React.useState<string | null>(null);
+
+	React.useEffect(() => {
+		const setVisible = (on: boolean) => setHiddenOn(on ? null : resetKey);
+		const last = new WeakMap<Element, number>();
+		const onScroll = (e: Event) => {
+			const el = e.target;
+			if (!(el instanceof Element) || !el.closest("main")) return;
+			const top = el.scrollTop;
+			const prev = last.get(el);
+			if (top <= TOP_PX) {
+				last.set(el, top);
+				setVisible(true);
+				return;
+			}
+			if (prev === undefined) {
+				last.set(el, top);
+				return;
+			}
+			const delta = top - prev;
+			if (Math.abs(delta) < JITTER_PX) return;
+			last.set(el, top);
+			setVisible(delta < 0);
+		};
+		document.addEventListener("scroll", onScroll, { capture: true, passive: true });
+		return () => document.removeEventListener("scroll", onScroll, { capture: true });
+	}, [resetKey]);
+
+	return hiddenOn !== resetKey;
+}
 
 function TurnView({ turn, onAsk, onNavigate }: { turn: ReturnType<typeof useAskStore.getState>["turns"][number]; onAsk: (q: string, o?: AskOptions) => void; onNavigate: () => void }) {
 	return (
@@ -60,7 +103,9 @@ export function AskTray() {
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const listRef = React.useRef<HTMLOListElement>(null);
 	const mod = React.useSyncExternalStore(subscribeNoop, modKeyLabel, () => "Ctrl");
+	const showPill = usePref("appearance.askPill");
 	const name = useAskName();
+	const pillInView = useShowOnScrollUp(pathname);
 
 	const contextUid = pathname === "/mail" ? searchParams.get("uid") : null;
 	const contextFolder = searchParams.get("folder") ?? "INBOX";
@@ -114,12 +159,17 @@ export function AskTray() {
 
 	if (!open) {
 		// Over Mail the pill would sit on the list; the rail button and ⌘K cover it there.
-		if (heroVisible || pathname.startsWith("/mail")) return null;
+		if (!showPill || heroVisible || pathname.startsWith("/mail")) return null;
 		return (
 			<button
 				type="button"
 				onClick={requestFocus}
-				className="glass fixed bottom-6 left-1/2 z-30 hidden h-12 -translate-x-1/2 items-center gap-2.5 rounded-pill px-5 text-sm shadow-lift transition-[translate,box-shadow] hover:-translate-y-0.5 hover:shadow-glow md:left-[calc(50%+42px)] md:flex"
+				inert={!pillInView}
+				data-hidden={!pillInView || undefined}
+				className={cn(
+					"glass-frost fixed bottom-6 left-1/2 z-30 hidden h-12 -translate-x-1/2 items-center gap-2.5 rounded-pill px-5 text-sm shadow-lift inset-shadow-[0_1px_0_var(--glass-edge)] transition-[translate,box-shadow,opacity,filter] duration-300 ease-out hover:-translate-y-0.5 hover:shadow-glow md:left-[calc(50%+42px)] md:flex",
+					"data-hidden:pointer-events-none data-hidden:translate-y-3 data-hidden:opacity-0 data-hidden:blur-sm",
+				)}
 			>
 				<Sparkles className="[&>path:first-child]:fill-current size-4 text-signal-ink dark:text-signal" />
 				Ask {name}

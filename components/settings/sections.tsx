@@ -639,6 +639,7 @@ const ROWS: Record<string, React.ComponentType> = {
 		/>
 	),
 	transparency: () => <PrefSwitchRow id="transparency" pref="appearance.reduceTransparency" />,
+	"ask-pill": () => <PrefSwitchRow id="ask-pill" pref="appearance.askPill" />,
 	"remote-images": () => <PrefSwitchRow id="remote-images" pref="mail.remoteImages" />,
 	preload: () => <PrefSwitchRow id="preload" pref="mail.preload" />,
 	undo: UndoRow,

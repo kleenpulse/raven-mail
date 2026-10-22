@@ -205,6 +205,10 @@
 	--glass: rgb(255 255 255 / 0.86);
 	--glass-thin: rgb(255 255 255 / 0.55);
 	--glass-border: rgb(17 17 17 / 0.07);
+	--glass-frost: rgb(255 255 255 / 0.48);
+	--glass-sheen: rgb(255 255 255 / 0.75);
+	--glass-edge: rgb(255 255 255 / 0.95);
+	--glass-tint: rgb(232 96 60 / 0.16);
 	--glow: rgb(232 96 60 / 0.32);
 	--critical: #d93b2b;
 	--orb-1: #e8603c;
@@ -275,6 +279,10 @@
 	--glass: rgb(13 30 31 / 0.8);
 	--glass-thin: rgb(13 30 31 / 0.52);
 	--glass-border: rgb(160 220 215 / 0.14);
+	--glass-frost: rgb(13 30 31 / 0.46);
+	--glass-sheen: rgb(160 220 215 / 0.13);
+	--glass-edge: rgb(160 220 215 / 0.24);
+	--glass-tint: rgb(230 194 122 / 0.16);
 	--glow: rgb(94 225 217 / 0.35);
 	--critical: #f0604d;
 	--orb-1: #e6c27a;
@@ -336,11 +344,15 @@
 		--card: #102425;
 		--glass: #0d1d1e;
 		--glass-thin: #0d1d1e;
+		--glass-frost: #0d1d1e;
+		--glass-sheen: transparent;
 		--sidebar: #060d0e;
 	}
 	:root:not(.dark) {
 		--glass: #ffffff;
 		--glass-thin: #ffffff;
+		--glass-frost: #ffffff;
+		--glass-sheen: transparent;
 	}
 }
 
@@ -351,11 +363,15 @@ html[data-transparency="reduce"].dark {
 	--card: #102425;
 	--glass: #0d1d1e;
 	--glass-thin: #0d1d1e;
+	--glass-frost: #0d1d1e;
+	--glass-sheen: transparent;
 	--sidebar: #060d0e;
 }
 html[data-transparency="reduce"]:not(.dark) {
 	--glass: #ffffff;
 	--glass-thin: #ffffff;
+	--glass-frost: #ffffff;
+	--glass-sheen: transparent;
 }
 
 @layer base {
@@ -473,6 +489,17 @@ html[data-transparency="reduce"]:not(.dark) {
 	background: var(--glass-thin);
 	border: 1px solid var(--glass-border);
 	backdrop-filter: blur(10px) saturate(140%);
+}
+
+/* Rich frost for small floating controls (the Ask Jev pill): thinner fill,
+   heavier blur, a top sheen and a faint accent glow at the leading edge. */
+@utility glass-frost {
+	background:
+		linear-gradient(180deg, var(--glass-sheen), transparent 55%),
+		radial-gradient(90% 160% at 0% 50%, var(--glass-tint), transparent 70%),
+		var(--glass-frost);
+	border: 1px solid var(--glass-border);
+	backdrop-filter: blur(24px) saturate(180%);
 }
 
 /* Rotating conic border for critical / attention states. */

@@ -19,6 +19,10 @@ as you work — it ships inside the app.
   in instead of plain keyword rules. Answers and badges say "Kage" when
   Kage answered. Without a key, the Ask button and the Ctrl+K panel are
   called "Ask Kage", so you always know who is answering.
+- The floating Ask Jev button has a new frosted glass look. It now fades
+  away while you scroll down a page and comes back when you scroll up or
+  reach the top. You can hide
+  it for good in Settings → Appearance. Ctrl+K or ⌘K still opens Ask Jev.
 - A "buy me a coffee" button now sits in the top-right corner of the
   Overview and Mail top bars, if you'd like to support Raven.
 

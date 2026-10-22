@@ -9,6 +9,8 @@ export const PREF_SCHEMAS = {
 	"appearance.density": z.enum(["comfortable", "compact"]),
 	"appearance.motion": z.enum(["system", "reduce"]),
 	"appearance.reduceTransparency": z.boolean(),
+	/** The floating "Ask Jev" pill; ⌘K and the rail button work either way. */
+	"appearance.askPill": z.boolean(),
 	/** Absent = never answered (the reader asks once); false = "just this once". */
 	"mail.remoteImages": z.boolean(),
 	"mail.undoMs": z.union([z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
@@ -33,6 +35,7 @@ export const DEFAULTS: Prefs = {
 	"appearance.density": "comfortable",
 	"appearance.motion": "system",
 	"appearance.reduceTransparency": false,
+	"appearance.askPill": true,
 	"mail.remoteImages": false,
 	"mail.undoMs": 5000,
 	"mail.preload": true,
