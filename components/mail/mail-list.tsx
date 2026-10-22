@@ -297,48 +297,61 @@ function MailListInner({
 
 	return (
 		<ListPane solo={solo}>
-			<div className="flex h-16 shrink-0 items-center justify-between gap-2 px-3 @md/list:px-4">
-				<div className="inline-flex h-10 min-w-0 items-center gap-3 rounded-pill pr-4 pl-3 ring-1 ring-border dark:bg-card-nested dark:ring-glass-border">
-					<Checkbox
-						checked={allChecked}
-						indeterminate={selectedCount > 0 && !allChecked}
-						disabled={messages.length === 0}
-						onCheckedChange={(next) =>
-							setChecked(next ? new Set(messages.map((m) => m.uid)) : new Set())
-						}
-						aria-label="Select all"
-					/>
-					<p aria-live="polite" className="flex min-w-0 items-baseline gap-2 text-[13px]">
-						{selectedCount > 0 ? (
-							<span className="font-medium text-foreground">
-								<span className="tabular">{selectedCount}</span> selected
-							</span>
-						) : (
-							<>
-								<span className="truncate font-medium text-foreground">
-									{folderLabel(folders, folder)}
-								</span>
-								<span className="font-mono text-[11px] whitespace-nowrap text-ink-2 tabular">
-									{total > messages.length ? `${messages.length} of ${total}` : messages.length}
-									<span className="sr-only"> messages</span>
-								</span>
-								{unread > 0 && (
-									<span className="hidden font-mono text-[11px] whitespace-nowrap text-signal-ink tabular @lg/list:inline dark:text-signal">
-										· {unread} unread
+			<TooltipGroup>
+				<div className="flex h-16 shrink-0 items-center justify-between gap-2 px-3 @md/list:px-4">
+					<div className="flex min-w-0 items-center gap-2">
+						<div className="inline-flex h-10 min-w-0 items-center gap-3 rounded-pill pr-4 pl-3 ring-1 ring-border dark:bg-card-nested dark:ring-glass-border">
+							<Checkbox
+								checked={allChecked}
+								indeterminate={selectedCount > 0 && !allChecked}
+								disabled={messages.length === 0}
+								onCheckedChange={(next) =>
+									setChecked(next ? new Set(messages.map((m) => m.uid)) : new Set())
+								}
+								aria-label="Select all"
+							/>
+							<p aria-live="polite" className="flex min-w-0 items-baseline gap-2 text-[13px]">
+								{selectedCount > 0 ? (
+									<span className="font-medium text-foreground">
+										<span className="tabular">{selectedCount}</span> selected
 									</span>
+								) : (
+									<>
+										<span className="truncate font-medium text-foreground">
+											{folderLabel(folders, folder)}
+										</span>
+										<span className="font-mono text-[11px] whitespace-nowrap text-ink-2 tabular">
+											{total > messages.length ? `${messages.length} of ${total}` : messages.length}
+											<span className="sr-only"> messages</span>
+										</span>
+										{unread > 0 && (
+											<span className="hidden font-mono text-[11px] whitespace-nowrap text-signal-ink tabular @lg/list:inline dark:text-signal">
+												· {unread} unread
+											</span>
+										)}
+									</>
 								)}
-							</>
-						)}
-					</p>
-					{(isFetching || busy) && (
-						<>
-							<LoaderCircle aria-hidden className="size-3.5 shrink-0 animate-spin text-ink-2" />
-							<span className="sr-only">Syncing</span>
-						</>
-					)}
-				</div>
+							</p>
+							{busy && (
+								<>
+									<LoaderCircle aria-hidden className="size-3.5 shrink-0 animate-spin text-ink-2" />
+									<span className="sr-only">Syncing</span>
+								</>
+							)}
+						</div>
+						<ToolButton
+							label={isFetching ? "Syncing…" : "Refresh"}
+							disabled={isFetching}
+							onClick={() => {
+								void invalidate.invalidateMessages(folder);
+								void invalidate.invalidateFolders();
+							}}
+							className="size-10 shrink-0 ring-1 ring-border dark:bg-card-nested dark:ring-glass-border"
+						>
+							<RotateCw className={cn(isFetching && "animate-spin")} />
+						</ToolButton>
+					</div>
 
-				<TooltipGroup>
 					<div
 						role="group"
 						aria-label="Selection actions"
@@ -369,8 +382,8 @@ function MailListInner({
 							<Trash2 />
 						</ToolButton>
 					</div>
-				</TooltipGroup>
-			</div>
+				</div>
+			</TooltipGroup>
 
 			{messages.length === 0 ? (
 				<PaneState title={empty.title}>{empty.body}</PaneState>

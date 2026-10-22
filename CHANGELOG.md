@@ -27,6 +27,8 @@ as you work — it ships inside the app.
   Overview and Mail top bars, if you'd like to support Raven.
 - The "not found" page now glows with the same gold aurora as the
   bottom of the landing page.
+- A refresh button now sits beside the folder name above your mail list.
+  It checks for new mail right away, and spins while the list syncs.
 
 ### Fixed
 
