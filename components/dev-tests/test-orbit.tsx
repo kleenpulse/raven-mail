@@ -2,12 +2,15 @@
 
 import * as React from "react";
 import { CircleX, Clock3, ListChecks, Timer } from "lucide-react";
+import { MotionConfig, motion } from "motion/react";
 import { StatusPill } from "@/components/integrations/status-pill";
+import { MorphDialog, morphTransition } from "@/components/motion-garden/morph-dialog";
 import { Orbit } from "@/components/overview/orbit";
 import { formatAgo, formatAgoLong, formatStamp } from "@/components/overview/orbit/format";
 import { MAIL_VOCAB, type OrbitFocus, type OrbitVocab } from "@/components/overview/orbit/vocab";
 import { SLOT_LABEL, toOrbitInput } from "@/lib/dev/test-orbit";
 import { AREA_LABEL, LAYER_LABEL, type TestCase, type TestFile, type TestHistory, type TestReport } from "@/lib/dev/test-report";
+import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { cn } from "@/lib/utils";
 import { FileDetail } from "./file-detail";
 import { formatMs, STATUS_LABEL, STATUS_TONE } from "./shared";
@@ -17,20 +20,76 @@ function spotlight(f: TestFile): TestCase[] {
 	return [...f.tests].sort((a, b) => Number(b.status === "fail") - Number(a.status === "fail") || b.ms - a.ms).slice(0, 5);
 }
 
-function TestFocusRow({ test }: { test: TestCase }) {
+const MORPH = morphTransition();
+const ROW_RADIUS = 14;
+
+/** A spotlight row; it morphs into a dialog holding the whole test, nothing truncated. */
+function TestFocusRow({ test, file }: { test: TestCase; file: TestFile }) {
+	const [open, setOpen] = React.useState(false);
+	const reduced = useReducedMotion();
+	const layoutId = `test-row-${React.useId()}`;
+	const suite = test.path.join(" › ");
+	const exactMs = `${Number(test.ms.toFixed(3))} ms`;
+
 	return (
-		<div className="flex h-full items-center gap-3 rounded-[14px] bg-sheet px-3.5 ring-1 ring-border dark:bg-card-nested dark:ring-glass-border">
-			<StatusPill tone={STATUS_TONE[test.status]} className="shrink-0">
-				{STATUS_LABEL[test.status]}
-			</StatusPill>
-			<span className="min-w-0 flex-1">
-				<span className="block truncate text-[13.5px] leading-tight">{test.name}</span>
-				<span className="mt-0.5 block truncate text-[11.5px] text-ink-2">
-					{test.error ? test.error.message.split("\n")[0] : test.path.join(" › ") || "top level"}
-				</span>
-			</span>
-			<span className="tabular shrink-0 font-mono text-[11px] text-ink-2">{formatMs(test.ms)}</span>
-		</div>
+		<>
+			<MotionConfig transition={reduced ? { duration: 0 } : MORPH}>
+				<motion.button
+					type="button"
+					layoutId={reduced ? undefined : layoutId}
+					aria-haspopup="dialog"
+					onClick={() => setOpen(true)}
+					style={{ borderRadius: ROW_RADIUS }}
+					className="flex h-full w-full items-center gap-3 bg-sheet px-3.5 text-left ring-1 ring-border transition-shadow hover:ring-foreground/25 focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:outline-none dark:bg-card-nested dark:ring-glass-border dark:hover:ring-signal/35"
+				>
+					<StatusPill tone={STATUS_TONE[test.status]} className="shrink-0">
+						{STATUS_LABEL[test.status]}
+					</StatusPill>
+					<span className="min-w-0 flex-1">
+						<span className="block truncate text-[13.5px] leading-tight">{test.name}</span>
+						<span className="mt-0.5 block truncate text-[11.5px] text-ink-2">
+							{test.error ? test.error.message.split("\n")[0] : suite || "top level"}
+						</span>
+					</span>
+					<span className="tabular shrink-0 font-mono text-[11px] text-ink-2">{formatMs(test.ms)}</span>
+				</motion.button>
+			</MotionConfig>
+
+			<MorphDialog
+				open={open}
+				onOpenChange={setOpen}
+				layoutId={layoutId}
+				radius={20}
+				title={test.name}
+				description={suite || "Top level"}
+				className="max-w-xl"
+			>
+				<div className="scrollbar-thin flex min-h-0 flex-col gap-4 overflow-y-auto px-5 pb-5">
+					<div className="flex flex-wrap items-center gap-2 text-[12px] text-ink-2">
+						<StatusPill tone={STATUS_TONE[test.status]}>{STATUS_LABEL[test.status]}</StatusPill>
+						<span className="tabular font-mono">{exactMs}</span>
+					</div>
+					<dl className="grid grid-cols-[auto_minmax(0,1fr)] gap-x-4 gap-y-2 text-[12.5px]">
+						<dt className="text-ink-2">File</dt>
+						<dd className="font-mono text-[12px] break-words">{file.file}</dd>
+						<dt className="text-ink-2">Kind</dt>
+						<dd>
+							{LAYER_LABEL[file.layer]} · {AREA_LABEL[file.area]}
+						</dd>
+						<dt className="text-ink-2">Test id</dt>
+						<dd className="font-mono text-[12px] break-words">{test.id}</dd>
+					</dl>
+					{test.error && (
+						<div>
+							<p className="readout">Error</p>
+							<pre className="scrollbar-thin mt-2 max-h-[40svh] overflow-auto rounded-[12px] bg-critical/6 p-3 font-mono text-[11.5px] leading-relaxed whitespace-pre-wrap break-words ring-1 ring-critical/20">
+								{test.error.detail ?? test.error.message}
+							</pre>
+						</div>
+					)}
+				</div>
+			</MorphDialog>
+		</>
 	);
 }
 
@@ -74,7 +133,7 @@ function testFocus(byFile: Map<string, TestFile>, runs: number): OrbitFocus {
 		},
 		rows: (s) => {
 			const f = byFile.get(s.address);
-			return f ? spotlight(f).map((t) => ({ key: t.id, node: <TestFocusRow test={t} /> })) : [];
+			return f ? spotlight(f).map((t) => ({ key: t.id, node: <TestFocusRow test={t} file={f} /> })) : [];
 		},
 		rowsTitle: (s) => ((byFile.get(s.address)?.counts.fail ?? 0) > 0 ? "Failures first" : "Slowest tests"),
 		rowsNote: (s) => {

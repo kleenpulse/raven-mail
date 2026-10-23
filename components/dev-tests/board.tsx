@@ -1,6 +1,7 @@
 "use client";
 
-import { FlaskConical, Play } from "lucide-react";
+import * as React from "react";
+import { EyeOff, FlaskConical, Play } from "lucide-react";
 import { Bento, BentoTitle } from "@/components/overview/bento";
 import { formatAgo } from "@/components/overview/orbit/format";
 import { Button } from "@/components/ui/button";
@@ -15,16 +16,27 @@ import { CoverageTable, Failures, Health, Kpis, Slowest } from "./panels";
 import { TestOrbit } from "./test-orbit";
 import { LayoutScroll } from "@/components/ui/layout-scroll";
 
-function LiveRun({ state }: { state: RunState }) {
+const LIVE_TITLE = { idle: "", running: "Running the suite…", done: "Run finished", error: "Run failed" } as const;
+
+function LiveRun({ state, onHide }: { state: RunState; onHide: () => void }) {
 	const c = state.counts;
+	const running = state.status === "running";
 	return (
-		<Bento className="col-span-12" aria-live="polite" aria-busy={state.status === "running"}>
-			<div className="flex flex-wrap items-baseline justify-between gap-2">
-				<BentoTitle>{state.status === "error" ? "Run failed" : "Running the suite…"}</BentoTitle>
-				<p className="tabular text-[13px] text-ink-2">
-					<span className="text-ok">{c.pass} pass</span> · <span className={c.fail ? "text-critical" : undefined}>{c.fail} fail</span> ·{" "}
-					{c.skip + c.todo} skipped · {state.files} files
-				</p>
+		<Bento className="col-span-12" aria-live="polite" aria-busy={running}>
+			<div className="flex flex-wrap items-center justify-between gap-2">
+				<BentoTitle>{LIVE_TITLE[state.status]}</BentoTitle>
+				<div className="flex items-center gap-3">
+					<p className="tabular text-[13px] text-ink-2">
+						<span className="text-ok">{c.pass} pass</span> · <span className={c.fail ? "text-critical" : undefined}>{c.fail} fail</span> ·{" "}
+						{c.skip + c.todo} skipped · {state.files} files
+					</p>
+					{!running && (
+						<Button variant="ghost" size="sm" onClick={onHide} aria-label="Hide the run progress">
+							<EyeOff data-icon="inline-start" />
+							Hide
+						</Button>
+					)}
+				</div>
 			</div>
 			{state.currentFile && <p className="mt-1 truncate font-mono text-[12px] text-ink-2">{state.currentFile}</p>}
 			{state.error && (
@@ -32,7 +44,7 @@ function LiveRun({ state }: { state: RunState }) {
 					{state.error}
 				</pre>
 			)}
-			<DotStrip dots={state.dots} running={state.status === "running"} />
+			<DotStrip dots={state.dots} running={running} />
 		</Bento>
 	);
 }
@@ -63,7 +75,12 @@ export function TestsBoard({ report: initial, history: initialHistory }: { repor
 	// A finished run shows immediately; router.refresh() then brings the server copy in line.
 	const report = state.report ?? initial;
 	const history = state.history ?? initialHistory;
-	const start = () => void run();
+	// The finished run's dots stay up until the user hides them; a new run brings them back.
+	const [liveHidden, setLiveHidden] = React.useState(false);
+	const start = () => {
+		setLiveHidden(false);
+		void run();
+	};
 
 	return (
 		<LayoutScroll className="h-full overflow-y-auto">
@@ -88,7 +105,7 @@ export function TestsBoard({ report: initial, history: initialHistory }: { repor
 
 			<div className="min-h-[70%] rounded-t-frame bg-sheet dark:border-t dark:border-glass-border">
 				<div className="mx-auto grid max-w-[calc(1900px-84px)] grid-cols-12 gap-4 px-5 py-6 md:px-8 md:py-8">
-					{(state.status === "running" || state.status === "error") && <LiveRun state={state} />}
+					{(running || (state.status !== "idle" && !liveHidden)) && <LiveRun state={state} onHide={() => setLiveHidden(true)} />}
 					{!report ? (
 						state.status !== "running" && <Empty onRun={start} running={running} />
 					) : (
