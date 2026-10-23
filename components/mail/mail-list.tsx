@@ -129,10 +129,11 @@ function SplitTabs({ split, onChange }: { split: NonNullable<ReturnType<typeof u
 				variant="pill"
 				size="pill"
 				spacing={0}
+				indicator={false}
 				className="w-max rounded-pill bg-card p-1 dark:bg-background/40"
 			>
 				{split.tabs.map((t) => (
-					<ToggleGroupItem key={t.id} value={t.id} className="gap-1.5 rounded-pill px-3 text-[13px]">
+					<ToggleGroupItem key={t.id} value={t.id} className="gap-1.5 rounded-pill px-3 text-[13px] aria-pressed:text-signal-ink dark:aria-pressed:text-signal">
 						{t.label}
 						{t.unread > 0 && (
 							<span className="font-mono text-[10.5px] text-signal-ink tabular dark:text-signal">

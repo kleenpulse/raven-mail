@@ -11,6 +11,12 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- The selected inbox tab (Important, Updates and the rest) no longer
+  sits on a filled background. Its colored text is enough to show which
+  tab you are on.
+
 ## [0.3.0] - 2026-10-23
 
 ### Added

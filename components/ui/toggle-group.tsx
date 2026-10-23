@@ -17,6 +17,8 @@ const ToggleGroupContext = React.createContext<
     /** Pill groups: pressed values + a per-group id for the sliding indicator. */
     value?: readonly unknown[]
     layoutId?: string
+    /** false: no sliding pill; the pressed item marks itself with text color alone. */
+    indicator?: boolean
   }
 >({
   size: "default",
@@ -33,11 +35,13 @@ function ToggleGroup({
   orientation = "horizontal",
   children,
   value,
+  indicator = true,
   ...props
 }: ToggleGroupPrimitive.Props &
   VariantProps<typeof toggleVariants> & {
     spacing?: number
     orientation?: "horizontal" | "vertical"
+    indicator?: boolean
   }) {
   const layoutId = React.useId()
   return (
@@ -56,7 +60,7 @@ function ToggleGroup({
       {...props}
     >
       <ToggleGroupContext.Provider
-        value={{ variant, size, spacing, orientation, value, layoutId }}
+        value={{ variant, size, spacing, orientation, value, layoutId, indicator }}
       >
         {children}
       </ToggleGroupContext.Provider>
@@ -75,7 +79,7 @@ function ToggleGroupItem({
   // Pill groups draw one shared indicator that springs between items
   // (Shadow Garden pill-tabs); the pressed item itself stays transparent.
   const pill = (context.variant || variant) === "pill"
-  const pressed = pill && context.value?.includes(props.value)
+  const pressed = pill && context.indicator !== false && context.value?.includes(props.value)
 
   return (
     <TogglePrimitive
