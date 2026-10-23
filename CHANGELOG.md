@@ -135,6 +135,8 @@ as you work — it ships inside the app.
 
 ### Fixed
 
+- The "Message sent" notice now goes away on its own after a few
+  seconds. Before, it stayed on screen until you closed it.
 - A name with a comma in it, like "Chen, Maya", no longer splits into
   two recipients when you reply all, reopen a draft or send. Raven used
   to drop such names from a reopened draft; now it keeps them.

@@ -148,8 +148,10 @@ const queue = createSendQueue<OutgoingSend>({
 	onSending: (_send, id) => toast.loading("Sending…", { id, action: undefined }),
 	onSent: (send, id) => {
 		const reminder = send.reminder;
+		// Same id as the countdown, whose duration: Infinity would carry over.
 		toast.success("Message sent", {
 			id,
+			duration: 4000,
 			action: undefined,
 			description: reminder?.ok ? `Reminder set for ${dueLabel(reminder.dueAt)}, if no one replies.` : undefined,
 		});
@@ -165,7 +167,7 @@ const queue = createSendQueue<OutgoingSend>({
 		const message = err instanceof Error ? err.message : "Send failed";
 		if (!useComposeStore.getState().open) {
 			reopen(send);
-			toast.error(message, { id, description: "Your message is back in compose." });
+			toast.error(message, { id, duration: 6000, description: "Your message is back in compose." });
 		} else {
 			toast.error(message, {
 				id,
