@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-10-23
+
 ### Added
 
 - Ask Jev and Deep triage now work without a Jev key. Raven has its own
