@@ -98,6 +98,10 @@ function ToggleGroupItem({
       {pressed && (
         <motion.span
           layoutId={context.layoutId}
+          // Animate only when the selection changes. Without this every re-render
+          // (a live test run, a streaming list) re-measures the pill, and if the
+          // group moved on the page it springs over from the old spot.
+          layoutDependency={context.value?.join("\u0000")}
           aria-hidden
           transition={TAB_SPRING}
           // Radius via style so motion counter-scales it while the pill stretches between widths.
