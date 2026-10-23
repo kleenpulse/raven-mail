@@ -11,6 +11,15 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- Bright emails like newsletters no longer flash white in the dark
+  theme. Raven now makes them dark too, and keeps pictures in their
+  real colors. Emails that come with their own dark look use it. A
+  Force dark button next to Unsubscribe turns this off or on again,
+  for when a logo is hard to see. You can also change it in Settings,
+  under Mail, Dark Emails.
+
 ### Changed
 
 - The selected inbox tab (Important, Updates and the rest) no longer

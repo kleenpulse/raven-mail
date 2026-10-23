@@ -15,6 +15,8 @@ export const PREF_SCHEMAS = {
 	"appearance.askPill": z.boolean(),
 	/** Absent = never answered (the reader asks once); false = "just this once". */
 	"mail.remoteImages": z.boolean(),
+	/** In the dark theme, darken author-styled mail instead of showing it on light paper. */
+	"mail.forceDark": z.boolean(),
 	"mail.undoMs": z.union([z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
 	/** How long Send waits so it can be undone; 0 sends at once. */
 	"mail.undoSend": z.union([z.literal(0), z.literal(5000), z.literal(10_000), z.literal(20_000), z.literal(30_000)]),
@@ -49,6 +51,7 @@ export const DEFAULTS: Prefs = {
 	"appearance.reduceTransparency": false,
 	"appearance.askPill": true,
 	"mail.remoteImages": false,
+	"mail.forceDark": true,
 	"mail.undoMs": 5000,
 	"mail.undoSend": 10_000,
 	"mail.signature": "",

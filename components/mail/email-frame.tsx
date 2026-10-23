@@ -14,7 +14,25 @@ export function isDesignedEmail(html: string): boolean {
 	return /\bbgcolor\s*=|\bbackground\s*=|background(?:-color|-image)?\s*:|(?:^|[\s;"'{])color\s*:|<font[^>]*\bcolor\s*=/i.test(html);
 }
 
-export type FrameLook = { designed: boolean; dark: boolean };
+/** Mail that ships its own dark look, which beats anything we can do to it. */
+export function hasNativeDark(html: string): boolean {
+	return /prefers-color-scheme\s*:\s*dark|\[data-ogsc\]|color-scheme\s*:[^;"'}]*\bdark\b/i.test(html);
+}
+
+/**
+ * - `themed`: plain mail in the app's skin.
+ * - `paper`: designed mail on the light paper it was made for.
+ * - `native`: designed mail with its own dark styles, switched on.
+ * - `inverted`: designed mail turned dark by a filter, with images turned back.
+ */
+export type FrameMode = "themed" | "paper" | "native" | "inverted";
+export type FrameLook = { designed: boolean; dark: boolean; forceDark: boolean };
+
+export function frameMode(html: string, { designed, dark, forceDark }: FrameLook): FrameMode {
+	if (!designed) return "themed";
+	if (!dark || !forceDark) return "paper";
+	return hasNativeDark(html) ? "native" : "inverted";
+}
 
 // Mirrors the Ember / Nebula tokens in globals.css — the srcdoc can't read the app's CSS variables.
 const SKIN = {
@@ -22,8 +40,26 @@ const SKIN = {
 	dark: { fg: "#eaf2f1", muted: "#9fb3b1", link: "#e6c27a", rule: "rgba(160,220,215,.14)" },
 } as const;
 
-function lookStyles({ designed, dark }: FrameLook): string {
-	if (designed) {
+// invert(.9) maps white to #1a1a1a and black to #e6e6e6, softer than a full flip. Images get
+// the exact reverse (invert, then contrast 1.25) so they land back on their own colours.
+const DARKEN = "invert(.9) hue-rotate(180deg)";
+const UNDARKEN = "invert(1) contrast(1.25) hue-rotate(180deg)";
+const BACKDROPS = '[style*="background-image"],[style*="url("]';
+const UNDARKEN_TARGETS = `img,video,${BACKDROPS}`;
+
+function lookStyles(mode: FrameMode, dark: boolean): string {
+	if (mode === "native") {
+		return `:root{color-scheme:dark}html,body{background:#161c1c;color:${SKIN.dark.fg}}body{padding:28px 32px}`;
+	}
+	if (mode === "inverted") {
+		// The filter sits on body: the root's background paints the canvas, which filters skip.
+		return `:root{color-scheme:light}html{background:#1a1a1a}body{background:#fff;color:#1b1b1b;padding:28px 32px;filter:${DARKEN}}
+a{color:#b4461f}blockquote{border-left-color:#e5e5e5;color:#5f5f5f}
+:where(${UNDARKEN_TARGETS}){filter:${UNDARKEN}}
+:where(${BACKDROPS}) :where(img,video){filter:none}
+@media print{html{background:#fff}body,:where(${UNDARKEN_TARGETS}){filter:none}}`;
+	}
+	if (mode === "paper") {
 		// Paper for designed mail; warm off-white in Nebula so it glows less against the teal.
 		return `:root{color-scheme:light}html,body{background:${dark ? "#f4f2ee" : "#fff"};color:#1b1b1b}
 body{padding:28px 32px}a{color:#b4461f}blockquote{border-left-color:#e5e5e5;color:#5f5f5f}`;
@@ -36,7 +72,7 @@ a{color:${c.link};text-underline-offset:2px}hr{border:0;border-top:1px solid ${c
 blockquote{border-left-color:${c.rule};color:${c.muted}}td,th{border-color:${c.rule}}`;
 }
 
-function buildDocument(html: string, allowRemote: boolean, look: FrameLook): string {
+function buildDocument(html: string, allowRemote: boolean, mode: FrameMode, dark: boolean): string {
 	const remote = allowRemote ? " https: http:" : "";
 	const csp = [
 		"default-src 'none'",
@@ -54,7 +90,7 @@ img{max-width:100%;height:auto}
 table{max-width:100%}
 pre{white-space:pre-wrap}
 blockquote{margin:12px 0;padding-left:14px;border-left:2px solid}
-${lookStyles(look)}
+${lookStyles(mode, dark)}
 </style></head><body>${html}</body></html>`;
 }
 
@@ -78,11 +114,9 @@ export function EmailFrame({
 }) {
 	const ref = React.useRef<HTMLIFrameElement>(null);
 	const [height, setHeight] = React.useState(48);
-	const { designed, dark } = look;
-	const srcDoc = React.useMemo(
-		() => buildDocument(html, allowRemote, { designed, dark }),
-		[html, allowRemote, designed, dark],
-	);
+	const { designed, dark, forceDark } = look;
+	const mode = frameMode(html, { designed, dark, forceDark });
+	const srcDoc = React.useMemo(() => buildDocument(html, allowRemote, mode, dark), [html, allowRemote, mode, dark]);
 
 	const setupDoc = React.useRef<Document | null>(null);
 
@@ -154,7 +188,8 @@ export function EmailFrame({
 			sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
 			referrerPolicy="no-referrer"
 			className={cn("block w-full overflow-hidden rounded-[inherit] border-0 bg-transparent", className)}
-			style={{ height }}
+			// The mail's own prefers-color-scheme follows this, so dark-aware mail only goes dark when we want it.
+			style={{ height, colorScheme: mode === "native" || (mode === "themed" && dark) ? "dark" : "light" }}
 		/>
 	);
 }

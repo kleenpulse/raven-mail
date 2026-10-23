@@ -95,6 +95,16 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["mail.remoteImages"],
 	},
 	{
+		id: "force-dark",
+		section: "mail",
+		card: "Reading",
+		label: "Dark Emails",
+		description:
+			"In the dark theme, make bright emails like newsletters dark too. Emails with their own dark look use it. Some logos can be hard to see, so each email has a Force dark button to switch back.",
+		keywords: "force dark mode night newsletter bright white light invert theme",
+		prefs: ["mail.forceDark"],
+	},
+	{
 		id: "preload",
 		section: "mail",
 		card: "Reading",

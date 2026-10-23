@@ -12,6 +12,7 @@ import {
 	ImageOff,
 	Inbox,
 	LoaderCircle,
+	Moon,
 	PanelLeftClose,
 	PanelLeftOpen,
 	Printer,
@@ -30,7 +31,8 @@ import { AutoScroll } from "@/components/ui/auto-scroll";
 import { PaneState, ReaderSkeleton } from "@/components/mail/skeletons";
 import { SenderAvatar } from "@/components/mail/mail-row";
 import { TriageBadge, useMessageTriage } from "@/components/mail/triage";
-import { EmailFrame, isDesignedEmail } from "@/components/mail/email-frame";
+import { EmailFrame, frameMode, isDesignedEmail } from "@/components/mail/email-frame";
+import { setPref, usePref } from "@/lib/prefs/store";
 import { promptAlwaysLoadImages, useRemoteImagesPref } from "@/components/mail/remote-images";
 import { ShareMenu } from "@/components/integrations/deliver-menu";
 import { replyOptions } from "@/lib/mail/reply";
@@ -246,6 +248,10 @@ function MailReaderInner({
 	const detailsId = React.useId();
 	const { resolvedTheme } = useTheme();
 	const designed = message?.html ? isDesignedEmail(message.html) : false;
+	const dark = resolvedTheme === "dark";
+	const forceDark = usePref("mail.forceDark");
+	const look = { designed, dark, forceDark };
+	const darkened = message?.html ? frameMode(message.html, look) : "themed";
 	// Free heuristic unless Deep triage (explicit, paid) already scored this message.
 	const triage = useMessageTriage(
 		{ subject: message?.subject ?? "", snippet: message?.text.slice(0, 400), from: message?.from.address },
@@ -504,6 +510,21 @@ function MailReaderInner({
 						<div className="mt-3 flex flex-wrap items-center gap-2">
 							<TriageBadge result={triage} />
 							<UnsubscribeButton key={message.uid} message={message} />
+							{designed && dark && (
+								<button
+									type="button"
+									aria-pressed={forceDark}
+									title={forceDark ? "Show this email's own light colors" : "Make bright emails dark"}
+									onClick={() => setPref("mail.forceDark", !forceDark)}
+									className={cn(
+										"ml-auto inline-flex h-7 items-center gap-1.5 rounded-pill px-3 text-[12px] text-ink-2 ring-1 ring-glass-border outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
+										forceDark ? "bg-signal-soft text-foreground" : "hover:bg-signal-soft",
+									)}
+								>
+									<Moon aria-hidden className={cn("size-3.5", forceDark && "fill-current")} />
+									Force dark
+								</button>
+							)}
 						</div>
 					</header>
 
@@ -619,19 +640,21 @@ function MailReaderInner({
 							</div>
 						)}
 
-						{/* Designed mail keeps its paper; everything else takes the skin, under a hairline. */}
+						{/* Designed mail keeps its paper, or a dark version of it; everything else takes the skin, under a hairline. */}
 						<div
 							className={
-								designed
+								darkened === "paper"
 									? "overflow-hidden rounded-[20px] shadow-card ring-1 ring-border dark:ring-0"
-									: "mx-3 border-t border-border dark:border-glass-border"
+									: designed
+										? "overflow-hidden rounded-[20px] ring-1 ring-glass-border"
+										: "mx-3 border-t border-border dark:border-glass-border"
 							}
 						>
 							{message.html ? (
 								<EmailFrame
 									html={message.html}
 									allowRemote={showRemote}
-									look={{ designed, dark: resolvedTheme === "dark" }}
+									look={look}
 									title={message.subject}
 								/>
 							) : (
