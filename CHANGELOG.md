@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-10-24
+
 ### Changed
 
 - When the inbox tabs don't all fit, you can now scroll through them
