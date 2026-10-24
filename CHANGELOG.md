@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.4.2] - 2026-10-24
+
 ### Fixed
 
 - Force dark now works on emails that only say they support dark
