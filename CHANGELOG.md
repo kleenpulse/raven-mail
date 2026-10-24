@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.4.3] - 2026-10-24
+
 ### Fixed
 
 - Ask now shows the name of the engine that really answers. Raven
