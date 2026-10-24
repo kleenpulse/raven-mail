@@ -451,6 +451,10 @@ function SignOutRow() {
 }
 
 function jevStatusLine(status: JevStatus): string {
+	if (status.source && !status.live && status.kage) {
+		const whose = status.source === "user" ? `your key ending in ${status.hint}` : "this Raven's key";
+		return `TypeSafe isn't accepting ${whose} right now, so Ask and Deep triage run on Kage, Raven's built-in engine.`;
+	}
 	if (status.source === "user") return `Jev uses your key ending in ${status.hint}.`;
 	if (status.source === "server") return "Jev uses this Raven's key. Add your own to use your TypeSafe account instead.";
 	if (status.kage) return "No key yet, so Ask Jev and Deep triage run on Kage, Raven's built-in engine. It runs on this server and needs no account.";

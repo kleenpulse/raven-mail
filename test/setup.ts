@@ -68,11 +68,11 @@ const typesafeFor = (session: KeyedSession) =>
 mock.module(path.resolve(import.meta.dir, "../lib/jev/client.ts"), () => ({
 	typesafeFor,
 	jevFor: (session: KeyedSession) => typesafeFor(session) ?? (fakeJev.kage ? { client: kage, source: "kage" } : null),
-	decisionEngine: (session: KeyedSession) => (typesafeFor(session) ? "jev" : fakeJev.kage ? "kage" : null),
-	jevStatus: (session: KeyedSession) =>
+	decisionEngine: async (session: KeyedSession) => (typesafeFor(session) ? "jev" : fakeJev.kage ? "kage" : null),
+	jevStatus: async (session: KeyedSession) =>
 		session?.jevKey
-			? { source: "user", hint: session.jevKey.slice(-4), kage: fakeJev.kage }
-			: { source: fakeJev.enabled ? "server" : null, hint: null, kage: fakeJev.kage },
+			? { source: "user", hint: session.jevKey.slice(-4), kage: fakeJev.kage, live: true }
+			: { source: fakeJev.enabled ? "server" : null, hint: null, kage: fakeJev.kage, live: fakeJev.enabled },
 	verifyJevKey: (key: string) => fakeJev.verifyKey(key),
 }));
 

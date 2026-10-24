@@ -21,7 +21,7 @@ const writes = limiter(30);
 /** The mailbox's rules in run order, and which engine would judge them. */
 export const GET = integrationRoute(async () => {
 	const session = await requireApiSession();
-	return json({ ok: true, data: { rules: await getRules(session), engine: decisionEngine(session) } });
+	return json({ ok: true, data: { rules: await getRules(session), engine: await decisionEngine(session) } });
 });
 
 export const POST = integrationRoute(async (request) => {

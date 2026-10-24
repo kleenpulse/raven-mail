@@ -80,7 +80,7 @@ function TurnView({ turn, onAsk, onNavigate }: { turn: ReturnType<typeof useAskS
 
 /**
  * The video's bottom prompt tray: KPI strip, pill input, context chips — and
- * "JEV ANALYSIS" answers rising above it. Collapses to a small pill.
+ * "JEV ANALYSIS" (or "KAGE ANALYSIS") answers rising above it. Collapses to a small pill.
  */
 export function AskTray() {
 	const pathname = usePathname();
@@ -264,7 +264,7 @@ export function AskTray() {
 				<div className="mt-2 flex flex-wrap items-center gap-2 px-1">
 					<span className="inline-flex h-8 items-center gap-1.5 rounded-pill px-2.5 text-[12px] text-ink-2">
 						<Sparkles className="[&>path:first-child]:fill-current size-3.5 text-signal-ink dark:text-signal" />
-						Jev
+						{name}
 					</span>
 					{contextUid && (
 						<button
@@ -285,7 +285,7 @@ export function AskTray() {
 						onClick={deep.run}
 						disabled={deep.pending}
 						className="inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-[12px] ring-1 ring-border transition-colors hover:bg-signal-soft disabled:opacity-60 dark:ring-glass-border"
-						title="Let Jev triage your last 48 hours (uses your TypeSafe key)"
+						title={name === "Kage" ? "Let Kage triage your last 48 hours (built in, no key needed)" : "Let Jev triage your last 48 hours (uses your TypeSafe key)"}
 					>
 						{deep.pending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="[&>path:first-child]:fill-current size-3" />}
 						{deep.data ? "Re-triage" : "Deep triage"}

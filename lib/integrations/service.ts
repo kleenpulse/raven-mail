@@ -64,6 +64,7 @@ export function appOrigin(request: Request): string {
 /* ── Overview ────────────────────────────────────────────────────────────── */
 
 export async function getOverview(session: MailSession): Promise<IntegrationsOverview> {
+	const jev = await jevStatus(session);
 	const builtins: IntegrationsOverview["builtins"] = {
 		mail: {
 			email: session.email,
@@ -73,7 +74,7 @@ export async function getOverview(session: MailSession): Promise<IntegrationsOve
 			smtp: { host: session.smtp.host, port: session.smtp.port, security: security(session.smtp) },
 			lastCheck: null,
 		},
-		jev: { configured: jevStatus(session).source !== null, source: jevStatus(session).source, model: pinnedModel(), lastCheck: null },
+		jev: { configured: jev.source !== null, source: jev.source, model: pinnedModel(), lastCheck: null },
 	};
 	const base = { builtins, syncedAt: new Date().toISOString() };
 

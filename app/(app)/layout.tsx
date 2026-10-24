@@ -18,7 +18,8 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     email: session.email,
     displayName: session.displayName,
     provider: session.dev ? "dev · local mailbox" : session.provider,
-    jev: jevStatus(session),
+    // Asks TypeSafe (cached) before paint, so a dead key reads as Kage from the first frame.
+    jev: await jevStatus(session),
   };
 
   return (

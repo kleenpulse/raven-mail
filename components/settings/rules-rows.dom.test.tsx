@@ -59,7 +59,7 @@ afterEach(() => {
 	globalThis.fetch = realFetch;
 });
 
-const account = { email: "me@home.example", displayName: "Me", provider: "custom", jev: { source: null, hint: null, kage: true } } as never;
+const account = { email: "me@home.example", displayName: "Me", provider: "custom", jev: { source: null, hint: null, kage: true, live: false } } as never;
 
 function wrap(node: React.ReactNode) {
 	const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });

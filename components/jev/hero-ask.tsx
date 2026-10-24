@@ -4,6 +4,7 @@ import * as React from "react";
 import { ArrowUp, Sparkles } from "lucide-react";
 import { useTypewriter } from "@/hooks/use-typewriter";
 import { useAskStore } from "@/components/jev/ask-store";
+import { useAnsweredBy } from "@/components/jev/ask-name";
 import type { DecisionEngine } from "@/lib/jev/client";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
@@ -15,7 +16,7 @@ import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 export function HeroAsk({
 	firstName,
 	suggestions,
-	engine,
+	engine: keyEngine,
 	onAsk,
 }: {
 	firstName: string;
@@ -28,6 +29,9 @@ export function HeroAsk({
 	const formRef = React.useRef<HTMLFormElement>(null);
 	const [value, setValue] = React.useState("");
 	const [focused, setFocused] = React.useState(false);
+	// A dead key still reads "jev" on the server; the last answer knows better.
+	const answered = useAnsweredBy();
+	const engine: DecisionEngine | null = answered ? (answered === "Kage" ? "kage" : "jev") : keyEngine;
 	const name = engine === "kage" ? "Kage" : "Jev";
 	const typed = useTypewriter([`Just ask ${name} anything!`, ...suggestions], { paused: focused || value.length > 0 });
 	const setHeroVisible = useAskStore((s) => s.setHeroVisible);

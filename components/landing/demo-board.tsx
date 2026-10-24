@@ -22,7 +22,7 @@ const DEMO_ACCOUNT: Account = {
 	email: "demo@raven.invalid",
 	displayName: "Demo",
 	provider: "Demo mailbox",
-	jev: { source: null, hint: null, kage: false },
+	jev: { source: null, hint: null, kage: false, live: false },
 };
 
 // Illustrative: the real streak is tracked on the visitor's own device, so the demo mailbox has none.

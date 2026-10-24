@@ -45,7 +45,7 @@ export function StageTrail({ turn }: { turn: AskTurn }) {
 	const reached = turn.stages.length ? turn.stages : [{ stage: "understand" as const, detail: "Reading your question" }];
 	const sorted = [...reached].sort((a, b) => order.get(a.stage)! - order.get(b.stage)!);
 	return (
-		<ol className="space-y-1.5" aria-label="Jev progress">
+		<ol className="space-y-1.5" aria-label="Answer progress">
 			{sorted.map(({ stage, detail }, i) => {
 				const active = turn.status === "running" && i === sorted.length - 1;
 				return (

@@ -11,6 +11,15 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Ask now shows the name of the engine that really answers. Raven
+  checks your Jev key with TypeSafe before the page loads. If the key
+  doesn't work, the panel, the Ask buttons and the home prompt say
+  Kage, and Settings tells you TypeSafe isn't accepting the key.
+- Ask answers faster when your Jev key doesn't work. Raven goes straight
+  to Kage instead of waiting for TypeSafe to fail first.
+
 ## [0.4.2] - 2026-10-24
 
 ### Fixed

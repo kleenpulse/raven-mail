@@ -39,7 +39,7 @@ export async function saveJevKeyAction(raw: string): Promise<ActionResult<JevSta
 
   const next = { ...session, jevKey: key };
   await setSession(next);
-  return { ok: true, data: jevStatus(next) };
+  return { ok: true, data: await jevStatus(next) };
 }
 
 export async function removeJevKeyAction(): Promise<ActionResult<JevStatus>> {
@@ -48,5 +48,5 @@ export async function removeJevKeyAction(): Promise<ActionResult<JevStatus>> {
   const rest = { ...session };
   delete rest.jevKey;
   await setSession(rest);
-  return { ok: true, data: jevStatus(null) };
+  return { ok: true, data: await jevStatus(null) };
 }
