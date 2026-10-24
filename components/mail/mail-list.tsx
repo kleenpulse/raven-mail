@@ -18,6 +18,7 @@ import {
 import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { usePreloadInView } from "@/hooks/use-preload-in-view";
 import { useMailRows } from "@/hooks/use-mail-rows";
+import { useWheelScrollX } from "@/hooks/use-wheel-scroll-x";
 import { setFlagsAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { rowOf, type ThreadRow } from "@/lib/mail/thread";
@@ -112,6 +113,7 @@ const AUTO_FILL_LIMIT = 350;
 /** Inbox tabs as moving-pill toggles; the scroller lets the pill track its tab on phones. */
 function SplitTabs({ split, onChange }: { split: NonNullable<ReturnType<typeof useMailRows>["split"]>; onChange: (tab: SplitTab) => void }) {
 	const ref = React.useRef<HTMLDivElement>(null);
+	useWheelScrollX(ref);
 	// A tab opened from a link may start off-screen on a phone, and counts growing as pages load shift it again.
 	const widths = split.tabs.map((t) => t.unread).join();
 	React.useEffect(() => {

@@ -11,6 +11,11 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- When the inbox tabs don't all fit, you can now scroll through them
+  with your mouse wheel. Just point at the tabs and scroll.
+
 ## [0.4.0] - 2026-10-23
 
 ### Added
