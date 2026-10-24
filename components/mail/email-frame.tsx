@@ -14,9 +14,46 @@ export function isDesignedEmail(html: string): boolean {
 	return /\bbgcolor\s*=|\bbackground\s*=|background(?:-color|-image)?\s*:|(?:^|[\s;"'{])color\s*:|<font[^>]*\bcolor\s*=/i.test(html);
 }
 
-/** Mail that ships its own dark look, which beats anything we can do to it. */
+/**
+ * Mail that may carry its own dark look. Only a dark media query can restyle it here:
+ * `color-scheme` declarations and Outlook's `[data-ogsc]` rules don't. Many senders
+ * use the query just to swap a logo, so the frame checks the result too (darkTextShare).
+ */
 export function hasNativeDark(html: string): boolean {
-	return /prefers-color-scheme\s*:\s*dark|\[data-ogsc\]|color-scheme\s*:[^;"'}]*\bdark\b/i.test(html);
+	return /prefers-color-scheme\s*:\s*dark/i.test(html);
+}
+
+/** Relative luminance (0 black – 1 white) of a computed `rgb()`/`rgba()` colour; null if unparsable. */
+export function luminance(color: string): number | null {
+	const m = color.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+	if (!m) return null;
+	const [r, g, b] = [m[1], m[2], m[3]].map((v) => {
+		const c = Number(v) / 255;
+		return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
+	});
+	return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!;
+}
+
+/**
+ * Share of visible text, by character, drawn in a dark colour. Mail that really went dark
+ * turns its text light; mail whose dark query only swaps a logo keeps most of it dark.
+ * Text-free mail counts as all dark, since there's nothing to prove it switched.
+ */
+export function darkTextShare(doc: Document): number {
+	const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+	const view = doc.defaultView;
+	let dark = 0;
+	let total = 0;
+	for (let node = walker.nextNode(), seen = 0; node && seen < 4000; node = walker.nextNode(), seen++) {
+		const parent = node.parentElement;
+		const length = node.textContent?.trim().length ?? 0;
+		if (!parent || !length || parent.closest("style,title") || parent.getClientRects().length === 0) continue;
+		const l = luminance(view?.getComputedStyle(parent).color ?? "");
+		if (l === null) continue;
+		total += length;
+		if (l < 0.4) dark += length;
+	}
+	return total === 0 ? 1 : dark / total;
 }
 
 /**
@@ -115,8 +152,19 @@ export function EmailFrame({
 	const ref = React.useRef<HTMLIFrameElement>(null);
 	const [height, setHeight] = React.useState(48);
 	const { designed, dark, forceDark } = look;
-	const mode = frameMode(html, { designed, dark, forceDark });
+	// Native dark is a trial: hidden until the parsed mail proves it went dark, else inverted.
+	const [nativeFailed, setNativeFailed] = React.useState<string | null>(null);
+	const [nativeVerified, setNativeVerified] = React.useState<string | null>(null);
+	const picked = frameMode(html, { designed, dark, forceDark });
+	const mode = picked === "native" && nativeFailed === html ? "inverted" : picked;
+	const trial = mode === "native" && nativeVerified !== html;
 	const srcDoc = React.useMemo(() => buildDocument(html, allowRemote, mode, dark), [html, allowRemote, mode, dark]);
+
+	const judgeNative = React.useEffectEvent((doc: Document) => {
+		if (!trial) return;
+		if (darkTextShare(doc) > 0.5) setNativeFailed(html);
+		else setNativeVerified(html);
+	});
 
 	const setupDoc = React.useRef<Document | null>(null);
 
@@ -136,6 +184,7 @@ export function EmailFrame({
 			const doc = frame?.contentDocument;
 			if (!doc?.body) return;
 			setupDoc.current = doc;
+			judgeNative(doc);
 			// Body box, not documentElement.scrollHeight — that never reports less than the
 			// frame's current height, so a short note could never shrink it.
 			const measure = () => {
@@ -187,7 +236,7 @@ export function EmailFrame({
 			srcDoc={srcDoc}
 			sandbox="allow-same-origin allow-popups allow-popups-to-escape-sandbox"
 			referrerPolicy="no-referrer"
-			className={cn("block w-full overflow-hidden rounded-[inherit] border-0 bg-transparent", className)}
+			className={cn("block w-full overflow-hidden rounded-[inherit] border-0 bg-transparent", trial && "opacity-0", className)}
 			// The mail's own prefers-color-scheme follows this, so dark-aware mail only goes dark when we want it.
 			style={{ height, colorScheme: mode === "native" || (mode === "themed" && dark) ? "dark" : "light" }}
 		/>

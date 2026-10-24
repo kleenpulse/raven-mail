@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Force dark now works on emails that only say they support dark
+  mode, like the ones from Loom and Atlassian. Before, Raven trusted
+  them and showed them white. Now Raven checks if the email really
+  turned dark, and makes it dark itself if it didn't.
+
 ## [0.4.1] - 2026-10-24
 
 ### Changed
