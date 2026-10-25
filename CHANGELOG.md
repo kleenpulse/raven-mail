@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-25
+
 ### Removed
 
 - The Newsletters and "When people write" cards are gone from the
