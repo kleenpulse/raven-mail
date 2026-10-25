@@ -11,6 +11,11 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- The file preview has an "Open in new tab" button, for when you want
+  the file bigger or next to your mail.
+
 ## [0.6.0] - 2026-10-25
 
 ### Changed

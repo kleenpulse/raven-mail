@@ -70,6 +70,9 @@ describe("attachment preview", () => {
 		const img = await screen.findByRole("img", { name: "pic.png" });
 		expect(img.getAttribute("src")).toBe(created[0]!);
 		expect(dialog()?.getAttribute("aria-label")).toBe("Preview of pic.png");
+		const newTab = screen.getByRole("link", { name: "Open in new tab" });
+		expect(newTab.getAttribute("href")).toBe(created[0]!);
+		expect(newTab.getAttribute("target")).toBe("_blank");
 	});
 
 	test("an XML file with no useful type shows as plain text", async () => {

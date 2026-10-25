@@ -139,6 +139,9 @@ export function useAttachmentPreview() {
 	return { open, dialog };
 }
 
+const HEADER_ACTION =
+	"rounded-md p-1.5 text-ink-2 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:outline-none";
+
 function AttachmentPreviewDialog({
 	shown,
 	onOpenChange,
@@ -160,19 +163,28 @@ function AttachmentPreviewDialog({
 			description={shown ? formatBytes(shown.size) : undefined}
 			actions={
 				shown?.url ? (
-					<Tip
-						label={`Download ${shown.filename}`}
-						render={
-							<a
-								href={shown.url}
-								download={shown.filename}
-								aria-label={`Download ${shown.filename}`}
-								className="rounded-md p-1.5 text-ink-2 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:outline-none"
-							/>
-						}
-					>
-						<Download aria-hidden className="size-4" />
-					</Tip>
+					<>
+						{/* The blob carries the previewType, so a new tab shows the same safe view: markup stays plain text. */}
+						<Tip
+							label="Open in new tab"
+							render={<a href={shown.url} target="_blank" rel="noopener" aria-label="Open in new tab" className={HEADER_ACTION} />}
+						>
+							<ExternalLink aria-hidden className="size-4" />
+						</Tip>
+						<Tip
+							label={`Download ${shown.filename}`}
+							render={
+								<a
+									href={shown.url}
+									download={shown.filename}
+									aria-label={`Download ${shown.filename}`}
+									className={HEADER_ACTION}
+								/>
+							}
+						>
+							<Download aria-hidden className="size-4" />
+						</Tip>
+					</>
 				) : null
 			}
 			className="max-w-4xl"
