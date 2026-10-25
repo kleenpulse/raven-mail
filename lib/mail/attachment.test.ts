@@ -4,7 +4,9 @@ import {
   attachmentHref,
   base64ToBytes,
   bytesToBase64,
+  canPreview,
   contentDisposition,
+  PREVIEW_MAX_BYTES,
   previewType,
   safeContentType,
   SECTION_RE,
@@ -154,6 +156,24 @@ describe("previewType", () => {
     expect(previewType("application/zip", "a.zip")).toBeNull();
     expect(previewType(undefined, "setup.exe")).toBeNull();
     expect(previewType("multipart/mixed")).toBeNull();
+  });
+});
+
+describe("canPreview", () => {
+  test("previewable types open in the page, others download", () => {
+    expect(canPreview({ contentType: "image/png", filename: "a.png", size: 10 })).toBe(true);
+    expect(canPreview({ contentType: "application/zip", filename: "a.zip", size: 10 })).toBe(false);
+  });
+
+  test("the type comes from the metadata and the filename", () => {
+    expect(canPreview({ contentType: "application/octet-stream", filename: "AMOLED.xml", size: 10 })).toBe(true);
+  });
+
+  test("server files above the limit download, local bytes have no limit", () => {
+    const big = { contentType: "video/mp4", filename: "clip.mp4", size: 30 * 1024 * 1024 };
+    expect(canPreview(big, { remote: true })).toBe(false);
+    expect(canPreview({ ...big, size: PREVIEW_MAX_BYTES }, { remote: true })).toBe(true);
+    expect(canPreview(big)).toBe(true);
   });
 });
 

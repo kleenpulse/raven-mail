@@ -71,7 +71,7 @@ const SOURCE_TYPE = /xml|html|svg|json|javascript|ecmascript|^text\//;
 const SOURCE_EXT = /\.(xml|json|txt|md|csv|log|html?|svg|js|ts|css|ya?ml|ini|conf)$/i;
 
 /**
- * The type to open a local file with in a new tab, or null to download it.
+ * The type to preview a file as, or null to download it.
  * A blob URL shares the app's origin, so anything a browser would run
  * (HTML, SVG, XML) opens as plain text: the user still sees it, nothing executes.
  */
@@ -81,6 +81,22 @@ export function previewType(contentType: string | undefined, filename = ""): str
   const type = (contentType ?? "").trim().toLowerCase();
   if (SOURCE_TYPE.test(type) || SOURCE_EXT.test(filename)) return "text/plain; charset=utf-8";
   return null;
+}
+
+/** Above this a server file downloads instead: the preview holds the whole file in memory first. */
+export const PREVIEW_MAX_BYTES = 25 * 1024 * 1024;
+
+/**
+ * Whether a file opens in the in-page preview. The type comes from the message's
+ * metadata, never the download response, which serves active types as octet-stream.
+ * `remote` files are fetched before anything shows, so they get a size limit.
+ */
+export function canPreview(
+  file: { contentType?: string; filename: string; size?: number },
+  { remote = false } = {},
+): boolean {
+  if (previewType(file.contentType, file.filename) === null) return false;
+  return !remote || (file.size ?? Infinity) <= PREVIEW_MAX_BYTES;
 }
 
 export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {

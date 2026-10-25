@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- Clicking a file now opens a preview on the page, not a new tab. This
+  works in mail you read and mail you write, drafts too. Pictures, PDFs,
+  audio, video and text show in the preview, with a button to download
+  them. Other files still download. In mail you receive, files over 25 MB
+  download instead. On phones, a PDF shows an "Open in new tab" button.
+
 ### Fixed
 
 - In Drafts, the draft you have open is now marked in the list, like an

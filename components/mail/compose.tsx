@@ -31,25 +31,19 @@ import { choiceLabel } from "@/lib/follow-ups/when";
 import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
-import { base64ToBytes, bytesToBase64, previewType } from "@/lib/mail/attachment";
+import { base64ToBytes, bytesToBase64, canPreview } from "@/lib/mail/attachment";
+import { useAttachmentPreview } from "@/components/mail/attachment-preview";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 import type { ComposeDraft } from "@/lib/mail/types";
 
-/** The bytes are already here, so open (or save) the file without asking the server. */
-function openAttachment(file: { filename: string; contentType: string; contentBase64: string }) {
-  const type = previewType(file.contentType, file.filename);
-  const blob = new Blob([base64ToBytes(file.contentBase64)], { type: type ?? "application/octet-stream" });
+/** Files the preview can't show: the bytes are already here, so save them without asking the server. */
+function downloadAttachment(file: { filename: string; contentBase64: string }) {
+  const blob = new Blob([base64ToBytes(file.contentBase64)], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   const link = document.createElement("a");
   link.href = url;
-  if (type) {
-    link.target = "_blank";
-    link.rel = "noopener";
-  } else {
-    link.download = file.filename;
-  }
+  link.download = file.filename;
   link.click();
-  // Late enough for the new tab to have read it.
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
 }
 
@@ -196,6 +190,7 @@ export function ComposeDock() {
   const send = useUndoSend({ draftsFolder });
   const { data: contacts = [] } = useContacts(open);
   const fileRef = React.useRef<HTMLInputElement>(null);
+  const preview = useAttachmentPreview();
   const savedRef = React.useRef<string>("");
 
   React.useEffect(() => {
@@ -356,208 +351,212 @@ export function ComposeDock() {
   const focusTo = mode === "new" || mode === "forward";
 
   return (
-    <div
-      role="dialog"
-      // Single-key shortcuts stand down while focus is anywhere in the dock (lib/keyboard).
-      data-compose
-      aria-label={title}
-      onKeyDown={handleKeyDown}
-      className={cn(
-        "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card text-foreground shadow-lift glass-pane",
-        maximized
-          ? "inset-2 sm:inset-6 lg:inset-x-[max(1.5rem,calc((100vw-60rem)/2))]"
-          : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(100svh-3rem))] sm:w-120",
-      )}
-    >
-      {/* Nebula: a light tint inside the glass so labels stay legible when the dock floats over the white email paper. */}
-      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-border pr-3 pl-5 dark:border-glass-border dark:bg-background/25">
-        <div className="min-w-0 flex-1 leading-tight">
-          <h2 className="truncate font-display text-[17px] tracking-[-0.01em]">{title}</h2>
-          <p className="readout mt-1 truncate">Autosaves on this device</p>
-        </div>
-        <TooltipGroup>
-          <IconCircle label="Minimize" onClick={minimize}>
-            <Minus />
-          </IconCircle>
-          <IconCircle label={maximized ? "Restore size" : "Expand"} onClick={toggleMaximize}>
-            {maximized ? <Minimize2 /> : <Maximize2 />}
-          </IconCircle>
-          <IconCircle label="Close" onClick={closeCompose}>
-            <X />
-          </IconCircle>
-        </TooltipGroup>
-      </div>
-
-      <div className="flex min-h-0 flex-1 flex-col dark:bg-background/25">
-        <div className="shrink-0 border-b border-border dark:border-glass-border">
-          <Field label="To" htmlFor={`${fieldId}-to`}>
-            <RecipientField
-              id={`${fieldId}-to`}
-              label="To"
-              value={draft.to}
-              onChange={(to) => setDraft({ to })}
-              contacts={contacts}
-              placeholder="Name or email"
-              autoFocus={focusTo}
-            />
-            <button
-              type="button"
-              onClick={() => setShowCc((v) => !v)}
-              aria-expanded={ccVisible}
-              className="shrink-0 rounded-pill px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-2 uppercase outline-none transition-colors hover:bg-card-nested hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-accent"
-            >
-              Cc Bcc
-            </button>
-          </Field>
-          {ccVisible && (
-            <>
-              <Field label="Cc" htmlFor={`${fieldId}-cc`}>
-                <RecipientField
-                  id={`${fieldId}-cc`}
-                  label="Cc"
-                  value={draft.cc ?? ""}
-                  onChange={(cc) => setDraft({ cc })}
-                  contacts={contacts}
-                />
-              </Field>
-              <Field label="Bcc" htmlFor={`${fieldId}-bcc`}>
-                <RecipientField
-                  id={`${fieldId}-bcc`}
-                  label="Bcc"
-                  value={draft.bcc ?? ""}
-                  onChange={(bcc) => setDraft({ bcc })}
-                  contacts={contacts}
-                />
-              </Field>
-            </>
-          )}
-          <Field label="Subject" htmlFor={`${fieldId}-subject`}>
-            <Input
-              id={`${fieldId}-subject`}
-              value={draft.subject}
-              onChange={(e) => setDraft({ subject: e.target.value })}
-              placeholder="What's it about?"
-              className={fieldInput}
-            />
-          </Field>
-        </div>
-
-        <RichEditor
-          key={session}
-          html={draft.html}
-          text={draft.text}
-          autoFocus={!focusTo}
-          placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
-          mod={mod}
-          onChange={({ html, text }) => setDraft({ html, text })}
-        />
-
-        {draft.quote && (
-          <QuotedOriginal
-            key={`${draft.quote.kind}:${draft.quote.header}`}
-            quote={draft.quote}
-            onRemove={() => setDraft({ quote: undefined })}
-          />
+    <>
+      {/* Beside the dock, not in it: React key events bubble through portals, and the dock's Ctrl+Enter sends. */}
+      {preview.dialog}
+      <div
+        role="dialog"
+        // Single-key shortcuts stand down while focus is anywhere in the dock (lib/keyboard).
+        data-compose
+        aria-label={title}
+        onKeyDown={handleKeyDown}
+        className={cn(
+          "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card text-foreground shadow-lift glass-pane",
+          maximized
+            ? "inset-2 sm:inset-6 lg:inset-x-[max(1.5rem,calc((100vw-60rem)/2))]"
+            : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(100svh-3rem))] sm:w-120",
         )}
-
-        {attachmentsLoading && (
-          <p
-            role="status"
-            className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3 text-[12px] text-ink-2 dark:border-glass-border"
-          >
-            <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
-            Loading the files in this draft…
-          </p>
-        )}
-
-        {attachments.length > 0 && (
-          <ul className="flex shrink-0 flex-wrap gap-1.5 border-t border-border px-4 py-3 dark:border-glass-border">
-            {attachments.map((a, i) => (
-              <li
-                key={`${a.filename}-${i}`}
-                className="inline-flex h-8 max-w-full items-center gap-2 rounded-pill bg-card pr-1 pl-3 text-[12px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border"
-              >
-                <Tip
-                  label={previewType(a.contentType, a.filename) ? `Open ${a.filename}` : `Download ${a.filename}`}
-                  type="button"
-                  onClick={() => openAttachment(a)}
-                  className="inline-flex min-w-0 items-center gap-2 rounded-pill outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
-                >
-                  <span className="max-w-40 truncate font-medium">{a.filename}</span>
-                  <span className="font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(a.size)}</span>
-                </Tip>
-                <button
-                  type="button"
-                  onClick={() => removeAttachment(i)}
-                  className="grid size-6 place-items-center rounded-full text-ink-2 outline-none transition-colors hover:bg-foreground/5 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
-                  aria-label={`Remove ${a.filename}`}
-                >
-                  <X className="size-3.5" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
-
-        <TooltipGroup>
-          <div className="flex h-16 shrink-0 items-center gap-1.5 border-t border-border px-3 dark:border-glass-border">
-            <Button size="pill" onClick={handleSend} disabled={blocked} className="pl-4">
-              <Send />
-              Send
-            </Button>
-            <IconCircle label="Attach files" onClick={() => fileRef.current?.click()} className="ml-1">
-              <Paperclip />
-            </IconCircle>
-            <input
-              ref={fileRef}
-              type="file"
-              multiple
-              className="hidden"
-              onChange={(e) => handleFiles(e.target.files)}
-            />
-            <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={blocked}>
-              {busy === "draft" ? <LoaderCircle className="animate-spin" /> : <FilePen />}
-            </IconCircle>
-            <RemindMenu
-              label={draft.remind ? `Reminds you ${choiceLabel(draft.remind)} if no one replies` : "Remind me if no reply"}
-              button={
-                draft.remind ? (
-                  <Button
-                    variant="surface"
-                    size="pill-sm"
-                    aria-label={`Reminder ${choiceLabel(draft.remind)}`}
-                    className="ml-1 text-signal-ink dark:text-signal"
-                  />
-                ) : (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    aria-label="Remind me if no reply"
-                    className="rounded-full text-ink-2 hover:text-foreground"
-                  />
-                )
-              }
-              status={draft.remind ? `Reminds you ${choiceLabel(draft.remind)}` : undefined}
-              onPick={(remind) => setDraft({ remind })}
-              onClear={draft.remind ? () => setDraft({ remind: undefined }) : undefined}
-              clearLabel="Don't remind me"
-            >
-              <BellRing />
-              {draft.remind && <span className="hidden sm:inline">{choiceLabel(draft.remind)}</span>}
-            </RemindMenu>
-            <div className="ml-auto flex items-center gap-2">
-              <span className="hidden items-center gap-1 text-[11px] text-ink-2 sm:inline-flex">
-                <Kbd>{mod}</Kbd>
-                <Kbd>↵</Kbd>
-                <span className="ml-0.5">to send</span>
-              </span>
-              <IconCircle label="Discard" onClick={handleDiscard} className="hover:text-destructive">
-                <Trash2 />
-              </IconCircle>
-            </div>
+      >
+        {/* Nebula: a light tint inside the glass so labels stay legible when the dock floats over the white email paper. */}
+        <div className="flex h-16 shrink-0 items-center gap-2 border-b border-border pr-3 pl-5 dark:border-glass-border dark:bg-background/25">
+          <div className="min-w-0 flex-1 leading-tight">
+            <h2 className="truncate font-display text-[17px] tracking-[-0.01em]">{title}</h2>
+            <p className="readout mt-1 truncate">Autosaves on this device</p>
           </div>
-        </TooltipGroup>
+          <TooltipGroup>
+            <IconCircle label="Minimize" onClick={minimize}>
+              <Minus />
+            </IconCircle>
+            <IconCircle label={maximized ? "Restore size" : "Expand"} onClick={toggleMaximize}>
+              {maximized ? <Minimize2 /> : <Maximize2 />}
+            </IconCircle>
+            <IconCircle label="Close" onClick={closeCompose}>
+              <X />
+            </IconCircle>
+          </TooltipGroup>
+        </div>
+
+        <div className="flex min-h-0 flex-1 flex-col dark:bg-background/25">
+          <div className="shrink-0 border-b border-border dark:border-glass-border">
+            <Field label="To" htmlFor={`${fieldId}-to`}>
+              <RecipientField
+                id={`${fieldId}-to`}
+                label="To"
+                value={draft.to}
+                onChange={(to) => setDraft({ to })}
+                contacts={contacts}
+                placeholder="Name or email"
+                autoFocus={focusTo}
+              />
+              <button
+                type="button"
+                onClick={() => setShowCc((v) => !v)}
+                aria-expanded={ccVisible}
+                className="shrink-0 rounded-pill px-2.5 py-1 font-mono text-[11px] tracking-wide text-ink-2 uppercase outline-none transition-colors hover:bg-card-nested hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring dark:hover:bg-accent"
+              >
+                Cc Bcc
+              </button>
+            </Field>
+            {ccVisible && (
+              <>
+                <Field label="Cc" htmlFor={`${fieldId}-cc`}>
+                  <RecipientField
+                    id={`${fieldId}-cc`}
+                    label="Cc"
+                    value={draft.cc ?? ""}
+                    onChange={(cc) => setDraft({ cc })}
+                    contacts={contacts}
+                  />
+                </Field>
+                <Field label="Bcc" htmlFor={`${fieldId}-bcc`}>
+                  <RecipientField
+                    id={`${fieldId}-bcc`}
+                    label="Bcc"
+                    value={draft.bcc ?? ""}
+                    onChange={(bcc) => setDraft({ bcc })}
+                    contacts={contacts}
+                  />
+                </Field>
+              </>
+            )}
+            <Field label="Subject" htmlFor={`${fieldId}-subject`}>
+              <Input
+                id={`${fieldId}-subject`}
+                value={draft.subject}
+                onChange={(e) => setDraft({ subject: e.target.value })}
+                placeholder="What's it about?"
+                className={fieldInput}
+              />
+            </Field>
+          </div>
+
+          <RichEditor
+            key={session}
+            html={draft.html}
+            text={draft.text}
+            autoFocus={!focusTo}
+            placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
+            mod={mod}
+            onChange={({ html, text }) => setDraft({ html, text })}
+          />
+
+          {draft.quote && (
+            <QuotedOriginal
+              key={`${draft.quote.kind}:${draft.quote.header}`}
+              quote={draft.quote}
+              onRemove={() => setDraft({ quote: undefined })}
+            />
+          )}
+
+          {attachmentsLoading && (
+            <p
+              role="status"
+              className="flex shrink-0 items-center gap-2 border-t border-border px-5 py-3 text-[12px] text-ink-2 dark:border-glass-border"
+            >
+              <LoaderCircle aria-hidden className="size-3.5 animate-spin" />
+              Loading the files in this draft…
+            </p>
+          )}
+
+          {attachments.length > 0 && (
+            <ul className="flex shrink-0 flex-wrap gap-1.5 border-t border-border px-4 py-3 dark:border-glass-border">
+              {attachments.map((a, i) => (
+                <li
+                  key={`${a.filename}-${i}`}
+                  className="inline-flex h-8 max-w-full items-center gap-2 rounded-pill bg-card pr-1 pl-3 text-[12px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border"
+                >
+                  <Tip
+                    label={canPreview(a) ? `Preview ${a.filename}` : `Download ${a.filename}`}
+                    type="button"
+                    onClick={(e) => (canPreview(a) ? preview.open(a, e.currentTarget) : downloadAttachment(a))}
+                    className="inline-flex min-w-0 items-center gap-2 rounded-pill outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <span className="max-w-40 truncate font-medium">{a.filename}</span>
+                    <span className="font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(a.size)}</span>
+                  </Tip>
+                  <button
+                    type="button"
+                    onClick={() => removeAttachment(i)}
+                    className="grid size-6 place-items-center rounded-full text-ink-2 outline-none transition-colors hover:bg-foreground/5 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
+                    aria-label={`Remove ${a.filename}`}
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          <TooltipGroup>
+            <div className="flex h-16 shrink-0 items-center gap-1.5 border-t border-border px-3 dark:border-glass-border">
+              <Button size="pill" onClick={handleSend} disabled={blocked} className="pl-4">
+                <Send />
+                Send
+              </Button>
+              <IconCircle label="Attach files" onClick={() => fileRef.current?.click()} className="ml-1">
+                <Paperclip />
+              </IconCircle>
+              <input
+                ref={fileRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={(e) => handleFiles(e.target.files)}
+              />
+              <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={blocked}>
+                {busy === "draft" ? <LoaderCircle className="animate-spin" /> : <FilePen />}
+              </IconCircle>
+              <RemindMenu
+                label={draft.remind ? `Reminds you ${choiceLabel(draft.remind)} if no one replies` : "Remind me if no reply"}
+                button={
+                  draft.remind ? (
+                    <Button
+                      variant="surface"
+                      size="pill-sm"
+                      aria-label={`Reminder ${choiceLabel(draft.remind)}`}
+                      className="ml-1 text-signal-ink dark:text-signal"
+                    />
+                  ) : (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      aria-label="Remind me if no reply"
+                      className="rounded-full text-ink-2 hover:text-foreground"
+                    />
+                  )
+                }
+                status={draft.remind ? `Reminds you ${choiceLabel(draft.remind)}` : undefined}
+                onPick={(remind) => setDraft({ remind })}
+                onClear={draft.remind ? () => setDraft({ remind: undefined }) : undefined}
+                clearLabel="Don't remind me"
+              >
+                <BellRing />
+                {draft.remind && <span className="hidden sm:inline">{choiceLabel(draft.remind)}</span>}
+              </RemindMenu>
+              <div className="ml-auto flex items-center gap-2">
+                <span className="hidden items-center gap-1 text-[11px] text-ink-2 sm:inline-flex">
+                  <Kbd>{mod}</Kbd>
+                  <Kbd>↵</Kbd>
+                  <span className="ml-0.5">to send</span>
+                </span>
+                <IconCircle label="Discard" onClick={handleDiscard} className="hover:text-destructive">
+                  <Trash2 />
+                </IconCircle>
+              </div>
+            </div>
+          </TooltipGroup>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -8,6 +8,7 @@ import {
 	ChevronLeft,
 	ChevronRight,
 	Download,
+	Eye,
 	Forward,
 	ImageOff,
 	Inbox,
@@ -49,7 +50,8 @@ import { conversationTargets } from "@/lib/mail/thread";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
-import { attachmentHref } from "@/lib/mail/attachment";
+import { attachmentHref, canPreview } from "@/lib/mail/attachment";
+import { useAttachmentPreview, type PreviewSource } from "@/components/mail/attachment-preview";
 
 function firstAddressLine(list: { name?: string; address: string }[]): string {
 	if (list.length === 0) return "";
@@ -64,8 +66,18 @@ function fileKind(file: AttachmentMeta): string {
 	return kind.length > 0 && kind.length <= 4 ? kind : "file";
 }
 
-/** A download link when the part is known; a plain label otherwise. */
-function AttachmentPill({ file, folder, uid }: { file: AttachmentMeta; folder: string; uid: string }) {
+/** A preview button for files the page can show, a download link for the rest, a plain label when the part is unknown. */
+function AttachmentPill({
+	file,
+	folder,
+	uid,
+	onPreview,
+}: {
+	file: AttachmentMeta;
+	folder: string;
+	uid: string;
+	onPreview: (source: PreviewSource, trigger: HTMLElement) => void;
+}) {
 	const body = (
 		<>
 			<span
@@ -86,6 +98,24 @@ function AttachmentPill({ file, folder, uid }: { file: AttachmentMeta; folder: s
 		return (
 			<Tip label={file.filename} render={<span className={cn(pill, "pr-4")} />}>
 				{body}
+			</Tip>
+		);
+	}
+	if (canPreview(file, { remote: true })) {
+		const source = { ...file, folder, uid, part: file.part };
+		return (
+			<Tip
+				label={`Preview ${file.filename}`}
+				render={
+					<button
+						type="button"
+						onClick={(e) => onPreview(source, e.currentTarget)}
+						className={cn(pill, "group pr-3.5 text-left transition-colors hover:bg-foreground/5")}
+					/>
+				}
+			>
+				{body}
+				<Eye aria-hidden className="size-3.5 shrink-0 text-ink-2 transition-colors group-hover:text-foreground" />
 			</Tip>
 		);
 	}
@@ -245,6 +275,7 @@ function MailReaderInner({
 	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
 	const thread = useConversation(folder, uid);
+	const preview = useAttachmentPreview();
 	const [showDetails, setShowDetails] = React.useState(false);
 	const [loadRemote, setLoadRemote] = React.useState(false);
 	const remotePref = useRemoteImagesPref();
@@ -620,10 +651,16 @@ function MailReaderInner({
 								<ul className="flex flex-wrap gap-2">
 									{message.attachments.map((a, i) => (
 										<li key={`${a.filename}-${i}`} className="max-w-full">
-											<AttachmentPill file={a} folder={message.folder} uid={message.uid} />
+											<AttachmentPill
+												file={a}
+												folder={message.folder}
+												uid={message.uid}
+												onPreview={preview.open}
+											/>
 										</li>
 									))}
 								</ul>
+								{preview.dialog}
 							</div>
 						)}
 
