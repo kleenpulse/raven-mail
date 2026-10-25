@@ -42,12 +42,15 @@ export function MailList({
 	folder,
 	search,
 	selectedUid,
+	openDraftUid = null,
 	visible = true,
 	onSelectUid,
 }: {
 	folder: string;
 	search: string;
 	selectedUid: string | null;
+	/** The draft open in compose (Drafts folder only): marked like an open message. */
+	openDraftUid?: string | null;
 	/** False while the reader covers the list; showing it again re-reveals the open row. */
 	visible?: boolean;
 	onSelectUid: (uid: string | null) => void;
@@ -58,6 +61,7 @@ export function MailList({
 			folder={folder}
 			search={search}
 			selectedUid={selectedUid}
+			openDraftUid={openDraftUid}
 			visible={visible}
 			onSelectUid={onSelectUid}
 		/>
@@ -181,12 +185,14 @@ function MailListInner({
 	folder,
 	search,
 	selectedUid,
+	openDraftUid,
 	visible,
 	onSelectUid,
 }: {
 	folder: string;
 	search: string;
 	selectedUid: string | null;
+	openDraftUid: string | null;
 	visible: boolean;
 	onSelectUid: (uid: string | null) => void;
 }) {
@@ -203,6 +209,8 @@ function MailListInner({
 	const preloadRoot = usePreloadInView(folder, data?.messages, selectedUid);
 	const { rows, split, setTab } = useMailRows(data?.messages, search, { inbox: folder.toUpperCase() === "INBOX" });
 	const selectedRow = rows[rowOf(rows, selectedUid)];
+	// Styling only: keyboard actions stay on the reader's row, never the draft being edited.
+	const openRow = selectedRow ?? rows[rowOf(rows, openDraftUid)];
 
 	// A sparse tab pulls in a few more pages by itself, then leaves it to Load more.
 	const filling =
@@ -225,10 +233,10 @@ function MailListInner({
 	// the open row in view, including when a hidden list comes back.
 	const ready = !isPending;
 	React.useEffect(() => {
-		if (!ready || !selectedUid || !visible) return;
+		if (!ready || !(selectedUid || openDraftUid) || !visible) return;
 		const current = rowsRef.current?.querySelector<HTMLElement>('[aria-current="true"]');
 		current?.parentElement?.scrollIntoView({ block: "nearest" });
-	}, [ready, selectedUid, visible]);
+	}, [ready, selectedUid, openDraftUid, visible]);
 
 	function toggleSelect(uid: string, next: boolean) {
 		setChecked((prev) => {
@@ -475,7 +483,7 @@ function MailListInner({
 						className="group/list space-y-(--row-gap) px-3 pt-2.5 pb-24 @md/list:px-4"
 					>
 						{rows.map((row) => {
-							const active = row === selectedRow;
+							const active = row === openRow;
 							return (
 								<MailRow
 									key={row.key}
@@ -488,7 +496,8 @@ function MailListInner({
 									thread={row.members.length > 1 ? { people: row.people, count: row.members.length } : undefined}
 									active={active}
 									selected={checked.has(row.key)}
-									onSelectRow={(uid) => onSelectUid(active ? null : uid)}
+									// A second click closes the reader; an open draft just comes back up.
+									onSelectRow={(uid) => onSelectUid(active && row === selectedRow ? null : uid)}
 									onToggleSelect={toggleSelect}
 									onToggleStar={() => toggleStar(row)}
 								/>

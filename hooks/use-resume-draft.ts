@@ -28,19 +28,35 @@ async function loadFile(folder: string, uid: string, file: AttachmentMeta): Prom
  * are fetched back in, since saving replaces the server copy. Until they land,
  * save and send wait; if any can't be fetched, compose lets go of the server
  * copy (no draftUid) so a later save adds a new draft instead of losing them.
+ *
+ * The draft already open in compose isn't reloaded (that would wipe its edits
+ * and refetch its files); it only comes back up if minimized. Of several
+ * clicks made while a draft is still on its way, the last one wins.
  */
 export function useResumeDraft() {
 	const client = useQueryClient();
 	const { email } = useAccount();
+	const opening = React.useRef<string | null>(null);
 	return React.useCallback(
 		async (folder: string, uid: string) => {
+			const open = useComposeStore.getState();
+			if (open.open && open.draftRow === uid) {
+				if (open.minimized) open.restore();
+				return;
+			}
+			if (opening.current === uid) return;
+			opening.current = uid;
 			let message;
 			try {
 				message = await client.fetchQuery(messageQuery(email, folder, uid));
 			} catch (err) {
+				if (opening.current !== uid) return;
+				opening.current = null;
 				toast.error(err instanceof Error ? err.message : "Couldn't open this draft.");
 				return;
 			}
+			if (opening.current !== uid) return;
+			opening.current = null;
 			const files = message.attachments;
 			const store = useComposeStore.getState();
 			store.openCompose(message.inReplyTo ? "reply" : "new", draftFromMessage(message), {

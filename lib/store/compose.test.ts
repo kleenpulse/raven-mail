@@ -35,3 +35,26 @@ describe("openCompose and the signature", () => {
     expect(text()).toBe("Hi\n\n-- \nSam");
   });
 });
+
+describe("draftRow", () => {
+  test("follows a save to the new copy and survives losing the server copy", () => {
+    const store = useComposeStore.getState();
+    store.openCompose("new", {}, { draftUid: "7", signature: false });
+    expect(useComposeStore.getState().draftRow).toBe("7");
+
+    store.setDraftUid("9");
+    expect(useComposeStore.getState().draftRow).toBe("9");
+
+    // Files that couldn't load: the next save adds a copy, but the open row is still this one.
+    store.setDraftUid(undefined);
+    expect(useComposeStore.getState()).toMatchObject({ draftUid: undefined, draftRow: "9" });
+
+    store.closeCompose();
+    expect(useComposeStore.getState().draftRow).toBeUndefined();
+  });
+
+  test("new mail isn't tied to any row", () => {
+    useComposeStore.getState().openCompose("new");
+    expect(useComposeStore.getState().draftRow).toBeUndefined();
+  });
+});

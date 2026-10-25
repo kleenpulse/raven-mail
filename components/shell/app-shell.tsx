@@ -56,6 +56,11 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 		void resumeDraft(activeFolder, uid);
 	}, [inDrafts, uid, activeFolder, setUid, resumeDraft]);
 	const selectedUid = (!inDrafts && uid) || null;
+	const composeOpen = useComposeStore((s) => s.open);
+	const draftRow = useComposeStore((s) => s.draftRow);
+	const openDraftUid = (inDrafts && composeOpen && draftRow) || null;
+	// Where j/k step from: the open message, or in Drafts the draft open in compose.
+	const listUid = selectedUid ?? openDraftUid;
 	// One IMAP search per pause in typing, not per keystroke.
 	const querySearch = useDebouncedValue(search, 300);
 	const { data, hasNextPage, isFetchingNextPage, fetchNextPage } = useMessages(activeFolder, querySearch || undefined);
@@ -69,13 +74,13 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 	// j/k, prev/next and "step to a neighbour" walk the list's rows: conversations when threading is on.
 	// IMAP names the Inbox INBOX in any case (RFC 3501), so this holds before folders load.
 	const { rows, toRows } = useMailRows(data?.messages, querySearch, { inbox: activeFolder.toUpperCase() === "INBOX" });
-	const index = rowOf(rows, selectedUid);
+	const index = rowOf(rows, listUid);
 	// Next first: reading runs down the list.
 	usePrefetchNeighbours(activeFolder, index < 0 ? [] : [rows[index + 1]?.key, rows[index - 1]?.key]);
-	const selectedRef = React.useRef(selectedUid);
+	const selectedRef = React.useRef(listUid);
 	React.useEffect(() => {
-		selectedRef.current = selectedUid;
-	}, [selectedUid]);
+		selectedRef.current = listUid;
+	}, [listUid]);
 
 	const goPrev = () => {
 		const prev = index > 0 ? rows[index - 1] : undefined;
@@ -84,7 +89,7 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 
 	const goNext = async () => {
 		if (index < 0) return;
-		const from = selectedUid;
+		const from = listUid;
 		const next = rows[index + 1];
 		if (next) {
 			void setUid(next.key);
@@ -252,6 +257,7 @@ export function AppShell({ initialLayout }: { initialLayout: MailLayout }) {
 							folder={activeFolder}
 							search={querySearch}
 							selectedUid={selectedUid}
+							openDraftUid={openDraftUid}
 							visible={!readerVisible || (!wide && desktop)}
 							onSelectUid={(next) => void setUid(next ?? "")}
 						/>

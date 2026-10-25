@@ -11,6 +11,16 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- In Drafts, the draft you have open is now marked in the list, like an
+  open message in other folders.
+- Clicking the draft you already have open no longer loads it again. Your
+  edits and files stay as they are, and if the window is minimized it
+  opens back up.
+- Clicking several drafts quickly now opens the last one you clicked.
+  Before, a slow draft could open on top of the one you picked after it.
+
 ## [0.5.0] - 2026-10-25
 
 ### Added

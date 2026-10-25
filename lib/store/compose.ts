@@ -26,6 +26,12 @@ type ComposeState = {
   mode: ComposeMode;
   draft: ComposeDraft;
   draftUid?: string;
+  /**
+   * The Drafts row this compose was opened from, so the list can mark it and a
+   * second click doesn't reload it. Follows a save to the new copy, but stays
+   * when draftUid lets go of the server copy (files that couldn't load).
+   */
+  draftRow?: string;
   attachments: ComposeAttachment[];
   attachmentsLoading: boolean;
   /** Bumped by every openCompose, so the editor starts over instead of keeping the last message. */
@@ -60,6 +66,7 @@ export const useComposeStore = create<ComposeState>()(
       mode: "new",
       draft: emptyDraft(),
       draftUid: undefined,
+      draftRow: undefined,
       attachments: [],
       attachmentsLoading: false,
       session: 0,
@@ -74,6 +81,7 @@ export const useComposeStore = create<ComposeState>()(
           mode,
           draft: next,
           draftUid: options.draftUid,
+          draftRow: options.draftUid,
           attachments: [],
           attachmentsLoading: options.attachmentsLoading ?? false,
         });
@@ -85,6 +93,7 @@ export const useComposeStore = create<ComposeState>()(
           maximized: false,
           draft: emptyDraft(),
           draftUid: undefined,
+          draftRow: undefined,
           attachments: [],
           attachmentsLoading: false,
         }),
@@ -92,7 +101,7 @@ export const useComposeStore = create<ComposeState>()(
       restore: () => set({ minimized: false }),
       toggleMaximize: () => set({ maximized: !get().maximized }),
       setDraft: (patch) => set({ draft: { ...get().draft, ...patch } }),
-      setDraftUid: (draftUid) => set({ draftUid }),
+      setDraftUid: (draftUid) => set({ draftUid, draftRow: draftUid ?? get().draftRow }),
       addAttachments: (files) => set({ attachments: [...get().attachments, ...files] }),
       removeAttachment: (index) => set({ attachments: get().attachments.filter((_, i) => i !== index) }),
       setAttachmentsLoading: (attachmentsLoading) => set({ attachmentsLoading }),
@@ -106,6 +115,7 @@ export const useComposeStore = create<ComposeState>()(
       partialize: (state) => ({
         draft: state.draft,
         draftUid: state.attachments.length || state.attachmentsLoading ? undefined : state.draftUid,
+        draftRow: state.attachments.length || state.attachmentsLoading ? undefined : state.draftRow,
         open: state.open && !state.minimized ? false : state.open,
         minimized: state.minimized,
         mode: state.mode,
