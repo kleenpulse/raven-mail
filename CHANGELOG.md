@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-10-25
+
 ### Changed
 
 - Clicking a file now opens a preview on the page, not a new tab. This
