@@ -11,6 +11,17 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Removed
+
+- The Newsletters and "When people write" cards are gone from the
+  bottom of the overview. The Review button on the threads card now
+  asks Jev which newsletters you never open.
+
+### Fixed
+
+- The "Write your message" hint no longer sits on top of the "1." or
+  bullet when you start an empty message with a list or a quote.
+
 ## [0.6.1] - 2026-10-25
 
 ### Added

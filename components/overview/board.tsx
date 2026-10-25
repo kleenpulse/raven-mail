@@ -15,8 +15,6 @@ import { DailyBrief } from "@/components/overview/daily-brief";
 import type { DecisionEngine } from "@/lib/jev/client";
 import { ReplyDebtCard } from "@/components/overview/reply-debt-card";
 import { FollowUpsCard } from "@/components/overview/follow-ups-card";
-import { HygieneCard } from "@/components/overview/hygiene-card";
-import { RhythmCard } from "@/components/overview/rhythm-card";
 import { OrbitCard } from "@/components/overview/orbit-card";
 import { OverviewSearch } from "@/components/overview/overview-search";
 import { SponsorButton } from "@/components/shell/sponsor-button";
@@ -172,7 +170,7 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 								<ThreadsRadar
 									overview={data}
 									onAsk={onAsk}
-									onReviewHygiene={() => document.getElementById("hygiene")?.scrollIntoView({ behavior: "smooth", block: "center" })}
+									onReviewHygiene={() => onAsk("Newsletters I never open", { forcedIntent: "newsletters" })}
 									i={7}
 								/>
 							</div>
@@ -189,13 +187,6 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 							</div>
 							<div className="order-3 col-span-12 md:order-2 md:col-span-6 xl:order-none xl:col-span-4 *:h-full">
 								<ReplyDebtCard overview={data} i={11} />
-							</div>
-
-							<div className="order-9 col-span-12 xl:order-none xl:col-span-6 *:h-full">
-								<HygieneCard overview={data} id="hygiene" i={12} />
-							</div>
-							<div className="order-10 col-span-12 xl:order-none xl:col-span-6 *:h-full">
-								<RhythmCard overview={data} i={13} />
 							</div>
 						</>
 					)}
