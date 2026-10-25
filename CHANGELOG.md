@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-10-25
+
 ### Added
 
 - The file preview has an "Open in new tab" button, for when you want
