@@ -172,42 +172,42 @@ export function RichEditor({
 			</div>
 			<div role="toolbar" aria-label="Formatting" className="flex shrink-0 flex-wrap items-center gap-0.5 px-3 pb-1.5">
 				<TooltipGroup>
-				{TOOLS.map(({ id, label, keys, icon: Icon }) => (
+					{TOOLS.map(({ id, label, keys, icon: Icon }) => (
+						<Tip
+							key={id}
+							label={
+								<>
+									{label}
+									{keys && <Kbd>{`${mod}+${keys}`}</Kbd>}
+								</>
+							}
+							type="button"
+							aria-label={label}
+							aria-pressed={Boolean(active?.[id])}
+							render={<button disabled={!editor} />}
+							onMouseDown={(e) => e.preventDefault()}
+							onClick={() => editor && run(editor, id)}
+							className={toolClass(Boolean(active?.[id]))}
+						>
+							<Icon />
+						</Tip>
+					))}
 					<Tip
-						key={id}
-						label={
-							<>
-								{label}
-								{keys && <Kbd>{`${mod}+${keys}`}</Kbd>}
-							</>
-						}
+						label={active?.link ? "Remove link" : "Add link"}
 						type="button"
-						aria-label={label}
-						aria-pressed={Boolean(active?.[id])}
+						aria-label={active?.link ? "Remove link" : "Add link"}
+						aria-pressed={Boolean(active?.link)}
 						render={<button disabled={!editor} />}
 						onMouseDown={(e) => e.preventDefault()}
-						onClick={() => editor && run(editor, id)}
-						className={toolClass(Boolean(active?.[id]))}
+						onClick={() => {
+							if (!editor) return;
+							if (active?.link) editor.chain().focus().extendMarkRange("link").unsetLink().run();
+							else setLinking(true);
+						}}
+						className={toolClass(Boolean(active?.link))}
 					>
-						<Icon />
+						<Link2 />
 					</Tip>
-				))}
-				<Tip
-					label={active?.link ? "Remove link" : "Add link"}
-					type="button"
-					aria-label={active?.link ? "Remove link" : "Add link"}
-					aria-pressed={Boolean(active?.link)}
-					render={<button disabled={!editor} />}
-					onMouseDown={(e) => e.preventDefault()}
-					onClick={() => {
-						if (!editor) return;
-						if (active?.link) editor.chain().focus().extendMarkRange("link").unsetLink().run();
-						else setLinking(true);
-					}}
-					className={toolClass(Boolean(active?.link))}
-				>
-					<Link2 />
-				</Tip>
 				</TooltipGroup>
 				{linking && (
 					<input
