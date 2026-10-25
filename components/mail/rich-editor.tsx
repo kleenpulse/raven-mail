@@ -124,7 +124,8 @@ export function RichEditor({
 						blockquote: e.isActive("blockquote"),
 						code: e.isActive("code"),
 						link: e.isActive("link"),
-						empty: e.isEmpty,
+						// An empty list or quote still counts as empty; the placeholder would sit on its marker.
+						empty: e.isEmpty && e.state.doc.childCount === 1 && e.state.doc.firstChild?.type.name === "paragraph",
 					}
 				: null,
 	});
