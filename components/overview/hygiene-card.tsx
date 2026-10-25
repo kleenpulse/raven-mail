@@ -7,6 +7,7 @@ import { Ring } from "@/components/viz/ring";
 import { useComposeStore } from "@/lib/store/compose";
 import { formatBytes, mailLink } from "@/lib/jev/ask/format";
 import type { NewsletterStat, Overview } from "@/lib/insights/types";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { parseMailto } from "@/lib/mail/headers";
 
@@ -105,13 +106,17 @@ export function HygieneCard({ overview, i = 0, id }: { overview: Overview; i?: n
 						</p>
 					)}
 					{largest && (
-						<Link
-							href={mailLink(largest)}
-							title={largest.subject}
-							className="mt-2 block truncate rounded-md text-ink-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+						<Tip
+							label={largest.subject}
+							render={
+								<Link
+									href={mailLink(largest)}
+									className="mt-2 block truncate rounded-md text-ink-2 outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring"
+								/>
+							}
 						>
 							Largest · {formatBytes(largest.bytes)} · {largest.subject}
-						</Link>
+						</Tip>
 					)}
 				</div>
 			</div>

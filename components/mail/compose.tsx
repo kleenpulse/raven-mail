@@ -31,9 +31,27 @@ import { choiceLabel } from "@/lib/follow-ups/when";
 import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
-import { bytesToBase64 } from "@/lib/mail/attachment";
+import { base64ToBytes, bytesToBase64, previewType } from "@/lib/mail/attachment";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 import type { ComposeDraft } from "@/lib/mail/types";
+
+/** The bytes are already here, so open (or save) the file without asking the server. */
+function openAttachment(file: { filename: string; contentType: string; contentBase64: string }) {
+  const type = previewType(file.contentType, file.filename);
+  const blob = new Blob([base64ToBytes(file.contentBase64)], { type: type ?? "application/octet-stream" });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  if (type) {
+    link.target = "_blank";
+    link.rel = "noopener";
+  } else {
+    link.download = file.filename;
+  }
+  link.click();
+  // Late enough for the new tab to have read it.
+  setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
 
 // The editor (Tiptap, ProseMirror) loads when compose first opens, not with the mail list.
 const RichEditor = dynamic(() => import("@/components/mail/rich-editor").then((m) => m.RichEditor), {
@@ -59,28 +77,28 @@ function QuotedOriginal({
   return (
     <div className="shrink-0 border-t border-border px-4 py-2.5 dark:border-glass-border">
       <div className="flex items-center gap-2">
-        <button
+        <Tip
+          label={open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
           aria-controls={bodyId}
-          title={open ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`}
           className="inline-flex h-6 shrink-0 items-center rounded-pill bg-card-nested px-2.5 font-mono text-[12px] leading-none tracking-[0.2em] text-ink-2 ring-1 ring-border outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring dark:ring-glass-border"
         >
           •••
-        </button>
+        </Tip>
         <p className="min-w-0 flex-1 truncate text-[12px] text-ink-2">
           {quote.kind === "forward" ? label : quote.header}
         </p>
-        <button
+        <Tip
+          label={`Don't include the ${label.toLowerCase()}`}
           type="button"
           onClick={onRemove}
           aria-label={`Remove ${label.toLowerCase()}`}
-          title={`Don't include the ${label.toLowerCase()}`}
           className="grid size-6 shrink-0 place-items-center rounded-full text-ink-2 outline-none transition-colors hover:bg-foreground/5 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
         >
           <X className="size-3.5" />
-        </button>
+        </Tip>
       </div>
       {open && (
         <div
@@ -345,14 +363,14 @@ export function ComposeDock() {
       aria-label={title}
       onKeyDown={handleKeyDown}
       className={cn(
-        "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card bg-sheet text-foreground shadow-lift ring-1 ring-border dark:glass dark:ring-0",
+        "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card text-foreground shadow-lift glass-pane",
         maximized
           ? "inset-2 sm:inset-6 lg:inset-x-[max(1.5rem,calc((100vw-60rem)/2))]"
           : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(100svh-3rem))] sm:w-120",
       )}
     >
-      {/* Nebula: tint inside the glass so labels stay legible when the dock floats over the white email paper. */}
-      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-border pr-3 pl-5 dark:border-glass-border dark:bg-background/50">
+      {/* Nebula: a light tint inside the glass so labels stay legible when the dock floats over the white email paper. */}
+      <div className="flex h-16 shrink-0 items-center gap-2 border-b border-border pr-3 pl-5 dark:border-glass-border dark:bg-background/25">
         <div className="min-w-0 flex-1 leading-tight">
           <h2 className="truncate font-display text-[17px] tracking-[-0.01em]">{title}</h2>
           <p className="readout mt-1 truncate">Autosaves on this device</p>
@@ -370,7 +388,7 @@ export function ComposeDock() {
         </TooltipGroup>
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col dark:bg-background/50">
+      <div className="flex min-h-0 flex-1 flex-col dark:bg-background/25">
         <div className="shrink-0 border-b border-border dark:border-glass-border">
           <Field label="To" htmlFor={`${fieldId}-to`}>
             <RecipientField
@@ -459,8 +477,15 @@ export function ComposeDock() {
                 key={`${a.filename}-${i}`}
                 className="inline-flex h-8 max-w-full items-center gap-2 rounded-pill bg-card pr-1 pl-3 text-[12px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border"
               >
-                <span className="max-w-40 truncate font-medium">{a.filename}</span>
-                <span className="font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(a.size)}</span>
+                <Tip
+                  label={previewType(a.contentType, a.filename) ? `Open ${a.filename}` : `Download ${a.filename}`}
+                  type="button"
+                  onClick={() => openAttachment(a)}
+                  className="inline-flex min-w-0 items-center gap-2 rounded-pill outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <span className="max-w-40 truncate font-medium">{a.filename}</span>
+                  <span className="font-mono text-[10.5px] text-ink-2 tabular">{formatBytes(a.size)}</span>
+                </Tip>
                 <button
                   type="button"
                   onClick={() => removeAttachment(i)}

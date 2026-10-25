@@ -9,6 +9,7 @@ import { INTENT_META } from "@/lib/jev/ask/catalog";
 import { formatAge, mailLink } from "@/lib/jev/ask/format";
 import type { AskAnswer, AskStage, Evidence } from "@/lib/jev/ask/types";
 import { initials } from "@/lib/format";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const STAGES: { stage: AskStage; label: string }[] = [
@@ -200,13 +201,13 @@ export function AnswerCard({
 					</span>
 					{answer.headline}
 				</h3>
-				<div className="flex shrink-0 items-center gap-2 pt-1" title={`${SOURCE[answer.plan.source]} · ${pct}% sure`}>
+				<Tip label={`${SOURCE[answer.plan.source]} · ${pct}% sure`} render={<div className="flex shrink-0 items-center gap-2 pt-1" />}>
 					<span data-slot="source" className="font-mono text-[10px] tracking-[0.12em] text-ink-2 uppercase">{SOURCE[answer.plan.source]}</span>
 					<span className="h-1 w-14 overflow-hidden rounded-full bg-border" aria-hidden>
 						<span className="block h-full rounded-full bg-signal" style={{ width: `${pct}%` }} />
 					</span>
 					<span className="tabular font-mono text-[11px] text-ink-2">{pct}%</span>
-				</div>
+				</Tip>
 			</header>
 			{answer.sentence && (
 				<p className={cn("mt-1.5 pl-4 text-[13px] leading-relaxed text-ink-2", compact && "max-sm:mt-1 max-sm:text-[12px] max-sm:leading-normal")}>

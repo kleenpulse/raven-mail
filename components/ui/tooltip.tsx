@@ -89,7 +89,8 @@ const stemClass = cn(
 )
 
 const labelClass = cn(
-  "relative z-10 inline-flex items-center gap-1.5 px-3 py-1.5 has-data-[slot=kbd]:pr-1.5",
+  // Long unbroken labels (filenames, Message-IDs) wrap instead of spilling out of the pill.
+  "relative z-10 inline-flex items-center gap-1.5 px-3 py-1.5 wrap-anywhere has-data-[slot=kbd]:pr-1.5",
   "**:data-[slot=kbd]:relative **:data-[slot=kbd]:isolate **:data-[slot=kbd]:z-50 **:data-[slot=kbd]:rounded-sm",
   "transition-[opacity,filter] duration-160 delay-60",
   "group-data-[starting-style]/tip:opacity-0 group-data-[starting-style]/tip:blur-[3px]",

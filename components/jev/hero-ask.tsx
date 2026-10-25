@@ -6,6 +6,7 @@ import { useTypewriter } from "@/hooks/use-typewriter";
 import { useAskStore } from "@/components/jev/ask-store";
 import { useAnsweredBy } from "@/components/jev/ask-name";
 import type { DecisionEngine } from "@/lib/jev/client";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 
@@ -91,10 +92,10 @@ export function HeroAsk({
 				</div>
 			</div>
 
-			<button
+			<Tip
+				label={engine === "jev" ? "Jev · live" : engine === "kage" ? "Kage · built-in engine, no key needed" : "Jev · heuristic mode (no API key)"}
 				type="submit"
 				aria-label={value ? `Ask ${name}` :engine === "jev" ? "Jev is live" : engine === "kage" ? "Kage is live" : "Jev runs in heuristic mode"}
-				title={engine === "jev" ? "Jev · live" : engine === "kage" ? "Kage · built-in engine, no key needed" : "Jev · heuristic mode (no API key)"}
 				className={cn(
 					"group relative hidden size-[88px] shrink-0 place-items-center rounded-full bg-sheet ring-1 ring-border transition-[transform,box-shadow] duration-300 sm:grid",
 					"hover:shadow-lift active:scale-95 dark:bg-card-nested dark:ring-glass-border dark:hover:shadow-glow",
@@ -111,7 +112,7 @@ export function HeroAsk({
 						engine ? "bg-ok" : "bg-ink-3",
 					)}
 				/>
-			</button>
+			</Tip>
 		</form>
 	);
 }

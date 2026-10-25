@@ -8,6 +8,7 @@ import {
 	clampListWidth,
 	type MailLayout,
 } from "@/lib/mail/reader-layout";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { uiZoom } from "@/lib/prefs/dom";
 
@@ -80,7 +81,6 @@ export function ListSplitter({
 			aria-valuemax={LIST_MAX}
 			aria-valuenow={layout.wide ? 0 : (layout.listWidth ?? undefined)}
 			aria-valuetext={layout.wide ? "Message list hidden" : undefined}
-			title="Drag to resize · double-click to reset"
 			tabIndex={0}
 			data-dragging={dragging}
 			className="group relative z-20 hidden w-0 shrink-0 touch-none outline-none md:block"
@@ -138,7 +138,11 @@ export function ListSplitter({
 				else onLayout((l) => ({ ...l, listWidth: clampListWidth(next, container) }));
 			}}
 		>
-			<span aria-hidden className="absolute inset-y-0 -left-1.5 w-3 cursor-col-resize" />
+			{/* The hit strip runs the pane's full height, so the tip follows the cursor. */}
+			<Tooltip trackCursorAxis="y">
+				<TooltipTrigger render={<span aria-hidden className="absolute inset-y-0 -left-1.5 w-3 cursor-col-resize" />} />
+				<TooltipContent side="right">Drag to resize · double-click to reset</TooltipContent>
+			</Tooltip>
 			<span
 				aria-hidden
 				className={cn(

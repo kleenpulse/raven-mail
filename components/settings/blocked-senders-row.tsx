@@ -2,6 +2,7 @@
 
 import { AtSign, Globe, LoaderCircle, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Tip } from "@/components/ui/tooltip";
 import { DbCallout } from "@/components/integrations/db-callout";
 import { SettingRow } from "@/components/settings/setting-row";
 import { useBlockActions, useBlocks } from "@/hooks/use-blocks";
@@ -42,9 +43,9 @@ export function BlockedSendersRow() {
 							return (
 								<li key={b.id} className="flex items-center gap-3 py-1.5 pr-1.5 pl-3.5">
 									<Icon aria-hidden className="size-4 shrink-0 text-ink-2" />
-									<span className="min-w-0 flex-1 truncate text-[13px]" title={label}>
+									<Tip label={label} render={<span className="min-w-0 flex-1 truncate text-[13px]" />}>
 										{label}
-									</span>
+									</Tip>
 									<Button
 										variant="ghost"
 										size="pill-sm"

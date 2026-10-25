@@ -4,6 +4,8 @@ import * as React from "react";
 import { EditorContent, Extension, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { Bold, Code, Italic, Link2, List, ListOrdered, Quote, type LucideIcon } from "lucide-react";
+import { Kbd } from "@/components/ui/kbd";
+import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { onlySignature } from "@/lib/mail/signature";
 import { docToText, textToHtml } from "@/lib/mail/rich-text";
@@ -169,27 +171,33 @@ export function RichEditor({
 				/>
 			</div>
 			<div role="toolbar" aria-label="Formatting" className="flex shrink-0 flex-wrap items-center gap-0.5 px-3 pb-1.5">
+				<TooltipGroup>
 				{TOOLS.map(({ id, label, keys, icon: Icon }) => (
-					<button
+					<Tip
 						key={id}
+						label={
+							<>
+								{label}
+								{keys && <Kbd>{`${mod}+${keys}`}</Kbd>}
+							</>
+						}
 						type="button"
 						aria-label={label}
 						aria-pressed={Boolean(active?.[id])}
-						title={keys ? `${label} (${mod}+${keys})` : label}
-						disabled={!editor}
+						render={<button disabled={!editor} />}
 						onMouseDown={(e) => e.preventDefault()}
 						onClick={() => editor && run(editor, id)}
 						className={toolClass(Boolean(active?.[id]))}
 					>
 						<Icon />
-					</button>
+					</Tip>
 				))}
-				<button
+				<Tip
+					label={active?.link ? "Remove link" : "Add link"}
 					type="button"
 					aria-label={active?.link ? "Remove link" : "Add link"}
 					aria-pressed={Boolean(active?.link)}
-					title={active?.link ? "Remove link" : "Add link"}
-					disabled={!editor}
+					render={<button disabled={!editor} />}
 					onMouseDown={(e) => e.preventDefault()}
 					onClick={() => {
 						if (!editor) return;
@@ -199,7 +207,8 @@ export function RichEditor({
 					className={toolClass(Boolean(active?.link))}
 				>
 					<Link2 />
-				</button>
+				</Tip>
+				</TooltipGroup>
 				{linking && (
 					<input
 						autoFocus

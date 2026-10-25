@@ -11,6 +11,23 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- You can open the files attached to a message you're writing, drafts
+  included. Click a file's name: pictures, PDFs, audio, video and text
+  open in a new tab, and other files download. Code and web files like
+  XML or HTML open as plain text, so nothing in them can run.
+
+### Changed
+
+- The window where you write a message is now frosted glass. You can
+  see a soft blur of your mail behind it, with a light glow in the top
+  corner. If you turn on Reduce Transparency, it stays solid.
+- Hover hints across the app now use Raven's own tooltip instead of the
+  plain browser one. They show up faster and match the rest of the app.
+  In the editor toolbar, one hint slides from button to button and shows
+  the shortcut key.
+
 ## [0.4.3] - 2026-10-24
 
 ### Fixed

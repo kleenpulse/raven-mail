@@ -2,8 +2,10 @@ import { describe, expect, test } from "bun:test";
 import {
   attachmentHeaders,
   attachmentHref,
+  base64ToBytes,
   bytesToBase64,
   contentDisposition,
+  previewType,
   safeContentType,
   SECTION_RE,
 } from "@/lib/mail/attachment";
@@ -126,6 +128,39 @@ describe("links", () => {
     for (const bad of ["", "TEXT", "1.MIME", "2.", ".2", "1..2", "-1", "2 1", "1".repeat(5)]) {
       expect(SECTION_RE.test(bad)).toBe(false);
     }
+  });
+});
+
+describe("previewType", () => {
+  test("media and PDF open as themselves", () => {
+    expect(previewType("image/png")).toBe("image/png");
+    expect(previewType("application/pdf")).toBe("application/pdf");
+    expect(previewType("video/mp4")).toBe("video/mp4");
+  });
+
+  test.each(["text/html", "image/svg+xml", "text/xml", "application/xml", "application/javascript", "text/plain"])(
+    "%s opens as plain text, never rendered",
+    (type) => {
+      expect(previewType(type)).toBe("text/plain; charset=utf-8");
+    },
+  );
+
+  test("source files with no useful type still open by extension", () => {
+    expect(previewType("application/octet-stream", "AMOLED_Vxrcel.xml")).toBe("text/plain; charset=utf-8");
+    expect(previewType("", "notes.MD")).toBe("text/plain; charset=utf-8");
+  });
+
+  test("anything else downloads", () => {
+    expect(previewType("application/zip", "a.zip")).toBeNull();
+    expect(previewType(undefined, "setup.exe")).toBeNull();
+    expect(previewType("multipart/mixed")).toBeNull();
+  });
+});
+
+describe("base64ToBytes", () => {
+  test("round-trips bytesToBase64", () => {
+    const bytes = Uint8Array.from({ length: 300 }, (_, i) => i % 256);
+    expect(base64ToBytes(bytesToBase64(bytes))).toEqual(bytes);
   });
 });
 

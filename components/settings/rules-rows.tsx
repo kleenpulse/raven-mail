@@ -169,10 +169,13 @@ function PreviewList({ items }: { items: PreviewItem[] }) {
 				</p>
 			)}
 			{taken.length > 0 && (
-				<p className="text-[12px] text-ink-2" title={taken.map((t) => `${t.subject}: ${t.why}`).join("\n")}>
+				<Tip
+					label={<span className="whitespace-pre-line">{taken.map((t) => `${t.subject}: ${t.why}`).join("\n")}</span>}
+					render={<p className="text-[12px] text-ink-2" />}
+				>
 					{taken.length} more {taken.length === 1 ? "fits" : "fit"}, but your other rules fit{" "}
 					{taken.length === 1 ? "it" : "them"} better or come first.
-				</p>
+				</Tip>
 			)}
 		</div>
 	);

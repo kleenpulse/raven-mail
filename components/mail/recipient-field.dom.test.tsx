@@ -116,6 +116,6 @@ describe("RecipientField", () => {
 		typeText("not-an-address");
 		fireEvent.blur(input());
 		expect(latest).toBe("not-an-address");
-		expect(screen.getByTitle("Not an email address")).toBeTruthy();
+		expect(screen.getByText("Not an email address")).toBeTruthy();
 	});
 });

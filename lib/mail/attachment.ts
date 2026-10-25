@@ -66,6 +66,30 @@ export function attachmentHeaders(file: { filename?: string; contentType?: strin
   return headers;
 }
 
+const VIEWABLE = /^(image\/(?!svg)|audio\/|video\/|application\/pdf$)/;
+const SOURCE_TYPE = /xml|html|svg|json|javascript|ecmascript|^text\//;
+const SOURCE_EXT = /\.(xml|json|txt|md|csv|log|html?|svg|js|ts|css|ya?ml|ini|conf)$/i;
+
+/**
+ * The type to open a local file with in a new tab, or null to download it.
+ * A blob URL shares the app's origin, so anything a browser would run
+ * (HTML, SVG, XML) opens as plain text: the user still sees it, nothing executes.
+ */
+export function previewType(contentType: string | undefined, filename = ""): string | null {
+  const safe = safeContentType(contentType);
+  if (VIEWABLE.test(safe)) return safe;
+  const type = (contentType ?? "").trim().toLowerCase();
+  if (SOURCE_TYPE.test(type) || SOURCE_EXT.test(filename)) return "text/plain; charset=utf-8";
+  return null;
+}
+
+export function base64ToBytes(base64: string): Uint8Array<ArrayBuffer> {
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+  return bytes;
+}
+
 /** btoa over a byte string, in chunks so large files don't overflow the call stack. */
 export function bytesToBase64(buffer: ArrayBuffer | Uint8Array): string {
   const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);

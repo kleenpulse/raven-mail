@@ -11,6 +11,7 @@ import { useReducedMotion } from "@/hooks/use-reduced-motion";
 import { mailLink } from "@/lib/jev/ask/format";
 import type { BriefItem } from "@/lib/insights/types";
 import type { DecisionEngine } from "@/lib/jev/client";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "raven-brief-dismissed";
@@ -258,15 +259,15 @@ export function DailyBrief({
 						</>
 					)}
 					{current && !demo && (
-						<button
+						<Tip
+							label="Dismiss for today"
 							type="button"
 							onClick={() => dismiss(current)}
 							aria-label="Dismiss for today"
-							title="Dismiss for today"
 							className="grid size-8 place-items-center rounded-full bg-card-nested text-ink-2 ring-1 ring-border hover:text-foreground dark:ring-glass-border"
 						>
 							<X className="size-3.5" />
-						</button>
+						</Tip>
 					)}
 				</div>
 			</div>

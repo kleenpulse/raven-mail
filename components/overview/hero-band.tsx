@@ -5,6 +5,7 @@ import { ArrowRight, CalendarDays, Cloud, CloudLightning, CloudRain, CloudSun, S
 import { HeroAsk } from "@/components/jev/hero-ask";
 import type { WeatherState } from "@/lib/insights/types";
 import type { DecisionEngine } from "@/lib/jev/client";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 const WEATHER_ICON: Record<WeatherState, typeof Sun> = {
@@ -74,10 +75,10 @@ export function HeroBand({
 						</div>
 						<div className="text-ink-2">{today ? today.toLocaleDateString(undefined, { month: "long" }) : " "}</div>
 						{weather && WeatherIcon && (
-							<div className="mt-1 flex items-center gap-1.5 text-[12px] text-ink-2" title={weather.forecast}>
+							<Tip label={weather.forecast} render={<div className="mt-1 flex w-fit items-center gap-1.5 text-[12px] text-ink-2" />}>
 								<WeatherIcon className="size-3.5 text-signal-ink dark:text-signal" />
 								{weather.label}
-							</div>
+							</Tip>
 						)}
 					</div>
 				</div>

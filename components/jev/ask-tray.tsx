@@ -13,6 +13,7 @@ import { INTENT_META, SUGGESTED_INTENTS } from "@/lib/jev/ask/catalog";
 import { formatDuration } from "@/lib/jev/ask/format";
 import { smartChips } from "@/lib/jev/ask/chips";
 import { usePref } from "@/lib/prefs/store";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
 /** Below this the page counts as "at the top"; per-event moves under JITTER_PX are ignored. */
@@ -280,16 +281,16 @@ export function AskTray() {
 							This email
 						</button>
 					)}
-					<button
+					<Tip
+						label={name === "Kage" ? "Let Kage triage your last 48 hours (built in, no key needed)" : "Let Jev triage your last 48 hours (uses your TypeSafe key)"}
 						type="button"
 						onClick={deep.run}
-						disabled={deep.pending}
+						render={<button disabled={deep.pending} />}
 						className="inline-flex h-8 items-center gap-1.5 rounded-pill px-3 text-[12px] ring-1 ring-border transition-colors hover:bg-signal-soft disabled:opacity-60 dark:ring-glass-border"
-						title={name === "Kage" ? "Let Kage triage your last 48 hours (built in, no key needed)" : "Let Jev triage your last 48 hours (uses your TypeSafe key)"}
 					>
 						{deep.pending ? <Loader2 className="size-3 animate-spin" /> : <Sparkles className="[&>path:first-child]:fill-current size-3" />}
 						{deep.data ? "Re-triage" : "Deep triage"}
-					</button>
+					</Tip>
 					{!value &&
 						chips.slice(0, 3).map((c) => (
 							<button

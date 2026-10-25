@@ -502,6 +502,18 @@ html[data-transparency="reduce"]:not(.dark) {
 	backdrop-filter: blur(24px) saturate(180%);
 }
 
+/* The same frost at panel size (the compose dock): the sheen sits along the
+   top edge and the accent glow in the far corner, so a tall pane reads as lit
+   glass, not a gradient. */
+@utility glass-pane {
+	background:
+		linear-gradient(180deg, var(--glass-sheen), transparent 7rem),
+		radial-gradient(120% 60% at 100% 0%, var(--glass-tint), transparent 65%),
+		var(--glass-frost);
+	border: 1px solid var(--glass-border);
+	backdrop-filter: blur(32px) saturate(180%);
+}
+
 /* Rotating conic border for critical / attention states. */
 @utility glow-sweep {
 	border: 1px solid transparent;

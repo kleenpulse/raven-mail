@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 import { useDeepTriageMap } from "@/hooks/use-deep-triage";
@@ -54,12 +55,9 @@ export function SignalBar({
 	const level = Math.max(0, Math.min(3, Math.round(urgency * 3))) as 0 | 1 | 2 | 3;
 	if (level === 0) return null;
 	return (
-		<span
-			role="img"
-			aria-label={URGENCY_LABEL[level]}
-			title={URGENCY_LABEL[level]}
-			data-level={level}
-			className="inline-flex h-2.5 items-end gap-0.5"
+		<Tip
+			label={URGENCY_LABEL[level]}
+			render={<span role="img" aria-label={URGENCY_LABEL[level]} data-level={level} className="inline-flex h-2.5 items-end gap-0.5" />}
 		>
 			{([1, 2, 3] as const).map((step) => (
 				<span
@@ -77,7 +75,7 @@ export function SignalBar({
 					)}
 				/>
 			))}
-		</span>
+		</Tip>
 	);
 }
 

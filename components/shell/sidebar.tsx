@@ -13,6 +13,7 @@ import {
 	type LucideIcon,
 } from "lucide-react";
 import { motion } from "motion/react";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { TAB_SPRING } from "@/lib/motion";
 import { useFolders } from "@/hooks/use-mail";
@@ -58,20 +59,24 @@ function FolderCount({ folder, active }: { folder?: MailFolder; active: boolean 
 	const value = unread ? folder.unread : folder.total;
 	if (value <= 0) return null;
 	return (
-		<span
-			title={unread ? `${value} unread` : `${value} messages`}
-			className={cn(
-				"font-mono text-[11px] tabular",
-				active
-					? "text-sidebar-primary-foreground/75"
-					: unread
-						? "font-semibold text-signal-ink"
-						: "text-ink-2",
-			)}
+		<Tip
+			label={unread ? `${value} unread` : `${value} messages`}
+			render={
+				<span
+					className={cn(
+						"font-mono text-[11px] tabular",
+						active
+							? "text-sidebar-primary-foreground/75"
+							: unread
+								? "font-semibold text-signal-ink"
+								: "text-ink-2",
+					)}
+				/>
+			}
 		>
 			{value}
 			<span className="sr-only">{unread ? " unread" : " messages"}</span>
-		</span>
+		</Tip>
 	);
 }
 
@@ -200,10 +205,10 @@ export function Sidebar({
 									const LabelIcon = LABEL_ICONS[f.name.toLowerCase()];
 									return (
 										<li key={f.path}>
-											<button
+											<Tip
+												label={f.path}
 												type="button"
 												onClick={() => onSelectFolder(f.path)}
-												title={f.path}
 												aria-current={active ? "true" : undefined}
 												className={itemClass(active)}
 											>
@@ -222,7 +227,7 @@ export function Sidebar({
 												)}
 												<span className="flex-1 truncate text-left">{f.name}</span>
 												<FolderCount folder={f} active={active} />
-											</button>
+											</Tip>
 										</li>
 									);
 								})}
@@ -233,7 +238,7 @@ export function Sidebar({
 			</AutoScroll>
 
 			<div className="mx-4 mb-4 flex items-center gap-3 border-t border-border px-3 pt-4 dark:border-glass-border">
-				<span className={cn("size-2 shrink-0 rounded-full", status.dot)} title={status.label} />
+				<Tip label={status.label} render={<span className={cn("size-2 shrink-0 rounded-full", status.dot)} />} />
 				<span className="sr-only">{status.label}.</span>
 				<div className="min-w-0 leading-tight">
 					<p className="truncate text-[12.5px] text-foreground">{account.email}</p>

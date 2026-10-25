@@ -84,24 +84,28 @@ function AttachmentPill({ file, folder, uid }: { file: AttachmentMeta; folder: s
 		"inline-flex h-11 max-w-full items-center gap-2.5 rounded-pill bg-card-nested pl-1.5 ring-1 ring-border dark:ring-glass-border";
 	if (!file.part) {
 		return (
-			<span title={file.filename} className={cn(pill, "pr-4")}>
+			<Tip label={file.filename} render={<span className={cn(pill, "pr-4")} />}>
 				{body}
-			</span>
+			</Tip>
 		);
 	}
 	return (
-		<a
-			href={attachmentHref(folder, uid, file.part)}
-			download={file.filename}
-			title={`Download ${file.filename}`}
-			className={cn(pill, "group pr-3.5 transition-colors hover:bg-foreground/5")}
+		<Tip
+			label={`Download ${file.filename}`}
+			render={
+				<a
+					href={attachmentHref(folder, uid, file.part)}
+					download={file.filename}
+					className={cn(pill, "group pr-3.5 transition-colors hover:bg-foreground/5")}
+				/>
+			}
 		>
 			{body}
 			<Download
 				aria-hidden
 				className="size-3.5 shrink-0 text-ink-2 transition-colors group-hover:text-foreground"
 			/>
-		</a>
+		</Tip>
 	);
 }
 
@@ -511,10 +515,10 @@ function MailReaderInner({
 							<TriageBadge result={triage} />
 							<UnsubscribeButton key={message.uid} message={message} />
 							{designed && dark && (
-								<button
+								<Tip
+									label={forceDark ? "Show this email's own light colors" : "Make bright emails dark"}
 									type="button"
 									aria-pressed={forceDark}
-									title={forceDark ? "Show this email's own light colors" : "Make bright emails dark"}
 									onClick={() => setPref("mail.forceDark", !forceDark)}
 									className={cn(
 										"ml-auto inline-flex h-7 items-center gap-1.5 rounded-pill px-3 text-[12px] text-ink-2 ring-1 ring-glass-border outline-none transition-colors hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring",
@@ -523,7 +527,7 @@ function MailReaderInner({
 								>
 									<Moon aria-hidden className={cn("size-3.5", forceDark && "fill-current")} />
 									Force dark
-								</button>
+								</Tip>
 							)}
 						</div>
 					</header>
@@ -600,9 +604,9 @@ function MailReaderInner({
 								{message.messageId && (
 									<>
 										<dt className="readout leading-relaxed">ID</dt>
-										<dd className="truncate font-mono text-foreground/80" title={message.messageId}>
+										<Tip label={message.messageId} render={<dd className="truncate font-mono text-foreground/80" />}>
 											{message.messageId}
-										</dd>
+										</Tip>
 									</>
 								)}
 							</dl>

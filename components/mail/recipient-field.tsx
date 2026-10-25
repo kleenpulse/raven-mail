@@ -2,6 +2,7 @@
 
 import * as React from "react";
 import { X } from "lucide-react";
+import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { formatAddress, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { matchContacts, type Contact } from "@/lib/mail/contact-match";
@@ -121,15 +122,20 @@ export function RecipientField({
 				const bad = !looksLikeAddress(chip.address);
 				const shown = chip.name || chip.address;
 				return (
-					<span
+					<Tip
 						key={`${chip.address}-${i}`}
-						title={bad ? "Not an email address" : chip.address}
-						className={cn(
-							"inline-flex h-7 max-w-full items-center gap-0.5 rounded-pill bg-card pr-0.5 pl-2.5 text-[13px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border",
-							bad && "text-destructive ring-destructive/50 dark:ring-destructive/50",
-						)}
+						label={bad ? "Not an email address" : chip.address}
+						render={
+							<span
+								className={cn(
+									"inline-flex h-7 max-w-full items-center gap-0.5 rounded-pill bg-card pr-0.5 pl-2.5 text-[13px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border",
+									bad && "text-destructive ring-destructive/50 dark:ring-destructive/50",
+								)}
+							/>
+						}
 					>
 						<span className="max-w-52 truncate">{shown}</span>
+						{bad && <span className="sr-only">Not an email address</span>}
 						<button
 							type="button"
 							onClick={() => remove(i)}
@@ -138,7 +144,7 @@ export function RecipientField({
 						>
 							<X className="size-3" />
 						</button>
-					</span>
+					</Tip>
 				);
 			})}
 			<input
