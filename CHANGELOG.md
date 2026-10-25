@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-25
+
 ### Added
 
 - You can open the files attached to a message you're writing, drafts
