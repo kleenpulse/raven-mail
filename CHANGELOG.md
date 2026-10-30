@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.9.0] - 2026-10-30
+
 ### Changed
 
 - The weather under the date on the Overview is now the real weather
