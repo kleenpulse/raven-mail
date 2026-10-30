@@ -63,6 +63,56 @@ describe("withKageFallback", () => {
     process.env.KAGE = "off";
     await expect(withKageFallback(failing(err)).systemOne(request)).rejects.toBe(err);
   });
+
+  test("onFallback hears each failure, and a plain failure is not a missed deadline", async () => {
+    const err = new Error("429");
+    const heard: [unknown, boolean][] = [];
+    await withKageFallback(failing(err), { onFallback: (e, timedOut) => heard.push([e, timedOut]) }).systemOne(request);
+    expect(heard).toEqual([[err, false]]);
+  });
+});
+
+describe("withKageFallback deadline", () => {
+  /** Never answers; rejects only when its signal aborts, like the SDK. */
+  const hanging = () => {
+    const calls: AbortSignal[] = [];
+    const client: DecisionClient = {
+      systemOne: ((_req: unknown, options?: { signal?: AbortSignal }) => {
+        const signal = options!.signal!;
+        calls.push(signal);
+        if (signal.aborted) return Promise.reject(new Error("aborted"));
+        return new Promise((_, reject) => signal.addEventListener("abort", () => reject(new Error("aborted"))));
+      }) as DecisionClient["systemOne"],
+    };
+    return { client, calls };
+  };
+
+  test("Kage answers once the deadline passes, and the same client skips Jev after that", async () => {
+    const { client, calls } = hanging();
+    const timedOut: boolean[] = [];
+    const jev = withKageFallback(client, { deadlineMs: 30, onFallback: (_, t) => timedOut.push(t) });
+    const started = performance.now();
+    const res = await jev.systemOne(request);
+    expect(res.model).toBe(KAGE_MODEL);
+    expect(performance.now() - started).toBeLessThan(1_000);
+    expect(timedOut).toEqual([true]);
+    expect((await jev.systemOne(request)).model).toBe(KAGE_MODEL);
+    expect(calls).toHaveLength(1);
+  });
+
+  test("the caller's own abort still throws, and doesn't count as a miss", async () => {
+    const { client, calls } = hanging();
+    const heard: boolean[] = [];
+    const jev = withKageFallback(client, { deadlineMs: 5_000, onFallback: (_, t) => heard.push(t) });
+    const ctrl = new AbortController();
+    const pending = jev.systemOne(request, { signal: ctrl.signal });
+    ctrl.abort();
+    // Not `rejects`: bun spins forever on it after an abort (see tooling notes).
+    expect(await pending.catch((e: Error) => e.message)).toBe("aborted");
+    expect(heard).toEqual([]);
+    expect(await jev.systemOne(request, { signal: AbortSignal.abort() }).catch((e: Error) => e.message)).toBe("aborted");
+    expect(calls).toHaveLength(2);
+  });
 });
 
 const CONTACTS: PersonRef[] = [

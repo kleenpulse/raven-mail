@@ -11,32 +11,47 @@ import { kage } from "@/lib/kage";
 import { parseQuery, scoreTerms } from "@/lib/search/text";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 import { jevTriage } from "@/lib/triage/jev";
-import { ASK_CASES, CONTACTS } from "@/test/fixtures/kage/ask";
-import { RANK_CASES } from "@/test/fixtures/kage/rank";
-import { TRIAGE_CASES } from "@/test/fixtures/kage/triage";
+import { ASK_CASES as TUNE_ASK_CASES, CONTACTS } from "@/test/fixtures/kage/ask";
+import { BLIND_ASK_CASES } from "@/test/fixtures/kage/blind/ask";
+import { BLIND_RANK_CASES } from "@/test/fixtures/kage/blind/rank";
+import { BLIND_TRIAGE_CASES } from "@/test/fixtures/kage/blind/triage";
+import { RANK_CASES as TUNE_RANK_CASES } from "@/test/fixtures/kage/rank";
+import { TRIAGE_CASES as TUNE_TRIAGE_CASES } from "@/test/fixtures/kage/triage";
+import { ece, emptyAgreement, type Agreement, type Rate } from "./kage-stats";
 import { RESULTS_DIR } from "./test-store";
 
 /*
  * Scores Kage against the keyword heuristics (and Jev, when a key works) on
  * the labeled fixtures in test/fixtures/kage/. Shared by `bun run eval:kage`
- * and the dev-only /dev/kage page. Tune against `dev`; `holdout` was used for
- * diagnosis once; `blind` is the honest number.
+ * and the dev-only /dev/kage page. Tune against `dev`; `holdout` is reported,
+ * never tuned on; `blind` (test/fixtures/kage/blind/) was written by someone
+ * who had not seen Kage and is the honest number. Its cases stay out of the
+ * report unless `revealBlind` is set, so tuning can't drift towards them.
  */
 
 export const SPLITS = ["dev", "holdout", "blind"] as const;
 export type EvalSplit = (typeof SPLITS)[number];
 export type EvalEngine = "heuristic" | "kage" | "jev";
+export type CaseKind = "ask" | "mail" | "rank";
 
-export type Rate = { hits: number; total: number };
+export type { Agreement, Rate };
+
+const ASK_CASES = [...TUNE_ASK_CASES, ...BLIND_ASK_CASES];
+const TRIAGE_CASES = [...TUNE_TRIAGE_CASES, ...BLIND_TRIAGE_CASES];
+const RANK_CASES = [...TUNE_RANK_CASES, ...BLIND_RANK_CASES];
 
 export type EngineMetrics = {
 	intent: Rate;
 	/** Mean (correct − confidence)²: lower means the % shown can be trusted. */
 	intentBrier: number;
+	/** Gap between stated and actual accuracy across confidence bins, 0–1. */
+	intentEce: number;
 	unreadOnly: Rate;
 	scope: Rate;
 	sender: Rate;
 	category: Rate;
+	/** Calibration of the triage category's confidence, 0–1. */
+	categoryEce: number;
 	hostileCategory: Rate;
 	needsReply: Rate;
 	/** Mean |urgency − label/3|, 0–1. */
@@ -54,7 +69,7 @@ export type CaseAnswer = { value: string; ok: boolean; confidence?: number };
 
 export type EvalCase = {
 	id: string;
-	kind: "ask" | "mail" | "rank";
+	kind: CaseKind;
 	split: EvalSplit;
 	input: string;
 	expected: string;
@@ -65,12 +80,16 @@ export type EvalCase = {
 export type JevAvailability = { status: "missing" | "rejected" | "live"; note: string };
 
 export type KageEvalReport = {
-	schema: 1;
+	schema: 2;
 	at: string;
 	ms: number;
 	jev: JevAvailability;
 	engines: EvalEngine[];
 	metrics: Record<EvalSplit, Partial<Record<EvalEngine, EngineMetrics>>>;
+	/** Kage against keywords, case by case. Shows how much a tie-break could win. */
+	agreement: Record<EvalSplit, Partial<Record<CaseKind, Agreement>>>;
+	/** True when blind cases were left out of `cases` (totals above still count them). */
+	blindHidden: boolean;
 	cases: EvalCase[];
 };
 
@@ -130,7 +149,10 @@ function keywordRank(question: string, rows: EnrichedRow[]): number[] {
 		.map((x) => x.i);
 }
 
-export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise<KageEvalReport> {
+export async function runKageEval({
+	apiKey,
+	revealBlind = false,
+}: { apiKey?: string; revealBlind?: boolean } = {}): Promise<KageEvalReport> {
 	const started = performance.now();
 	const { jev, availability } = await jevEngine(apiKey);
 	const engines: { name: EvalEngine; jev: Jev | null }[] = [
@@ -153,10 +175,12 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 			const m: EngineMetrics = {
 				intent: rate(),
 				intentBrier: 0,
+				intentEce: 0,
 				unreadOnly: rate(),
 				scope: rate(),
 				sender: rate(),
 				category: rate(),
+				categoryEce: 0,
 				hostileCategory: rate(),
 				needsReply: rate(),
 				urgencyMae: 0,
@@ -168,6 +192,8 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 				degraded: 0,
 			};
 			const latencies: number[] = [];
+			const intentPoints: { confidence: number; ok: boolean }[] = [];
+			const categoryPoints: { confidence: number; ok: boolean }[] = [];
 
 			const asks = ASK_CASES.filter((c) => c.split === split);
 			for (const [i, c] of asks.entries()) {
@@ -178,6 +204,7 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 				const ok = plan.intent === c.intent || (c.alt ?? []).includes(plan.intent);
 				tally(m.intent, ok);
 				m.intentBrier += (Number(ok) - plan.intentConfidence) ** 2;
+				intentPoints.push({ confidence: plan.intentConfidence, ok });
 				const unreadOk = plan.unreadOnly === (c.unreadOnly ?? false);
 				tally(m.unreadOnly, unreadOk);
 				// Who-owes-me questions read Sent by design.
@@ -198,6 +225,7 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 				};
 			}
 			m.intentBrier = round(m.intentBrier / (asks.length || 1));
+			m.intentEce = round(ece(intentPoints));
 
 			const mails = TRIAGE_CASES.filter((c) => c.split === split);
 			let urgencyError = 0;
@@ -209,6 +237,7 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 				if (engine.jev && t.source === "heuristic") m.degraded += 1;
 				const ok = t.category === c.category || (c.alt ?? []).includes(t.category);
 				tally(m.category, ok);
+				categoryPoints.push({ confidence: t.confidence, ok });
 				if (c.hostile) tally(m.hostileCategory, ok);
 				tally(m.needsReply, t.needsReply === c.needsReply);
 				urgencyError += Math.abs(t.urgency - c.urgency / 3);
@@ -225,6 +254,7 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 				};
 			}
 			m.urgencyMae = round(urgencyError / (mails.length || 1));
+			m.categoryEce = round(ece(categoryPoints));
 
 			for (const [i, c] of RANK_CASES.filter((c) => c.split === split).entries()) {
 				const rows = rankRows(c.pool, now);
@@ -264,16 +294,87 @@ export async function runKageEval({ apiKey }: { apiKey?: string } = {}): Promise
 		}
 	}
 
+	const all = [...cases.values()];
+	const agreement = Object.fromEntries(SPLITS.map((s) => [s, {}])) as KageEvalReport["agreement"];
+	for (const c of all) {
+		const k = c.answers.kage?.ok;
+		const h = c.answers.heuristic?.ok;
+		if (k === undefined || h === undefined) continue;
+		const a = (agreement[c.split][c.kind] ??= emptyAgreement());
+		if (k && h) a.both += 1;
+		else if (k) a.kageOnly += 1;
+		else if (h) a.heuristicOnly += 1;
+		else a.neither += 1;
+	}
+
 	return {
-		schema: 1,
+		schema: 2,
 		at: new Date().toISOString(),
 		ms: Math.round(performance.now() - started),
 		jev: availability,
 		engines: engines.map((e) => e.name),
 		metrics,
-		cases: [...cases.values()],
+		agreement,
+		blindHidden: !revealBlind,
+		cases: revealBlind ? all : all.filter((c) => c.split !== "blind"),
 	};
 }
+
+/*
+ * Regression gate. Kage's dev and holdout numbers are pinned in
+ * test/fixtures/kage/baseline.json; a change may move them, but not down by
+ * more than the margin. Blind is never gated: a gate on it is a way to tune on it.
+ */
+
+export const GATED_SPLITS = ["dev", "holdout"] as const satisfies readonly EvalSplit[];
+/** Machine-dependent, so never pinned. */
+const UNGATED = new Set<keyof EngineMetrics>(["p50ms", "p95ms"]);
+/** Error-style metrics where higher is worse. */
+const LOWER_IS_BETTER = new Set<keyof EngineMetrics>(["intentBrier", "intentEce", "categoryEce", "urgencyMae", "degraded"]);
+/** A rate may drop by one case or 3 points, whichever is larger. */
+const RATE_MARGIN = 0.03;
+/** An error metric may rise by this much. */
+const ERROR_MARGIN = 0.02;
+
+export type KageBaseline = {
+	at: string;
+	metrics: Record<(typeof GATED_SPLITS)[number], EngineMetrics>;
+};
+
+export function baselineOf(report: KageEvalReport): KageBaseline {
+	return {
+		at: report.at,
+		metrics: Object.fromEntries(GATED_SPLITS.map((s) => [s, report.metrics[s].kage!])) as KageBaseline["metrics"],
+	};
+}
+
+/** Human-readable regressions of Kage against the baseline; empty means the gate passes. */
+export function regressions(report: KageEvalReport, baseline: KageBaseline): string[] {
+	const out: string[] = [];
+	for (const split of GATED_SPLITS) {
+		const now = report.metrics[split].kage;
+		const then = baseline.metrics[split];
+		if (!now) {
+			out.push(`${split}: no Kage metrics`);
+			continue;
+		}
+		for (const key of Object.keys(then) as (keyof EngineMetrics)[]) {
+			if (UNGATED.has(key)) continue;
+			const a = then[key];
+			const b = now[key];
+			if (typeof a === "number" && typeof b === "number") {
+				const worse = LOWER_IS_BETTER.has(key) ? b - a : a - b;
+				if (worse > ERROR_MARGIN + 1e-9) out.push(`${split} ${key}: ${a} → ${b}`);
+			} else if (typeof a === "object" && typeof b === "object" && a.total && b.total) {
+				const drop = a.hits / a.total - b.hits / b.total;
+				if (drop > Math.max(1 / b.total, RATE_MARGIN) + 1e-9) out.push(`${split} ${key}: ${a.hits}/${a.total} → ${b.hits}/${b.total}`);
+			}
+		}
+	}
+	return out;
+}
+
+export const BASELINE_FILE = path.join(process.cwd(), "test/fixtures/kage/baseline.json");
 
 const FILE = "kage-eval.json";
 
@@ -285,7 +386,7 @@ export async function writeKageEval(report: KageEvalReport): Promise<void> {
 export async function readKageEval(): Promise<KageEvalReport | null> {
 	try {
 		const data = JSON.parse(await readFile(path.join(RESULTS_DIR, FILE), "utf8")) as KageEvalReport;
-		return data?.schema === 1 ? data : null;
+		return data?.schema === 2 ? data : null;
 	} catch {
 		return null;
 	}

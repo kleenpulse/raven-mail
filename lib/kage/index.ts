@@ -28,17 +28,39 @@ export const kage: DecisionClient = {
   },
 };
 
+export type FallbackOptions = {
+  /**
+   * How long one call may wait for Jev, retries included, before Kage answers.
+   * After one miss the same client skips Jev, so a request that asks twice
+   * waits once. Without it, the client's own timeout and retries apply.
+   */
+  deadlineMs?: number;
+  /** Called when Kage answers for a failed Jev call; `timedOut` means the deadline hit. */
+  onFallback?: (err: unknown, timedOut: boolean) => void;
+};
+
 /**
  * A rejected key, a rate limit or an outage shouldn't drop a keyed user to
  * keyword rules: Kage answers the same questions instead. Aborts still abort.
  */
-export function withKageFallback(client: DecisionClient): DecisionClient {
+export function withKageFallback(client: DecisionClient, { deadlineMs, onFallback }: FallbackOptions = {}): DecisionClient {
+  let missed = false;
   return {
     async systemOne(request, options) {
+      const caller = options?.signal;
+      if (missed && kageEnabled()) {
+        if (caller?.aborted) throw abortError();
+        return decide(request);
+      }
+      const deadline = deadlineMs ? AbortSignal.timeout(deadlineMs) : null;
+      const signal = deadline ? (caller ? AbortSignal.any([caller, deadline]) : deadline) : caller;
       try {
-        return await client.systemOne(request, options);
+        return await client.systemOne(request, { ...options, signal });
       } catch (err) {
-        if (options?.signal?.aborted || !kageEnabled()) throw err;
+        if (caller?.aborted || !kageEnabled()) throw err;
+        const timedOut = deadline?.aborted === true;
+        if (timedOut) missed = true;
+        onFallback?.(err, timedOut);
         return decide(request);
       }
     },

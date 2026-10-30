@@ -43,6 +43,7 @@ import { useSignOut } from "@/hooks/use-sign-out";
 import { useRefreshIntegrations } from "@/hooks/use-integrations";
 import { removeJevKeyAction, saveJevKeyAction } from "@/lib/actions/jev-key";
 import type { JevStatus } from "@/lib/jev/client";
+import type { FallbackReason } from "@/lib/jev/fallbacks";
 import { Input } from "@/components/ui/input";
 import { APP_VERSION } from "@/lib/changelog/seen";
 import { initials } from "@/lib/format";
@@ -450,13 +451,30 @@ function SignOutRow() {
 	);
 }
 
+const FALLBACK_CAUSE: Record<FallbackReason, string> = {
+	auth: "TypeSafe refused the key",
+	rate_limit: "of TypeSafe's rate limit",
+	timeout: "Jev took too long",
+	network: "TypeSafe couldn't be reached",
+	server: "TypeSafe had an outage",
+	other: "of an error",
+};
+
+/** "Kage answered 3 times instead, last because Jev took too long." Empty when Jev never failed. */
+function fallbackLine(status: JevStatus): string {
+	const fallbacks = status.fallbacks;
+	if (!fallbacks?.count || !fallbacks.last) return "";
+	const times = fallbacks.count === 1 ? "once" : `${fallbacks.count} times`;
+	return ` Since this server started, Kage answered ${times} instead, last because ${FALLBACK_CAUSE[fallbacks.last.reason]}.`;
+}
+
 function jevStatusLine(status: JevStatus): string {
 	if (status.source && !status.live && status.kage) {
 		const whose = status.source === "user" ? `your key ending in ${status.hint}` : "this Raven's key";
 		return `TypeSafe isn't accepting ${whose} right now, so Ask and Deep triage run on Kage, Raven's built-in engine.`;
 	}
-	if (status.source === "user") return `Jev uses your key ending in ${status.hint}.`;
-	if (status.source === "server") return "Jev uses this Raven's key. Add your own to use your TypeSafe account instead.";
+	if (status.source === "user") return `Jev uses your key ending in ${status.hint}.${fallbackLine(status)}`;
+	if (status.source === "server") return `Jev uses this Raven's key. Add your own to use your TypeSafe account instead.${fallbackLine(status)}`;
 	if (status.kage) return "No key yet, so Ask Jev and Deep triage run on Kage, Raven's built-in engine. It runs on this server and needs no account.";
 	return "Jev is off. Ask Jev uses free local rules until you add a key.";
 }

@@ -11,16 +11,18 @@ import { Button } from "@/components/ui/button";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { useNow } from "@/hooks/use-now";
 import { readApiError, toApiError } from "@/lib/api-error";
-import type { EngineMetrics, EvalCase, EvalEngine, EvalSplit, KageEvalReport, Rate } from "@/lib/dev/kage-eval";
+import type { Agreement, CaseKind, EngineMetrics, EvalCase, EvalEngine, EvalSplit, KageEvalReport, Rate } from "@/lib/dev/kage-eval";
+import type { FallbackReason, FallbackStats } from "@/lib/jev/fallbacks";
+import { wilson } from "@/lib/dev/kage-stats";
 import { cn } from "@/lib/utils";
 import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 const ENGINE_LABEL: Record<EvalEngine, string> = { heuristic: "Keywords", kage: "Kage", jev: "Jev" };
 
 const SPLIT_META: Record<EvalSplit, { label: string; note: string }> = {
-	blind: { label: "Blind", note: "Written after tuning stopped. The honest number." },
-	holdout: { label: "Holdout", note: "Used once to diagnose misses, so slightly optimistic." },
-	dev: { label: "Dev", note: "Kage was tuned against these. Expect it to look good." },
+	blind: { label: "Blind", note: "Written by someone who never saw Kage. The honest number." },
+	holdout: { label: "Holdout", note: "Reported, never tuned on. Some cases were read to diagnose misses." },
+	dev: { label: "Dev", note: "Kage is tuned against these. Expect it to look good." },
 };
 const SPLIT_ORDER: EvalSplit[] = ["blind", "holdout", "dev"];
 
@@ -86,6 +88,7 @@ const GROUPS: { title: string; hint: string; rows: Row[] }[] = [
 		rows: [
 			{ key: "intent", label: "Intent" },
 			{ key: "intentBrier", label: "Confidence error (Brier)", lower: true },
+			{ key: "intentEce", label: "Calibration gap (ECE)", lower: true },
 			{ key: "unreadOnly", label: "Unread only" },
 			{ key: "scope", label: "Inbox or Sent" },
 			{ key: "sender", label: "Contact" },
@@ -96,6 +99,7 @@ const GROUPS: { title: string; hint: string; rows: Row[] }[] = [
 		hint: "Deep triage on single emails",
 		rows: [
 			{ key: "category", label: "Category" },
+			{ key: "categoryEce", label: "Category calibration gap", lower: true },
 			{ key: "hostileCategory", label: "Category, hostile emails" },
 			{ key: "needsReply", label: "Needs a reply" },
 			{ key: "urgencyMae", label: "Urgency error", lower: true },
@@ -154,16 +158,28 @@ function MetricRow({ row, metrics, engines }: { row: Row; metrics: Partial<Recor
 				const m = metrics[e];
 				const v = values[i];
 				const winner = !tie && v !== null && v === best;
-				const isRateRow = m ? isRate(m[row.key]) : false;
+				const value = m?.[row.key];
+				const ci = isRate(value) ? wilson(value) : null;
 				return (
 					<td key={e} className="py-2 pl-3 text-right">
 						<span className={cn("tabular font-mono text-[13px]", winner ? "text-foreground" : "text-ink-2")}>
 							{m ? display(m[row.key], row.unit) : "–"}
 						</span>
-						{isRateRow && v !== null && (
-							<span className="mt-1 ml-auto block h-1 w-16 overflow-hidden rounded-full bg-border" aria-hidden>
-								<span className={cn("block h-full rounded-full", winner ? "bg-signal" : "bg-ink-3")} style={{ width: `${v * 100}%` }} />
-							</span>
+						{ci && v !== null && (
+							<>
+								<span className="relative mt-1 ml-auto block h-1 w-16 overflow-hidden rounded-full bg-border" aria-hidden>
+									{/* Faint band: the 95% interval. With a few dozen cases it is wide, and that is the point. */}
+									<span
+										className="absolute inset-y-0 bg-ink-3/30"
+										style={{ left: `${ci[0] * 100}%`, width: `${(ci[1] - ci[0]) * 100}%` }}
+									/>
+									<span className={cn("relative block h-full rounded-full", winner ? "bg-signal" : "bg-ink-3")} style={{ width: `${v * 100}%` }} />
+								</span>
+								<span className="mt-0.5 block font-mono text-[10px] text-ink-3 tabular">
+									<span className="sr-only">95% interval </span>
+									{Math.round(ci[0] * 100)}–{Math.round(ci[1] * 100)}
+								</span>
+							</>
 						)}
 					</td>
 				);
@@ -246,6 +262,95 @@ function Headline({ metrics, engines }: { metrics: Partial<Record<EvalEngine, En
 	);
 }
 
+const KIND_LABEL: Record<CaseKind, string> = { ask: "Asks", mail: "Emails", rank: "Searches" };
+
+/**
+ * Case by case, Kage against keywords. "Only keywords" is what a tie-break
+ * between the two could still win; "both wrong" is out of reach for either.
+ */
+function AgreementCard({ agreement }: { agreement: Partial<Record<CaseKind, Agreement>> }) {
+	const kinds = (Object.keys(KIND_LABEL) as CaseKind[]).filter((k) => agreement[k]);
+	if (!kinds.length) return null;
+	const cols: { key: keyof Agreement; label: string; tone: string }[] = [
+		{ key: "both", label: "Both right", tone: "text-ink-2" },
+		{ key: "kageOnly", label: "Only Kage", tone: "text-ok" },
+		{ key: "heuristicOnly", label: "Only keywords", tone: "text-critical" },
+		{ key: "neither", label: "Both wrong", tone: "text-ink-2" },
+	];
+	return (
+		<Bento i={6} className="col-span-12">
+			<BentoTitle>Kage vs keywords</BentoTitle>
+			<p className="mt-1 text-[13px] text-ink-2">Who got each case right. &ldquo;Only keywords&rdquo; is what Kage could still learn from the rules.</p>
+			<table className="mt-4 w-full max-w-[640px] text-[13px]">
+				<thead>
+					<tr className="text-micro text-ink-2 uppercase">
+						<th scope="col" className="pb-1 text-left font-normal">
+							<span className="sr-only">Kind</span>
+						</th>
+						{cols.map((c) => (
+							<th key={c.key} scope="col" className="pb-1 pl-3 text-right font-normal">
+								{c.label}
+							</th>
+						))}
+					</tr>
+				</thead>
+				<tbody>
+					{kinds.map((k) => (
+						<tr key={k} className="border-t border-border/70 dark:border-glass-border">
+							<th scope="row" className="py-2 text-left font-normal text-ink-2">
+								{KIND_LABEL[k]}
+							</th>
+							{cols.map((c) => (
+								<td key={c.key} className={cn("py-2 pl-3 text-right font-mono tabular", agreement[k]![c.key] ? c.tone : "text-ink-3")}>
+									{agreement[k]![c.key]}
+								</td>
+							))}
+						</tr>
+					))}
+				</tbody>
+			</table>
+		</Bento>
+	);
+}
+
+const REASON_LABEL: Record<FallbackReason, string> = {
+	auth: "Key refused",
+	rate_limit: "Rate limit",
+	timeout: "Timeout",
+	network: "Network",
+	server: "Outage",
+	other: "Other",
+};
+
+/**
+ * Live from this server, not from the eval: answers Kage gave because a Jev
+ * call failed (or the key was skipped as refused). A dead key once went
+ * unnoticed for days; this is where it shows.
+ */
+function FallbacksCard({ stats, now }: { stats: FallbackStats; now: number | null }) {
+	const reasons = (Object.keys(REASON_LABEL) as FallbackReason[]).filter((r) => stats.reasons[r]);
+	return (
+		<Bento i={1} className="col-span-12">
+			<BentoTitle>Jev fallbacks</BentoTitle>
+			<p className="mt-1 text-[13px] text-ink-2">
+				{stats.count === 0
+					? "Since this server started, every Jev call answered (or no key is set)."
+					: `Since this server started, Kage answered ${stats.count} ${stats.count === 1 ? "time" : "times"} for a failed Jev call${stats.last && now !== null ? `, last ${formatAgo(stats.last.at, now)}` : ""}.`}
+			</p>
+			{reasons.length > 0 && (
+				<dl className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-[13px]">
+					{reasons.map((r) => (
+						<div key={r} className="flex items-baseline gap-2">
+							<dt className="text-ink-2">{REASON_LABEL[r]}</dt>
+							<dd className={cn("font-mono tabular", r === stats.last?.reason ? "text-critical" : "text-ink")}>{stats.reasons[r]}</dd>
+						</div>
+					))}
+				</dl>
+			)}
+		</Bento>
+	);
+}
+
 type CaseFilter = "misses" | "disagree" | "all";
 const FILTERS: { id: CaseFilter; label: string }[] = [
 	{ id: "misses", label: "Kage misses" },
@@ -287,6 +392,19 @@ function pageWindow(count: number, page: number): (number | null)[] {
 	return [0, null, page - 1, page, page + 1, null, count - 1];
 }
 
+/** The blind split's cases are left out of the report on purpose; say so instead of "no cases". */
+function SealedCases() {
+	return (
+		<Bento i={7} className="col-span-12">
+			<BentoTitle>Cases</BentoTitle>
+			<p className="mt-1 max-w-[560px] text-[13px] text-ink-2">
+				Blind cases are sealed: only the totals above are shown, so tuning can&rsquo;t drift towards them. To list them anyway, run{" "}
+				<code className="font-mono text-foreground">bun run eval:kage --reveal-blind</code>, then write a fresh blind batch.
+			</p>
+		</Bento>
+	);
+}
+
 function Cases({ cases, engines }: { cases: EvalCase[]; engines: EvalEngine[] }) {
 	const [filter, setFilter] = React.useState<CaseFilter>("misses");
 	const shown = cases.filter((c) => {
@@ -313,7 +431,7 @@ function Cases({ cases, engines }: { cases: EvalCase[]; engines: EvalEngine[] })
 		}
 	};
 	return (
-		<Bento i={6} className="col-span-12">
+		<Bento i={7} className="col-span-12">
 			<div ref={headRef} className="flex scroll-mt-4 flex-wrap items-baseline justify-between gap-3">
 				<div>
 					<BentoTitle>Cases</BentoTitle>
@@ -521,7 +639,7 @@ function useEvalRun(initial: KageEvalReport | null) {
 	return { report, run, running, error };
 }
 
-export function KageEvalBoard({ report: initial }: { report: KageEvalReport | null }) {
+export function KageEvalBoard({ report: initial, fallbacks }: { report: KageEvalReport | null; fallbacks: FallbackStats }) {
 	const { report, run, running, error } = useEvalRun(initial);
 	const [{ split, dir }, setView] = React.useState<{ split: EvalSplit; dir: number }>({ split: "blind", dir: 1 });
 	const setSplit = (next: EvalSplit) => setView({ split: next, dir: SPLIT_ORDER.indexOf(next) > SPLIT_ORDER.indexOf(split) ? 1 : -1 });
@@ -565,6 +683,7 @@ export function KageEvalBoard({ report: initial }: { report: KageEvalReport | nu
 							<p className="text-[13px] text-critical">{error}</p>
 						</Bento>
 					)}
+					<FallbacksCard stats={fallbacks} now={now} />
 					{!report ? (
 						<Empty onRun={start} running={running} />
 					) : (
@@ -592,7 +711,12 @@ export function KageEvalBoard({ report: initial }: { report: KageEvalReport | nu
 							{GROUPS.map((group, i) => (
 								<Scorecard key={group.title} group={group} metrics={metrics} engines={engines} i={i + 2} />
 							))}
-							<Cases cases={report.cases.filter((c) => c.split === split)} engines={engines} />
+							<AgreementCard agreement={report.agreement[split]} />
+							{split === "blind" && report.blindHidden ? (
+								<SealedCases />
+							) : (
+								<Cases cases={report.cases.filter((c) => c.split === split)} engines={engines} />
+							)}
 						</>
 					)}
 				</div>

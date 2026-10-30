@@ -45,11 +45,12 @@ describe("Kage on the labelled rules set", () => {
 			newsletters: { tp: 5, fp: 0, fn: 0 },
 			promos: { tp: 4, fp: 0, fn: 1 },
 			// Travel wording overlaps little with real bookings: it misses rather than guesses.
-			travel: { tp: 2, fp: 0, fn: 2 },
+			travel: { tp: 3, fp: 0, fn: 1 },
 			security: { tp: 4, fp: 0, fn: 0 },
-			// Kage reads "pull requests" as a person's request, so asks from people lean GitHub.
-			// The rule archives, and protected senders hold that back for people you write to.
-			github: { tp: 3, fp: 5, fn: 0 },
+			// Kage once read "pull requests" as a person's request, so asks from people leaned
+			// GitHub (5 false positives). A person-like sender (lib/kage/shape.ts) and reading
+			// "pull request" as one word took that to 0.
+			github: { tp: 3, fp: 0, fn: 0 },
 		});
 	});
 
@@ -67,12 +68,11 @@ describe("Kage on the labelled rules set", () => {
 		expect(decisions.filter((d) => d.outcome === "applied").map((d) => [d.rule.id, d.rule.action])).toEqual([["receipts", "archive"]]);
 	});
 
-	test("the GitHub misfires on people's mail are held back when you write to them", () => {
-		const misfires = judged.filter(({ m, p }) => m.id.startsWith("h") && p.get("github")! >= 0.7);
-		expect(misfires.length).toBeGreaterThan(0);
-		for (const { p } of misfires) {
-			const decisions = decideMessage(RULES, p, { protectedSender: true, engine: "kage" });
-			expect(decisions.some((d) => d.outcome === "applied")).toBe(false);
+	test("mail from people clears no rule", () => {
+		// Protected senders would hold a misfire back (lib/rules/engine.test.ts); here there's none to hold.
+		for (const { m, p } of judged.filter(({ m }) => m.id.startsWith("h"))) {
+			const cleared = RULES.filter((r) => p.get(r.id)! >= RULE_THRESHOLDS[r.action]).map((r) => r.id);
+			expect({ id: m.id, cleared }).toEqual({ id: m.id, cleared: [] });
 		}
 	});
 });

@@ -1,0 +1,103 @@
+{
+  "at": "2026-10-30T19:09:33.099Z",
+  "metrics": {
+    "dev": {
+      "intent": {
+        "hits": 66,
+        "total": 72
+      },
+      "intentBrier": 0.068,
+      "intentEce": 0.074,
+      "unreadOnly": {
+        "hits": 72,
+        "total": 72
+      },
+      "scope": {
+        "hits": 70,
+        "total": 72
+      },
+      "sender": {
+        "hits": 10,
+        "total": 10
+      },
+      "category": {
+        "hits": 37,
+        "total": 45
+      },
+      "categoryEce": 0.1,
+      "hostileCategory": {
+        "hits": 4,
+        "total": 6
+      },
+      "needsReply": {
+        "hits": 41,
+        "total": 45
+      },
+      "urgencyMae": 0.133,
+      "rankTop1": {
+        "hits": 8,
+        "total": 12
+      },
+      "rankTop3": {
+        "hits": 11,
+        "total": 12
+      },
+      "rankNone": {
+        "hits": 1,
+        "total": 2
+      },
+      "p50ms": 1.16,
+      "p95ms": 2.05,
+      "degraded": 0
+    },
+    "holdout": {
+      "intent": {
+        "hits": 45,
+        "total": 46
+      },
+      "intentBrier": 0.036,
+      "intentEce": 0.068,
+      "unreadOnly": {
+        "hits": 46,
+        "total": 46
+      },
+      "scope": {
+        "hits": 46,
+        "total": 46
+      },
+      "sender": {
+        "hits": 4,
+        "total": 4
+      },
+      "category": {
+        "hits": 25,
+        "total": 27
+      },
+      "categoryEce": 0.104,
+      "hostileCategory": {
+        "hits": 5,
+        "total": 5
+      },
+      "needsReply": {
+        "hits": 27,
+        "total": 27
+      },
+      "urgencyMae": 0.172,
+      "rankTop1": {
+        "hits": 7,
+        "total": 7
+      },
+      "rankTop3": {
+        "hits": 7,
+        "total": 7
+      },
+      "rankNone": {
+        "hits": 2,
+        "total": 2
+      },
+      "p50ms": 1.12,
+      "p95ms": 1.26,
+      "degraded": 0
+    }
+  }
+}
