@@ -11,6 +11,15 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- Raven now has a desktop app for Windows, macOS and Linux. It's the
+  same Raven, running on your own computer. Your integrations, rules,
+  blocked senders and reminders are kept in a small database inside
+  the app, so there's nothing to set up. These first builds aren't
+  signed yet, so your computer will warn you the first time you open
+  Raven. The README shows what to click.
+
 ## [0.9.0] - 2026-10-30
 
 ### Changed

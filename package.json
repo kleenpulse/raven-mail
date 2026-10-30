@@ -28,6 +28,7 @@
     "desktop:setup": "bun install --cwd desktop --frozen-lockfile --ignore-scripts && node desktop/node_modules/electron/install.js",
     "desktop:dev": "bun desktop/scripts/dev.ts",
     "desktop:preview": "bun desktop/scripts/dev.ts --preview",
+    "desktop:build": "bun desktop/scripts/build.ts",
     "desktop:typecheck": "tsc -p desktop --noEmit"
   },
   "dependencies": {
