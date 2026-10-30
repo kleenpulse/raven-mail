@@ -18,7 +18,8 @@ as you work — it ships inside the app.
   blocked senders and reminders are kept in a small database inside
   the app, so there's nothing to set up. These first builds aren't
   signed yet, so your computer will warn you the first time you open
-  Raven. The README shows what to click.
+  Raven. The README shows what to click. It doesn't update itself yet:
+  to get a newer version, install a newer build over the old one.
 
 ## [0.9.0] - 2026-10-30
 

@@ -31,6 +31,7 @@ Only the latest release on `main` gets security fixes. If you self-host, please 
 - **Sealed webhook secrets.** Webhook URLs and signing secrets are sealed with AES-256-GCM before they reach the database (`lib/integrations/seal.ts`).
 - **Cross-origin writes.** API routes reject writes from other origins (`lib/server/guard.ts`).
 - **Rate limits.** Ask Jev and Deep triage are rate-limited (`lib/server/rate-limit.ts`).
+- **The desktop app.** It runs Raven's server on `127.0.0.1` only. Every request must name the server exactly (`Host: 127.0.0.1:<port>`) and carry a token that's new on each launch, so other programs and web pages can't use it (`desktop/server/guard.ts`). The window is sandboxed, with no Node.js. Ways around the token or the Host check, and ways for a web page or email to reach the local server, are in scope. The app turns on `ALLOW_LOOPBACK_MAIL_HOSTS` itself, so Proton Bridge works. The server folder (`resources/server`) isn't covered by integrity checks until the builds are code-signed.
 - Anything else that exposes one user's mail or credentials to someone else.
 
 ## Out of scope
