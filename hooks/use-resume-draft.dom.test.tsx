@@ -124,6 +124,25 @@ describe("useResumeDraft", () => {
 		expect(compose().draft.subject).toBe("Draft 8");
 	});
 
+	test("with unsaved changes it asks first, and fetches the files only once agreed", async () => {
+		stub();
+		const resume = setup();
+		await resume("7");
+		compose().setDraft({ subject: "Edited" });
+
+		await resume("8");
+		expect(compose().draft.subject).toBe("Edited");
+		expect(compose().pendingOpen?.options.draftUid).toBe("8");
+		expect(fetched).not.toContain("/api/mail/attachment:8");
+
+		await act(async () => {
+			compose().answerPending(true);
+			await new Promise((r) => setTimeout(r, 0));
+		});
+		expect(compose().draftRow).toBe("8");
+		expect(fetched).toContain("/api/mail/attachment:8");
+	});
+
 	test("a different draft still replaces the open one", async () => {
 		stub();
 		const resume = setup();

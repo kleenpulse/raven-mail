@@ -4,6 +4,7 @@ import { makeSession } from "@/test/helpers/session";
 
 // A stand-in imapflow: each download hands out a stream the test ends by hand.
 const streams: PassThrough[] = [];
+const downloadOptions: unknown[] = [];
 let connected = 0;
 
 class FakeImapFlow {
@@ -16,7 +17,8 @@ class FakeImapFlow {
   async getMailboxLock() {
     return { release() {} };
   }
-  async download() {
+  async download(_range: string, _part: string, options: unknown) {
+    downloadOptions.push(options);
     const content = new PassThrough();
     streams.push(content);
     return { meta: { filename: "a.pdf", contentType: "application/pdf" }, content };
@@ -30,7 +32,7 @@ class FakeImapFlow {
 }
 
 mock.module("imapflow", () => ({ ImapFlow: FakeImapFlow }));
-const { downloadAttachment, verifyCredentials } = await import("@/lib/mail/imap");
+const { downloadAttachment, verifyCredentials, DOWNLOAD_CHUNK_BYTES } = await import("@/lib/mail/imap");
 
 const tick = () => new Promise((r) => setTimeout(r, 10));
 
@@ -79,6 +81,21 @@ describe("downloadAttachment", () => {
     const file = await downloadAttachment(session, "INBOX", "1", "2");
     expect(file.filename).toBe("a.pdf");
     streams.at(-1)!.destroy();
+  });
+
+  test("fetches in large windows and reports time spent queued", async () => {
+    const session = makeSession({ dev: false });
+    const first = streams.length;
+    await Promise.all([1, 2].map((n) => downloadAttachment(session, "INBOX", String(n), "2")));
+    const third = downloadAttachment(session, "INBOX", "3", "2");
+    await tick();
+    streams[first]!.destroy();
+    const file = await third;
+    expect(downloadOptions.at(-1)).toEqual({ uid: true, chunkSize: DOWNLOAD_CHUNK_BYTES });
+    // It sat behind the other two for at least one tick before its turn came.
+    expect(file.timings.wait).toBeGreaterThanOrEqual(5);
+    for (const s of streams.slice(first)) s.destroy();
+    await tick();
   });
 
   test("other mailboxes have their own download slots", async () => {

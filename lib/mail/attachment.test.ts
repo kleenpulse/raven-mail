@@ -5,6 +5,7 @@ import {
   base64ToBytes,
   bytesToBase64,
   canPreview,
+  isMediaType,
   contentDisposition,
   PREVIEW_MAX_BYTES,
   previewType,
@@ -193,5 +194,19 @@ describe("bytesToBase64", () => {
 
   test("empty input", () => {
     expect(bytesToBase64(new Uint8Array())).toBe("");
+  });
+});
+
+describe("isMediaType", () => {
+  test("images and videos open in the media viewer", () => {
+    expect(isMediaType("image/png")).toBe(true);
+    expect(isMediaType("video/mp4")).toBe(true);
+  });
+
+  test("documents, text, audio and downloads do not", () => {
+    expect(isMediaType("application/pdf")).toBe(false);
+    expect(isMediaType("audio/mpeg")).toBe(false);
+    expect(isMediaType(previewType("image/svg+xml", "logo.svg"))).toBe(false);
+    expect(isMediaType(null)).toBe(false);
   });
 });

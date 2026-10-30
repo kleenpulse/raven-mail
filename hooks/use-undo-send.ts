@@ -112,8 +112,12 @@ function reopen(send: OutgoingSend) {
 	restoring = true;
 	try {
 		const store = useComposeStore.getState();
-		store.openCompose(send.mode, send.draft, { draftUid: send.draftUid, signature: false });
-		if (send.attachments.length) store.addAttachments(send.attachments);
+		store.openCompose(send.mode, send.draft, {
+			draftUid: send.draftUid,
+			signature: false,
+			attachments: send.attachments,
+			unsaved: true,
+		});
 	} finally {
 		restoring = false;
 	}

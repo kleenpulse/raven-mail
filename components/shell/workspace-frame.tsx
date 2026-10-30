@@ -11,6 +11,7 @@ import { FollowUpBanner } from "@/components/mail/follow-up-banner";
 import { OfflineBanner } from "@/components/shell/offline-banner";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { ComposeDock } from "@/components/mail/compose";
+import { ReplaceComposeDialog } from "@/components/mail/replace-compose-dialog";
 import { AskTray } from "@/components/jev/ask-tray";
 import { useAskStore } from "@/components/jev/ask-store";
 import { CommandPalette } from "@/components/shell/command-palette";
@@ -117,6 +118,7 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 				<AskTray />
 			</React.Suspense>
 			<ComposeDock />
+			<ReplaceComposeDialog />
 			<CommandPalette />
 			<ExportRunToast />
 			<NewMailBanner />

@@ -6,6 +6,7 @@ import { useComposeStore } from "@/lib/store/compose";
 import { exportRun } from "@/lib/store/export-run";
 import { stopPreloading } from "@/hooks/use-preload-in-view";
 import { forgetPersistedQueries } from "@/lib/query-persist";
+import { forgetPreviews } from "@/lib/mail/preview-cache";
 
 /** Nothing from this mailbox may survive into the next session on this device. */
 export function useSignOut() {
@@ -16,6 +17,7 @@ export function useSignOut() {
 		// Before the clear: a preload landing after it would put this mailbox's mail back.
 		stopPreloading();
 		queryClient.clear();
+		forgetPreviews();
 		await forgetPersistedQueries();
 		useComposeStore.getState().closeCompose();
 		try {

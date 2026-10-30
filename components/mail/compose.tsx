@@ -21,14 +21,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
-import { discardDraftAction, saveDraftAction } from "@/lib/actions/mail";
+import { discardDraftAction } from "@/lib/actions/mail";
 import { useComposeStore } from "@/lib/store/compose";
 import { useMounted } from "@/hooks/use-mounted";
+import { useSaveDraft } from "@/hooks/use-save-draft";
 import { useContacts, useFolders, useInvalidateMail } from "@/hooks/use-mail";
 import { RecipientField } from "@/components/mail/recipient-field";
 import { RemindMenu } from "@/components/mail/remind-menu";
 import { choiceLabel } from "@/lib/follow-ups/when";
-import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
+import { AUTOSAVE_KEY, forgetLocalCopy, useUndoSend } from "@/hooks/use-undo-send";
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { base64ToBytes, bytesToBase64, canPreview } from "@/lib/mail/attachment";
@@ -170,7 +171,6 @@ export function ComposeDock() {
     toggleMaximize,
     setDraft,
     draftUid,
-    setDraftUid,
     attachments,
     attachmentsLoading,
     addAttachments,
@@ -188,6 +188,7 @@ export function ComposeDock() {
   const { invalidateMessages, invalidateFolders } = useInvalidateMail();
   const draftsFolder = resolveSpecialFolder(folders ?? [], "\\Drafts");
   const send = useUndoSend({ draftsFolder });
+  const saveDraft = useSaveDraft();
   const { data: contacts = [] } = useContacts(open);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const preview = useAttachmentPreview();
@@ -255,15 +256,7 @@ export function ComposeDock() {
   async function handleSaveDraft() {
     setBusy("draft");
     try {
-      const { draft } = useComposeStore.getState();
-      const res = await saveDraftAction(toOutgoing({ draft, draftUid, attachments }));
-      if (!res.ok) throw new Error(res.error);
-      // Without a uid (no UIDPLUS, lookup missed) the next save adds a copy rather than guess.
-      setDraftUid(res.data.uid);
-      refreshDrafts();
-      toast.success("Saved to Drafts");
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save draft");
+      await saveDraft();
     } finally {
       setBusy(null);
     }
@@ -288,8 +281,11 @@ export function ComposeDock() {
         label: "Undo",
         onClick: () => {
           const store = useComposeStore.getState();
-          store.openCompose(snapshot.mode, snapshot.draft, { signature: false });
-          store.addAttachments(snapshot.attachments);
+          store.openCompose(snapshot.mode, snapshot.draft, {
+            signature: false,
+            attachments: snapshot.attachments,
+            unsaved: true,
+          });
         },
       },
     });
@@ -447,7 +443,7 @@ export function ComposeDock() {
             autoFocus={!focusTo}
             placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
             mod={mod}
-            onChange={({ html, text }) => setDraft({ html, text })}
+            onChange={({ html, text }, how) => setDraft({ html, text }, how)}
           />
 
           {draft.quote && (
@@ -478,7 +474,12 @@ export function ComposeDock() {
                   <Tip
                     label={canPreview(a) ? `Preview ${a.filename}` : `Download ${a.filename}`}
                     type="button"
-                    onClick={(e) => (canPreview(a) ? preview.open(a, e.currentTarget) : downloadAttachment(a))}
+                    data-preview-key={`compose/${i}`}
+                    onClick={(e) =>
+                      canPreview(a)
+                        ? preview.open(a, e.currentTarget, { sources: attachments, index: i })
+                        : downloadAttachment(a)
+                    }
                     className="inline-flex min-w-0 items-center gap-2 rounded-pill outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <span className="max-w-40 truncate font-medium">{a.filename}</span>

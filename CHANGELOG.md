@@ -11,8 +11,36 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- Images and videos in attachments now open in a bigger viewer.
+  Zoom in with the + and − buttons, a double-click, Ctrl + scroll or
+  a pinch, then drag to look around. Use the arrows or the ← and →
+  keys to go through every image and video in the email or draft. If
+  one file won't load, you can still move on to the next.
+  A file you've opened once opens right away the next time, without
+  downloading it again. The viewer opens at the same size every time,
+  even for a small image, and doesn't jump smaller when a file appears.
+  It only gets bigger to fit a very wide or tall file.
+- If you're writing a message with changes that aren't saved and you
+  open another draft, start a new message or reply, Raven now asks
+  first. You can save it to Drafts and go on, go on without saving,
+  or keep writing. Before, your changes were lost without a warning.
+
 ### Changed
 
+- Attachments load faster. Raven now gets a file from your mail server
+  in fewer, bigger pieces, so a large photo needs far fewer trips. When
+  you rest the pointer on an image or video, or press it, Raven starts
+  loading it before you click, so it often opens right away.
+- Files in an email you just opened now open almost at once. Opening
+  the email already brings its files to Raven, so Raven keeps them for
+  a few minutes instead of asking your mail server for them again.
+  Signing out clears them.
+- Mail fails less often on a slow connection. When your mail server
+  doesn't answer, Raven stops waiting after 8 seconds and tries once
+  more, instead of waiting 20 seconds and showing an error. A wrong
+  password still fails at once.
 - Kage is more honest about how sure it is. When nothing in an email
   fits a category, it used to say about 68% for "Other". Now it says
   under 50%, so a low number means Kage is really guessing.

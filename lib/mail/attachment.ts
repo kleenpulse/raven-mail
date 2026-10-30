@@ -83,6 +83,11 @@ export function previewType(contentType: string | undefined, filename = ""): str
   return null;
 }
 
+/** Images and videos open in the media viewer; documents, text and audio in the plain preview. */
+export function isMediaType(type: string | null): boolean {
+  return type !== null && /^(image|video)\//.test(type);
+}
+
 /** Above this a server file downloads instead: the preview holds the whole file in memory first. */
 export const PREVIEW_MAX_BYTES = 25 * 1024 * 1024;
 

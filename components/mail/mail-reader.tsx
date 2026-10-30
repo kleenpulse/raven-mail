@@ -52,7 +52,12 @@ import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { formatBytes, formatFullDate, formatRelative } from "@/lib/format";
 import type { AttachmentMeta, MailMessage } from "@/lib/mail/types";
 import { attachmentHref, canPreview } from "@/lib/mail/attachment";
-import { useAttachmentPreview, type PreviewSource } from "@/components/mail/attachment-preview";
+import {
+	prefetchProps,
+	previewKey,
+	useAttachmentPreview,
+	type PreviewSource,
+} from "@/components/mail/attachment-preview";
 
 function firstAddressLine(list: { name?: string; address: string }[]): string {
 	if (list.length === 0) return "";
@@ -110,6 +115,8 @@ function AttachmentPill({
 				render={
 					<button
 						type="button"
+						data-preview-key={previewKey(source, 0)}
+						{...prefetchProps(source)}
 						onClick={(e) => onPreview(source, e.currentTarget)}
 						className={cn(pill, "group pr-3.5 text-left transition-colors hover:bg-foreground/5")}
 					/>
@@ -420,6 +427,15 @@ function MailReaderInner({
 
 	const starred = message.flags.flagged;
 	const attachmentCount = message.attachments.length;
+	// Every chip that opens a preview, so the media viewer can step between them.
+	const previewSources: PreviewSource[] = message.attachments.flatMap((a) =>
+		a.part && canPreview(a, { remote: true }) ? [{ ...a, folder: message.folder, uid: message.uid, part: a.part }] : [],
+	);
+	const openPreview = (source: PreviewSource, trigger: HTMLElement) =>
+		preview.open(source, trigger, {
+			sources: previewSources,
+			index: previewSources.findIndex((s) => previewKey(s, 0) === previewKey(source, 0)),
+		});
 
 	const replyActions = (
 		<div ref={actions} className={cn("flex items-center gap-1.5", !wrapped && "ml-auto")}>
@@ -676,7 +692,7 @@ function MailReaderInner({
 												file={a}
 												folder={message.folder}
 												uid={message.uid}
-												onPreview={preview.open}
+												onPreview={openPreview}
 											/>
 										</li>
 									))}

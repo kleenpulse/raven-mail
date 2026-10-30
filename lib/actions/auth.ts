@@ -8,6 +8,8 @@ import { buildSession } from "@/lib/auth/build-session";
 import { assertPublicMailHost } from "@/lib/auth/host-guard";
 import { describeLoginFailure, type LoginFailure } from "@/lib/auth/login-errors";
 import { verifyCredentials } from "@/lib/mail/imap";
+import { forgetAttachments } from "@/lib/mail/attachment-cache";
+import { sessionKey } from "@/lib/server/session-key";
 import { verifySmtp } from "@/lib/mail/smtp";
 import type { ActionResult } from "@/lib/mail/types";
 
@@ -101,6 +103,8 @@ export async function loginAction(_prev: LoginResult | null, formData: FormData)
 }
 
 export async function logoutAction(): Promise<void> {
+  const session = await getSession();
+  if (session) forgetAttachments(sessionKey(session));
   await clearSession();
   redirect("/login");
 }

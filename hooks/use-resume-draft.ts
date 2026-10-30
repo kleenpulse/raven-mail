@@ -58,24 +58,31 @@ export function useResumeDraft() {
 			if (opening.current !== uid) return;
 			opening.current = null;
 			const files = message.attachments;
-			const store = useComposeStore.getState();
-			store.openCompose(message.inReplyTo ? "reply" : "new", draftFromMessage(message), {
+			const loadFiles = async () => {
+				const results = await Promise.allSettled(files.map((f) => loadFile(folder, uid, f)));
+				const current = useComposeStore.getState();
+				// Closed or replaced while the files were loading.
+				if (current.draftUid !== uid || !current.attachmentsLoading) return;
+				// The draft's own files coming back, not a change: it stays saved.
+				current.addAttachments(
+					results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])),
+					{ edit: false },
+				);
+				if (results.some((r) => r.status === "rejected")) {
+					current.setDraftUid(undefined);
+					toast.error("Some files in this draft couldn't be loaded. The saved draft keeps them.");
+				}
+				current.setAttachmentsLoading(false);
+			};
+			// With unsaved changes open, compose asks first; the files load only once it opens.
+			let loading: Promise<void> | undefined;
+			useComposeStore.getState().openCompose(message.inReplyTo ? "reply" : "new", draftFromMessage(message), {
 				draftUid: uid,
 				attachmentsLoading: files.length > 0,
 				signature: false,
+				onOpen: files.length > 0 ? () => { loading = loadFiles(); } : undefined,
 			});
-			if (files.length === 0) return;
-
-			const results = await Promise.allSettled(files.map((f) => loadFile(folder, uid, f)));
-			const current = useComposeStore.getState();
-			// Closed or replaced while the files were loading.
-			if (current.draftUid !== uid || !current.attachmentsLoading) return;
-			current.addAttachments(results.flatMap((r) => (r.status === "fulfilled" ? [r.value] : [])));
-			if (results.some((r) => r.status === "rejected")) {
-				current.setDraftUid(undefined);
-				toast.error("Some files in this draft couldn't be loaded. The saved draft keeps them.");
-			}
-			current.setAttachmentsLoading(false);
+			await loading;
 		},
 		[client, email],
 	);

@@ -27,6 +27,7 @@ import { fetchPreviews } from "@/lib/mail/preview";
 import { planPreload, type PreloadResult } from "@/lib/mail/preload";
 import { isLoopbackHost } from "@/lib/auth/ip";
 import { sessionKey } from "@/lib/server/session-key";
+import { recallAttachment, rememberAttachment } from "@/lib/mail/attachment-cache";
 import { createKeyedSemaphore } from "@/lib/server/semaphore";
 import { createTtlCache } from "@/lib/server/cache";
 import { acceptTerms, neededTerms, parseQuery, termKey, type Term } from "@/lib/search/text";
@@ -56,31 +57,44 @@ function createClient(session: MailSession): ImapFlow {
       rejectUnauthorized: process.env.IMAP_REJECT_UNAUTHORIZED !== "false",
     },
     socketTimeout: 30_000,
-    greetingTimeout: 20_000,
-    connectionTimeout: 20_000,
+    greetingTimeout: CONNECT_TIMEOUT_MS,
+    connectionTimeout: CONNECT_TIMEOUT_MS,
   });
 }
 
-export async function withClient<T>(session: MailSession, fn: (client: ImapFlow) => Promise<T>): Promise<T> {
-  return connections.run(sessionKey(session), async () => {
+// Most connects to Gmail answer in 1-3 s, but now and then a handshake hangs for 20 s or
+// more. Give up on those early and try once more on a fresh socket, which usually answers.
+export const CONNECT_TIMEOUT_MS = 8_000;
+export const CONNECT_ATTEMPTS = 2;
+const STALLED = new Set(["CONNECT_TIMEOUT", "GREETING_TIMEOUT", "ETIMEOUT", "ETIMEDOUT", "ECONNRESET", "EPIPE"]);
+
+/** A connect that hung or dropped before signing in. A rejected login never counts. */
+export function isStalledConnect(err: unknown): boolean {
+  if (!err || typeof err !== "object") return false;
+  const { code, authenticationFailed } = err as { code?: unknown; authenticationFailed?: unknown };
+  return !authenticationFailed && typeof code === "string" && STALLED.has(code);
+}
+
+/** A connected, signed-in client. An ImapFlow can't connect twice, so a retry gets a new one. */
+async function connectClient(session: MailSession, signal?: AbortSignal): Promise<ImapFlow> {
+  for (let attempt = 1; ; attempt++) {
+    signal?.throwIfAborted();
     const client = createClient(session);
-    await client.connect();
+    const abort = () => client.close();
+    signal?.addEventListener("abort", abort, { once: true });
     try {
-      return await fn(client);
+      await client.connect();
+      return client;
+    } catch (err) {
+      client.close();
+      if (attempt >= CONNECT_ATTEMPTS || signal?.aborted || !isStalledConnect(err)) throw err;
     } finally {
-      client.logout().catch(() => client.close());
+      signal?.removeEventListener("abort", abort);
     }
-  });
+  }
 }
 
-/**
- * A client held open across several steps (diagnostics, streamed exports) that
- * still counts against the per-mailbox connection cap. Always call `release()`.
- * Connecting is left to the caller so each phase can be timed and classified.
- */
-export async function acquireClient(session: MailSession): Promise<{ client: ImapFlow; release: () => void }> {
-  const free = await connections.acquire(sessionKey(session));
-  const client = createClient(session);
+function holdClient(client: ImapFlow, free: () => void): { client: ImapFlow; release: () => void } {
   let released = false;
   return {
     client,
@@ -92,6 +106,46 @@ export async function acquireClient(session: MailSession): Promise<{ client: Ima
       free();
     },
   };
+}
+
+export async function withClient<T>(session: MailSession, fn: (client: ImapFlow) => Promise<T>): Promise<T> {
+  return connections.run(sessionKey(session), async () => {
+    const client = await connectClient(session);
+    try {
+      return await fn(client);
+    } finally {
+      client.logout().catch(() => client.close());
+    }
+  });
+}
+
+/**
+ * A client not yet connected that counts against the per-mailbox connection cap.
+ * Always call `release()`. For diagnostics, which connects by hand to time and
+ * classify each phase, so it never retries: it reports the network as it is.
+ */
+export async function acquireClient(session: MailSession): Promise<{ client: ImapFlow; release: () => void }> {
+  const free = await connections.acquire(sessionKey(session));
+  return holdClient(createClient(session), free);
+}
+
+/**
+ * A connected client held across several steps that counts against the per-mailbox
+ * connection cap. Always call `release()`. `onSlot` runs once a slot is free, before
+ * connecting, so callers can time the wait apart from the connect.
+ */
+export async function openClient(
+  session: MailSession,
+  { signal, onSlot }: { signal?: AbortSignal; onSlot?: () => void } = {},
+): Promise<{ client: ImapFlow; release: () => void }> {
+  const free = await connections.acquire(sessionKey(session));
+  onSlot?.();
+  try {
+    return holdClient(await connectClient(session, signal), free);
+  } catch (err) {
+    free();
+    throw err;
+  }
 }
 
 export async function withMailbox<T>(
@@ -320,22 +374,47 @@ const MESSAGE_QUERY: FetchQueryObject = {
   threadId: true,
 };
 
-/** Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox. */
-async function toMailMessage(msg: FetchMessageObject, source: Buffer, folder: string): Promise<MailMessage> {
+function charsetOf(a: Attachment): string | undefined {
+  const header = a.headers?.get("content-type");
+  const charset = header && typeof header === "object" && "params" in header ? header.params?.charset : undefined;
+  return typeof charset === "string" ? charset : undefined;
+}
+
+/**
+ * Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox.
+ * With `owner`, the listed attachments' bytes are kept so a click on one skips the IMAP round trip.
+ */
+async function toMailMessage(
+  msg: FetchMessageObject,
+  source: Buffer,
+  folder: string,
+  owner?: string,
+): Promise<MailMessage> {
   const parsed = await simpleParser(source);
   const envelope = msg.envelope;
   const parsedAttachments = parsed.attachments ?? [];
   const sections = attachmentSections(parsedAttachments, msg.bodyStructure);
-  const attachments: AttachmentMeta[] = parsedAttachments
+  const listed = parsedAttachments
     .map((a, i) => ({ a, part: sections[i] }))
-    .filter(({ a }) => !a.cid || !/inline/i.test(a.contentDisposition ?? ""))
-    .map(({ a, part }) => ({
-      filename: a.filename ?? "attachment",
-      contentType: a.contentType,
-      size: a.size ?? a.content?.length ?? 0,
-      contentId: a.cid,
-      part,
-    }));
+    .filter(({ a }) => !a.cid || !/inline/i.test(a.contentDisposition ?? ""));
+  if (owner) {
+    for (const { a, part } of listed) {
+      if (!part || !a.content) continue;
+      rememberAttachment(owner, folder, String(msg.uid), part, {
+        bytes: a.content,
+        filename: a.filename,
+        contentType: a.contentType,
+        charset: charsetOf(a),
+      });
+    }
+  }
+  const attachments: AttachmentMeta[] = listed.map(({ a, part }) => ({
+    filename: a.filename ?? "attachment",
+    contentType: a.contentType,
+    size: a.size ?? a.content?.length ?? 0,
+    contentId: a.cid,
+    part,
+  }));
 
   const rawHtml = typeof parsed.html === "string" ? parsed.html : "";
   const html = rawHtml ? sanitizeBody(inlineCidImages(rawHtml, parsed.attachments ?? [])) : "";
@@ -387,7 +466,7 @@ export async function getMessage(session: MailSession, folder: string, uid: stri
   if (!msg || !msg.source) {
     throw new Error("Message not found");
   }
-  return toMailMessage(msg, msg.source, folder);
+  return toMailMessage(msg, msg.source, folder, sessionKey(session));
 }
 
 /** Just the List-Unsubscribe pair, read fresh from the server (never trusted from the client). */
@@ -427,11 +506,12 @@ export async function getMessages(
   );
 
   const messages: MailMessage[] = [];
+  const owner = sessionKey(session);
   for (const msg of fetched) {
     if (signal?.aborted) break;
     try {
       if (!msg.source) throw new Error("Message not found");
-      messages.push(await toMailMessage(msg, msg.source, folder));
+      messages.push(await toMailMessage(msg, msg.source, folder, owner));
     } catch {
       skipped.push(msg.uid);
     }
@@ -444,12 +524,27 @@ export type AttachmentDownload = {
   filename?: string;
   contentType?: string;
   charset?: string;
+  /** Known only when the bytes are already in memory. */
+  size?: number;
+  /**
+   * Milliseconds per phase up to the first bytes, for the Server-Timing header:
+   * wait, connect, open and first from IMAP, or just memory when kept from reading the message.
+   */
+  timings: Record<string, number>;
 };
 
 /**
- * One decoded part as a stream. imapflow pulls it in 64 KB FETCH windows as
- * the body is read, so the connection and mailbox lock stay held until the
- * stream ends, errors or is cancelled.
+ * Bytes per FETCH. Each window is one round trip to the mail server, and parts
+ * arrive base64-encoded (about 1.37x larger), so imapflow's 64 KB default spent
+ * ~64 round trips on a 3 MB photo. 1 MB keeps most previews to one or two.
+ */
+export const DOWNLOAD_CHUNK_BYTES = 1024 * 1024;
+
+/**
+ * One decoded part as a stream. Served from memory when the message was just
+ * read (see attachment-cache); otherwise imapflow pulls it in DOWNLOAD_CHUNK_BYTES
+ * FETCH windows as the body is read, so the connection and mailbox lock stay
+ * held until the stream ends, errors or is cancelled.
  */
 export async function downloadAttachment(
   session: MailSession,
@@ -458,6 +553,26 @@ export async function downloadAttachment(
   part: string,
   signal?: AbortSignal,
 ): Promise<AttachmentDownload> {
+  const started = performance.now();
+  const kept = recallAttachment(sessionKey(session), folder, uid, part);
+  if (kept) {
+    const { bytes, filename, contentType, charset } = kept;
+    return {
+      body: new Blob([bytes as Uint8Array<ArrayBuffer>]).stream(),
+      filename,
+      contentType,
+      charset,
+      size: bytes.byteLength,
+      timings: { memory: performance.now() - started },
+    };
+  }
+  let mark = started;
+  const lap = () => {
+    const now = performance.now();
+    const ms = now - mark;
+    mark = now;
+    return ms;
+  };
   const freeDownload = await downloads.acquire(sessionKey(session));
   let release = () => {};
   let unlock: (() => void) | undefined;
@@ -468,13 +583,18 @@ export async function downloadAttachment(
     freeDownload();
   };
   try {
-    const held = await acquireClient(session);
+    let wait = 0;
+    const held = await openClient(session, { signal, onSlot: () => (wait = lap()) });
     release = held.release;
     const client = held.client;
-    await client.connect();
+    // Retries included: a stalled first try shows here.
+    const connect = lap();
     const lock = await client.getMailboxLock(folder, { readOnly: true });
     unlock = () => lock.release();
-    const { meta, content } = await client.download(uid, part, { uid: true });
+    const open = lap();
+    // Resolves once the first window is in, so `first` covers that round trip too.
+    const { meta, content } = await client.download(uid, part, { uid: true, chunkSize: DOWNLOAD_CHUNK_BYTES });
+    const first = lap();
     if (!content) throw new Error("Attachment not found");
     content.once("close", done);
     content.once("error", done);
@@ -485,6 +605,7 @@ export async function downloadAttachment(
       filename: meta.filename || undefined,
       contentType: meta.contentType || undefined,
       charset: meta.charset || undefined,
+      timings: { wait, connect, open, first },
     };
   } catch (err) {
     done();
@@ -532,12 +653,10 @@ export async function getThread(
   const other = folder === sent ? (inbox ?? "INBOX") : sent;
   const folders = [...new Set([folder, other].filter((f): f is string => Boolean(f)))];
 
-  const { client, release } = await acquireClient(session);
+  const { client, release } = await openClient(session, { signal });
   const abort = () => client.close();
   signal?.addEventListener("abort", abort, { once: true });
   try {
-    signal?.throwIfAborted();
-    await client.connect();
     return await threadOn(client, session, folder, uid, folders);
   } finally {
     signal?.removeEventListener("abort", abort);
@@ -697,12 +816,10 @@ export async function findReplies(
   const answers = new Map<string, ReplyAnswer>();
   if (checks.length === 0 || signal?.aborted) return answers;
   const [inbox, sent] = await Promise.all([resolveSpecial(session, "\\Inbox"), resolveSpecial(session, "\\Sent")]);
-  const { client, release } = await acquireClient(session);
+  const { client, release } = await openClient(session, { signal });
   const abort = () => client.close();
   signal?.addEventListener("abort", abort, { once: true });
   try {
-    signal?.throwIfAborted();
-    await client.connect();
     await inMailbox(client, inbox ?? "INBOX", async () => {
       for (const { messageId, since } of checks) {
         const criteria: SearchObject = {

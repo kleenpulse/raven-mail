@@ -74,11 +74,13 @@ export function RichEditor({
 	autoFocus: boolean;
 	placeholder: string;
 	mod: string;
-	onChange: (next: { html: string; text: string }) => void;
+	/** `edit: false` when the editor only tidies what it loaded, not a change the user made. */
+	onChange: (next: { html: string; text: string }, how: { edit: boolean }) => void;
 }) {
 	const [linking, setLinking] = React.useState(false);
 	const [href, setHref] = React.useState("");
-	const report = (editor: Editor) => onChange({ html: editor.getHTML(), text: docToText(editor.getJSON()) });
+	const report = (editor: Editor, edit = true) =>
+		onChange({ html: editor.getHTML(), text: docToText(editor.getJSON()) }, { edit });
 
 	const editor = useEditor({
 		immediatelyRender: false,
@@ -107,7 +109,7 @@ export function RichEditor({
 		},
 		// A reopened draft's HTML passes through the editor's schema once, so what's sent is what's shown.
 		onCreate: ({ editor }) => {
-			if (html) report(editor);
+			if (html) report(editor, false);
 		},
 		onUpdate: ({ editor }) => report(editor),
 	});
