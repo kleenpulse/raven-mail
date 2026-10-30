@@ -1,0 +1,12 @@
+{
+  "name": "raven-desktop",
+  "private": true,
+  "description": "Electron shell for Raven. Its version comes from the root package.json at build time.",
+  "license": "AGPL-3.0-or-later",
+  "trustedDependencies": [],
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "electron": "45.2.0",
+    "electron-builder": "26.18.0"
+  }
+}
