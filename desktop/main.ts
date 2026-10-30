@@ -373,7 +373,9 @@ function buildMenu(): Menu {
 	]);
 }
 
-const ALLOWED_PERMISSIONS = new Set<string>(["clipboard-sanitized-write", "fullscreen", "fileSystem", "geolocation"]);
+// Not geolocation: Electron's location service needs a Google API key, so it
+// only ever fails, and a denial at least tells the weather card to stop asking.
+const ALLOWED_PERMISSIONS = new Set<string>(["clipboard-sanitized-write", "fullscreen", "fileSystem"]);
 
 const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(
 	`<!doctype html><meta charset="utf-8"><title>Raven</title><style>html,body{height:100%;margin:0;background:#050a0b;color:#9aa3a5;font:14px system-ui,sans-serif;display:grid;place-items:center}</style><p>Starting Raven…</p>`,

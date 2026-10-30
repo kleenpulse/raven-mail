@@ -42,7 +42,7 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 
 - The window runs sandboxed and context-isolated, with no Node.js, no preload and no webviews. DevTools are off in installed builds.
 - Links to other sites, `mailto:` and `tel:` open in the system's apps. Other schemes are dropped.
-- Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen, saving files, and location for the weather.
+- Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key, so the local weather can't find you on desktop yet.
 - Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, and cookie encryption and asar integrity checks are on. Installed builds refuse `--remote-debugging-port`.
 - `SESSION_SECRET` and `INTEGRATIONS_SECRET` are made on first launch and stored with Electron `safeStorage` (the OS keychain).
 - The server never writes into its install folder: ISR flushing and gzip are off.

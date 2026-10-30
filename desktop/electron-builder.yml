@@ -54,8 +54,6 @@ mac:
   # Ad-hoc signature: Apple Silicon won't run an unsigned app at all. Real signing comes later.
   identity: "-"
   hardenedRuntime: false
-  extendInfo:
-    NSLocationWhenInUseUsageDescription: Raven uses your location only to show the local weather, and only when you ask.
 
 linux:
   target:
