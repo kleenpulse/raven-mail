@@ -465,9 +465,11 @@ function MailListInner({
 				<MailListSkeleton />
 			) : split && rows.length === 0 ? (
 				<PaneState title={`Nothing in ${TAB_LABEL[split.tab]}`}>
-					{split.tab === "important"
-						? "Mail from people, and anything not sorted into another tab, shows up here."
-						: `${TAB_LABEL[split.tab]} land here as they arrive. Choose your tabs in Settings → Mail.`}
+					{split.tab === "all"
+						? "Every Inbox thread shows up here, whatever tab it sits in."
+						: split.tab === "important"
+							? "Mail from people, and anything not sorted into another tab, shows up here."
+							: `${TAB_LABEL[split.tab]} land here as they arrive. Choose your tabs in Settings → Mail.`}
 					{hasNextPage && (
 						<LoadMore loading={isFetchingNextPage} remaining={total - messages.length} onLoad={() => void fetchNextPage()} />
 					)}

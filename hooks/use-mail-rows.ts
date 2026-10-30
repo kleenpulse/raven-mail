@@ -31,7 +31,8 @@ export function useMailRows(
 	const deep = useDeepTriageMap();
 	const [rawTab, setTab] = useQueryState("tab", tabParser);
 	// A tab turned off in Settings while it was open falls back to Important.
-	const tab: SplitTab = rawTab === "important" || (shown as readonly string[]).includes(rawTab) ? rawTab : "important";
+	const tab: SplitTab =
+		rawTab === "all" || rawTab === "important" || (shown as readonly string[]).includes(rawTab) ? rawTab : "important";
 
 	// Deep triage (when it ran) wins over the free heuristic, as on each row.
 	const categoryOf = React.useCallback(
@@ -58,7 +59,7 @@ export function useMailRows(
 	const toRows = React.useCallback(
 		(list: MailSummary[]): ThreadRow[] => {
 			const all = group(list);
-			return splitOn ? all.filter((r) => tabOf(categoryOf(r), shown) === tab) : all;
+			return splitOn && tab !== "all" ? all.filter((r) => tabOf(categoryOf(r), shown) === tab) : all;
 		},
 		[group, splitOn, categoryOf, shown, tab],
 	);

@@ -8,10 +8,13 @@ import type { TriageCategory } from "@/lib/mail/types";
 
 export const OPTIONAL_TABS = ["updates", "newsletters", "receipts", "promotions", "social"] as const;
 export type OptionalTab = (typeof OPTIONAL_TABS)[number];
-export const SPLIT_TABS = ["important", ...OPTIONAL_TABS] as const;
+export const SPLIT_TABS = ["all", "important", ...OPTIONAL_TABS] as const;
 export type SplitTab = (typeof SPLIT_TABS)[number];
+/** The tab a row belongs to; All is a view over every row, not a home. */
+export type HomeTab = Exclude<SplitTab, "all">;
 
 export const TAB_LABEL: Record<SplitTab, string> = {
+  all: "All",
   important: "Important",
   updates: "Updates",
   newsletters: "Newsletters",
@@ -24,7 +27,7 @@ export const TAB_LABEL: Record<SplitTab, string> = {
 export const TAB_FILL = 25;
 
 /** People's mail, anything unsorted, and any category whose tab is turned off land in Important. */
-export function tabOf(category: TriageCategory, shown: readonly OptionalTab[]): SplitTab {
+export function tabOf(category: TriageCategory, shown: readonly OptionalTab[]): HomeTab {
   return (shown as readonly string[]).includes(category) ? (category as OptionalTab) : "important";
 }
 
@@ -33,14 +36,15 @@ export type SplitResult = {
   byTab: Map<SplitTab, ThreadRow[]>;
 };
 
-/** Each row goes to the tab of its newest message; counts are for what's loaded. */
+/** Each row goes to the tab of its newest message, and to All; counts are for what's loaded. */
 export function splitRows(
   rows: ThreadRow[],
   categoryOf: (row: ThreadRow) => TriageCategory,
   shown: readonly OptionalTab[],
 ): SplitResult {
-  const visible: SplitTab[] = ["important", ...OPTIONAL_TABS.filter((t) => shown.includes(t))];
+  const visible: SplitTab[] = ["all", "important", ...OPTIONAL_TABS.filter((t) => shown.includes(t))];
   const byTab = new Map<SplitTab, ThreadRow[]>(visible.map((t) => [t, []]));
+  byTab.set("all", rows);
   for (const row of rows) byTab.get(tabOf(categoryOf(row), shown))!.push(row);
   return {
     byTab,

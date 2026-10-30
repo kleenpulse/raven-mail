@@ -28,6 +28,7 @@ describe("splitRows", () => {
   test("rows land in their tab in order; counts are rows and unread", () => {
     const { tabs, byTab } = splitRows(rows, (r) => cats[r.key]!, ["updates", "promotions"]);
     expect(tabs).toEqual([
+      { id: "all", label: "All", rows: 5, unread: 3 },
       { id: "important", label: "Important", rows: 2, unread: 1 },
       { id: "updates", label: "Updates", rows: 2, unread: 1 },
       { id: "promotions", label: "Promotions", rows: 1, unread: 1 },
@@ -37,11 +38,16 @@ describe("splitRows", () => {
 
   test("tabs follow the fixed order, not the order they were turned on", () => {
     const { tabs } = splitRows([], () => "other", ["social", "updates"]);
-    expect(tabs.map((t) => t.id)).toEqual(["important", "updates", "social"]);
+    expect(tabs.map((t) => t.id)).toEqual(["all", "important", "updates", "social"]);
   });
 
   test("every row lands somewhere", () => {
     const { byTab } = splitRows(rows, (r) => cats[r.key]!, []);
     expect(byTab.get("important")!).toHaveLength(5);
+  });
+
+  test("All holds every row in order, whatever its tab", () => {
+    const { byTab } = splitRows(rows, (r) => cats[r.key]!, ["updates", "promotions"]);
+    expect(byTab.get("all")!.map((r) => r.key)).toEqual(["a", "b", "c", "d", "e"]);
   });
 });

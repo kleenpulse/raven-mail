@@ -11,6 +11,12 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- When your Inbox is split into tabs, there is now an All tab before
+  Important. It shows every message in one list, whatever tab it
+  belongs to.
+
 ## [0.6.3] - 2026-10-30
 
 ### Fixed
