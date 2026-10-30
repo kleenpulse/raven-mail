@@ -1,3 +1,4 @@
+import { utilityProcess } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import type { Log } from "./log";
@@ -13,7 +14,81 @@ export type ServerHandle = {
 };
 
 /** A start failure with a message meant for the user. */
-export class ServerStartError extends Error {}
+export class ServerStartError extends Error {
+	constructor(
+		message: string,
+		/** The server's output points at the local database (PGlite or its migrations). */
+		readonly localDb = false,
+	) {
+		super(message);
+	}
+}
+
+const LOCAL_DB_TROUBLE = /pglite|__drizzle_migrations|RAVEN_PGLITE_DIR|RuntimeError: (unreachable|memory access)/i;
+
+/* ── Packaged / preview: the standalone server in a utility process ──────── */
+
+type Report = { type: "ready"; port: number } | { type: "failed"; message: string };
+
+export async function startStandaloneServer(opts: {
+	serverDir: string;
+	port: number;
+	env: Record<string, string>;
+	log: Log;
+}): Promise<ServerHandle> {
+	const child = utilityProcess.fork(join(opts.serverDir, "raven-server.js"), [], {
+		cwd: opts.serverDir,
+		env: opts.env,
+		stdio: "pipe",
+		serviceName: "Raven Server",
+	});
+	let tail = "";
+	const onData = (chunk: Buffer) => {
+		const text = chunk.toString();
+		opts.log.write(text);
+		tail = (tail + text).slice(-8192);
+	};
+	child.stdout?.on("data", onData);
+	child.stderr?.on("data", onData);
+	const exited = new Promise<number>((resolve) => child.once("exit", resolve));
+
+	const report = await new Promise<Report>((resolve) => {
+		const timer = setTimeout(() => resolve({ type: "failed", message: "timed out" }), 90_000);
+		child.on("message", (message: Report) => {
+			clearTimeout(timer);
+			resolve(message);
+		});
+		void exited.then((code) => {
+			clearTimeout(timer);
+			resolve({ type: "failed", message: `exited with code ${code}` });
+		});
+	});
+	if (report.type !== "ready") {
+		child.kill();
+		opts.log.info(`server failed: ${report.message}`);
+		throw new ServerStartError("Raven's background server didn't start.", LOCAL_DB_TROUBLE.test(tail));
+	}
+
+	let stopping = false;
+	const listeners: ((detail: string) => void)[] = [];
+	void exited.then((code) => {
+		if (!stopping) for (const listener of listeners) listener(`server exited with code ${code}`);
+	});
+
+	return {
+		port: report.port,
+		origin: originFor(report.port),
+		onExit: (listener) => void listeners.push(listener),
+		async stop() {
+			if (stopping) return;
+			stopping = true;
+			// The server drains requests and closes the local database before it exits.
+			child.postMessage({ type: "shutdown" });
+			const exitedInTime = await Promise.race([exited.then(() => true), delay(6000).then(() => false)]);
+			if (!exitedInTime) child.kill();
+		},
+	};
+}
 
 const DEV_LOCKED = /Another next dev server is already running/i;
 

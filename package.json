@@ -27,6 +27,7 @@
     "tour:audio": "bun scripts/generate-tour-audio.ts",
     "desktop:setup": "bun install --cwd desktop --frozen-lockfile --ignore-scripts && node desktop/node_modules/electron/install.js",
     "desktop:dev": "bun desktop/scripts/dev.ts",
+    "desktop:preview": "bun desktop/scripts/dev.ts --preview",
     "desktop:typecheck": "tsc -p desktop --noEmit"
   },
   "dependencies": {

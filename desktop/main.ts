@@ -1,11 +1,12 @@
 import { app, BrowserWindow, dialog, Menu, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { randomBytes } from "node:crypto";
+import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { serverEnv } from "./env";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
-import { delay, ServerStartError, startDevServer, type ServerHandle } from "./server-process";
+import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { TOKEN_HEADER } from "./shared";
 
 /*
@@ -92,7 +93,7 @@ function boot(): void {
 		Menu.setApplicationMenu(buildMenu());
 		hardenSession(session.defaultSession);
 		createWindow();
-		server = await startServer();
+		server = await startServerOrRecover();
 		attach(server);
 		await mainWindow?.loadURL(`${server.origin}${START_PATH}`);
 	}
@@ -106,7 +107,42 @@ function boot(): void {
 			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db") });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
-		throw new ServerStartError(`The ${mode} server is not available yet.`);
+		// Packaged: resources/server. Preview: desktop/.stage/server next to the staged app.
+		const serverDir = app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
+		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db") });
+		const handle = await startStandaloneServer({ serverDir, port, env, log: serverLog });
+		if (handle.port !== port) {
+			log.info(`port ${port} was taken; the server moved to ${handle.port}. Data the window keeps per origin starts fresh.`);
+			savePort(userData, handle.port);
+		}
+		return handle;
+	}
+
+	/**
+	 * Starts the server; if the local database won't open (e.g. after a crash),
+	 * offers to move it aside and start with an empty one.
+	 */
+	async function startServerOrRecover(): Promise<ServerHandle> {
+		try {
+			return await startServer();
+		} catch (err) {
+			if (!(err instanceof ServerStartError && err.localDb)) throw err;
+			log.info(`local database trouble: ${err.message}`);
+			const { response } = await dialog.showMessageBox({
+				type: "error",
+				title: "Raven",
+				message: "Raven's local database didn't open.",
+				detail:
+					"Raven can put the old database aside (it keeps a copy in its data folder) and start with an empty one. Your mail isn't affected, but integrations, rules, blocked senders and reminders will need setting up again.",
+				buttons: ["Put it aside and start fresh", "Quit"],
+				defaultId: 0,
+				cancelId: 1,
+			});
+			if (response !== 0) throw err;
+			const db = join(userData, "db");
+			if (existsSync(db)) renameSync(db, `${db}.broken-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+			return startServer();
+		}
 	}
 
 	/** The saved port, unless something else holds it for more than ~2 s. */
@@ -145,7 +181,7 @@ function boot(): void {
 		});
 		if (response !== 0) return app.quit();
 		try {
-			server = await startServer();
+			server = await startServerOrRecover();
 			attach(server);
 			for (const win of BrowserWindow.getAllWindows()) win.reload();
 		} catch (err) {
