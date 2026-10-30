@@ -5,6 +5,8 @@ import { join } from "node:path";
 import { serverEnv } from "./env";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
+import { electronSealer } from "./sealer";
+import { fileStore, loadSecrets, resetSecrets, type Secrets } from "./secrets";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { TOKEN_HEADER } from "./shared";
@@ -50,6 +52,7 @@ function boot(): void {
 	const inFlight = new Set<number>();
 
 	let server: ServerHandle | null = null;
+	let secrets: Secrets | null = null;
 	let appOrigin: string | null = null;
 	let mainWindow: BrowserWindow | null = null;
 	let quitting: "no" | "closing" | "done" = "no";
@@ -93,23 +96,25 @@ function boot(): void {
 		Menu.setApplicationMenu(buildMenu());
 		hardenSession(session.defaultSession);
 		createWindow();
+		secrets = await loadOrAskSecrets();
 		server = await startServerOrRecover();
 		attach(server);
 		await mainWindow?.loadURL(`${server.origin}${START_PATH}`);
 	}
 
 	async function startServer(): Promise<ServerHandle> {
+		if (!secrets) throw new Error("secrets not loaded");
 		const port = await pickPort();
 		const serverLog = createLog(logs, "server.log", !app.isPackaged);
 		if (mode === "dev") {
 			const repoRoot = process.env.RAVEN_REPO_ROOT;
 			if (!repoRoot) throw new ServerStartError("Start dev mode with `bun run desktop:dev`.");
-			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db") });
+			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
 		// Packaged: resources/server. Preview: desktop/.stage/server next to the staged app.
 		const serverDir = app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
-		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db") });
+		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets });
 		const handle = await startStandaloneServer({ serverDir, port, env, log: serverLog });
 		if (handle.port !== port) {
 			log.info(`port ${port} was taken; the server moved to ${handle.port}. Data the window keeps per origin starts fresh.`);
@@ -143,6 +148,37 @@ function boot(): void {
 			if (existsSync(db)) renameSync(db, `${db}.broken-${new Date().toISOString().replace(/[:.]/g, "-")}`);
 			return startServer();
 		}
+	}
+
+	/** The per-install secrets; asks before replacing them if the keychain changed. */
+	async function loadOrAskSecrets(): Promise<Secrets> {
+		const sealer = await electronSealer();
+		if (!sealer.protects) {
+			log.info(`warning: no keyring (${sealer.backend}); Raven's secrets are stored unencrypted, readable only by this user. Install GNOME Keyring or KWallet to protect them.`);
+		}
+		const store = fileStore(join(userData, "secrets.json"));
+		let result = await loadSecrets(store, sealer);
+		if (result.kind === "keychain-changed") {
+			log.info(`keychain changed from ${result.was} to ${result.now}`);
+			const { response } = await dialog.showMessageBox({
+				type: "warning",
+				title: "Raven",
+				message: "Raven can't open its saved keys.",
+				detail: `They were locked with "${result.was}", and this system now uses "${result.now}". If you switch back, Raven can open them again. Starting fresh signs you out, and saved integrations, rules, blocked senders and reminders can't be read anymore.`,
+				buttons: ["Quit", "Start fresh"],
+				defaultId: 0,
+				cancelId: 0,
+			});
+			if (response !== 1) {
+				quitting = "done";
+				app.exit(0);
+				return new Promise<never>(() => {});
+			}
+			result = await resetSecrets(store, sealer);
+		}
+		if (result.kind !== "ok") throw new Error("secrets unavailable");
+		if (result.reset) log.info("the secrets file couldn't be read; made new ones (signed out, stored rows unreadable)");
+		return result.secrets;
 	}
 
 	/** The saved port, unless something else holds it for more than ~2 s. */

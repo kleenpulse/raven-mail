@@ -1,6 +1,8 @@
 import { describe, expect, test } from "bun:test";
 import { baseEnv, parsePortRecord, portRecord, serverEnv } from "./env";
 
+const SECRETS = { SESSION_SECRET: "s".repeat(43), INTEGRATIONS_SECRET: "i".repeat(43) };
+
 const PARENT = {
 	SystemRoot: "C:\\Windows",
 	Path: "C:\\Windows\\system32",
@@ -29,7 +31,7 @@ describe("baseEnv", () => {
 
 describe("serverEnv", () => {
 	test("production: no shell secrets, NODE_ENV set, loopback mail allowed", () => {
-		const env = serverEnv(PARENT, { mode: "prod", port: 52731, token: "t0k", dataDir: "/data/db" });
+		const env = serverEnv(PARENT, { mode: "prod", port: 52731, token: "t0k", dataDir: "/data/db", secrets: SECRETS });
 		expect(env.NODE_ENV).toBe("production");
 		expect(env.PORT).toBe("52731");
 		expect(env.RAVEN_DESKTOP_TOKEN).toBe("t0k");
@@ -37,13 +39,15 @@ describe("serverEnv", () => {
 		expect(env.NEXT_TELEMETRY_DISABLED).toBe("1");
 		expect(env.RAVEN_DB).toBe("pglite");
 		expect(env.RAVEN_PGLITE_DIR).toBe("/data/db");
-		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "SESSION_SECRET", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG"]) {
+		expect(env.SESSION_SECRET).toBe(SECRETS.SESSION_SECRET);
+		expect(env.INTEGRATIONS_SECRET).toBe(SECRETS.INTEGRATIONS_SECRET);
+		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG"]) {
 			expect(env[key]).toBeUndefined();
 		}
 	});
 
 	test("dev: blanks DATABASE_URL so .env's Neon URL can't fill it, leaves NODE_ENV to next dev", () => {
-		const env = serverEnv(PARENT, { mode: "dev", port: 52800, token: "t0k", dataDir: "/data/db" });
+		const env = serverEnv(PARENT, { mode: "dev", port: 52800, token: "t0k", dataDir: "/data/db", secrets: SECRETS });
 		expect(env.DATABASE_URL).toBe("");
 		expect(env.NODE_ENV).toBeUndefined();
 		expect(env.RAVEN_DESKTOP_BUILD).toBe("1");

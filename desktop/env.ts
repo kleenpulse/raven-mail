@@ -5,6 +5,8 @@
  * DATABASE_URL, no secrets from a developer's shell.
  */
 
+import type { Secrets } from "./secrets";
+
 export type ServerMode = "dev" | "prod";
 
 export type ServerEnvOptions = {
@@ -13,6 +15,7 @@ export type ServerEnvOptions = {
 	token: string;
 	/** Folder for the local database (PGlite). */
 	dataDir: string;
+	secrets: Secrets;
 };
 
 const PASS = new Set([
@@ -54,6 +57,8 @@ export function serverEnv(parent: Record<string, string | undefined>, opts: Serv
 	// Read at runtime by `next dev`; a desktop `next build` inlines it.
 	env.RAVEN_DESKTOP_BUILD = "1";
 	env.RAVEN_DESKTOP_TOKEN = opts.token;
+	env.SESSION_SECRET = opts.secrets.SESSION_SECRET;
+	env.INTEGRATIONS_SECRET = opts.secrets.INTEGRATIONS_SECRET;
 	env.PORT = String(opts.port);
 	// Proton Bridge and other local mail servers listen on 127.0.0.1.
 	env.ALLOW_LOOPBACK_MAIL_HOSTS = "true";
