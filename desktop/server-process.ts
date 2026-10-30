@@ -64,6 +64,12 @@ export async function startDevServer(opts: {
 		async stop() {
 			if (stopping) return;
 			stopping = true;
+			// Stopping next dev on Windows is a hard kill; close the local database first.
+			await fetch(`${origin}/api/dev/desktop`, {
+				method: "POST",
+				headers: { [TOKEN_HEADER]: opts.token, origin },
+				signal: AbortSignal.timeout(5000),
+			}).catch(() => {});
 			killTree(child);
 			await Promise.race([exited, delay(5000)]);
 		},

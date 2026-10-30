@@ -29,19 +29,21 @@ describe("baseEnv", () => {
 
 describe("serverEnv", () => {
 	test("production: no shell secrets, NODE_ENV set, loopback mail allowed", () => {
-		const env = serverEnv(PARENT, { mode: "prod", port: 52731, token: "t0k" });
+		const env = serverEnv(PARENT, { mode: "prod", port: 52731, token: "t0k", dataDir: "/data/db" });
 		expect(env.NODE_ENV).toBe("production");
 		expect(env.PORT).toBe("52731");
 		expect(env.RAVEN_DESKTOP_TOKEN).toBe("t0k");
 		expect(env.ALLOW_LOOPBACK_MAIL_HOSTS).toBe("true");
 		expect(env.NEXT_TELEMETRY_DISABLED).toBe("1");
+		expect(env.RAVEN_DB).toBe("pglite");
+		expect(env.RAVEN_PGLITE_DIR).toBe("/data/db");
 		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "SESSION_SECRET", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG"]) {
 			expect(env[key]).toBeUndefined();
 		}
 	});
 
 	test("dev: blanks DATABASE_URL so .env's Neon URL can't fill it, leaves NODE_ENV to next dev", () => {
-		const env = serverEnv(PARENT, { mode: "dev", port: 52800, token: "t0k" });
+		const env = serverEnv(PARENT, { mode: "dev", port: 52800, token: "t0k", dataDir: "/data/db" });
 		expect(env.DATABASE_URL).toBe("");
 		expect(env.NODE_ENV).toBeUndefined();
 		expect(env.RAVEN_DESKTOP_BUILD).toBe("1");

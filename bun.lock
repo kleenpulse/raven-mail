@@ -6,6 +6,7 @@
       "name": "email-manager",
       "dependencies": {
         "@base-ui/react": "^1.8.0",
+        "@electric-sql/pglite": "^0.5.11",
         "@neon/config": "^1.7.3",
         "@neon/env": "^1.4.4",
         "@neondatabase/serverless": "^1.1.0",
@@ -44,7 +45,6 @@
         "zustand": "^5.0.15",
       },
       "devDependencies": {
-        "@electric-sql/pglite": "^0.5.11",
         "@happy-dom/global-registrator": "^20.14.5",
         "@tailwindcss/postcss": "^4",
         "@testing-library/dom": "^10.4.2",

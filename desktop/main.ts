@@ -103,7 +103,7 @@ function boot(): void {
 		if (mode === "dev") {
 			const repoRoot = process.env.RAVEN_REPO_ROOT;
 			if (!repoRoot) throw new ServerStartError("Start dev mode with `bun run desktop:dev`.");
-			const env = serverEnv(process.env, { mode: "dev", port, token });
+			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db") });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
 		throw new ServerStartError(`The ${mode} server is not available yet.`);

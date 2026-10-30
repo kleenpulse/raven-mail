@@ -20,6 +20,11 @@ for (const key of [
 	"SEO_INDEX",
 	"MISTRAL_API_KEY",
 	"ELEVEN_LABS",
+	"RAVEN_DESKTOP_BUILD",
+	"RAVEN_DB",
+	"RAVEN_PGLITE_DIR",
+	"RAVEN_MIGRATIONS_DIR",
+	"RAVEN_DESKTOP_TOKEN",
 ]) {
 	delete process.env[key];
 }

@@ -11,6 +11,8 @@ export type ServerEnvOptions = {
 	mode: ServerMode;
 	port: number;
 	token: string;
+	/** Folder for the local database (PGlite). */
+	dataDir: string;
 };
 
 const PASS = new Set([
@@ -55,6 +57,8 @@ export function serverEnv(parent: Record<string, string | undefined>, opts: Serv
 	env.PORT = String(opts.port);
 	// Proton Bridge and other local mail servers listen on 127.0.0.1.
 	env.ALLOW_LOOPBACK_MAIL_HOSTS = "true";
+	env.RAVEN_DB = "pglite";
+	env.RAVEN_PGLITE_DIR = opts.dataDir;
 	if (opts.mode === "prod") {
 		env.NODE_ENV = "production";
 	} else {

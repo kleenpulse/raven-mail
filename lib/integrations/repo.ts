@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
-import { withDb } from "@/lib/db";
+import { withDb, withDbAtomic } from "@/lib/db";
 import { integrationEvents, integrations, type IntegrationEventRow, type IntegrationRow } from "@/lib/db/schema";
 import { IntegrationError } from "./errors";
 import type { CheckSummary, ConnectionDTO, EventsPage, EventTarget, IntegrationEventDTO } from "./types";
@@ -122,22 +122,20 @@ export type NewEvent = Omit<typeof integrationEvents.$inferInsert, "id" | "creat
 
 /** Insert + keep the newest 500 per account, in one round-trip. */
 export async function recordEvent(event: NewEvent): Promise<void> {
-	await withDb((db) =>
-		db.batch([
-			db.insert(integrationEvents).values(event),
-			db
-				.delete(integrationEvents)
-				.where(
-					and(
-						eq(integrationEvents.accountKey, event.accountKey),
-						lt(
-							integrationEvents.id,
-							sql`(select id from ${integrationEvents} where ${integrationEvents.accountKey} = ${event.accountKey} order by id desc offset ${EVENT_KEEP - 1} limit 1)`,
-						),
+	await withDbAtomic((q) => [
+		q.insert(integrationEvents).values(event),
+		q
+			.delete(integrationEvents)
+			.where(
+				and(
+					eq(integrationEvents.accountKey, event.accountKey),
+					lt(
+						integrationEvents.id,
+						sql`(select id from ${integrationEvents} where ${integrationEvents.accountKey} = ${event.accountKey} order by id desc offset ${EVENT_KEEP - 1} limit 1)`,
 					),
 				),
-		]),
-	);
+			),
+	]);
 }
 
 /** Best effort: activity must never turn a success into a failure. */
