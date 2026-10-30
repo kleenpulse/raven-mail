@@ -11,6 +11,12 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Clicking an email address link inside a message now opens a new
+  message in Raven, with the address filled in. Before, it asked
+  Windows or your browser which app to use.
+
 ## [0.6.2] - 2026-10-25
 
 ### Removed

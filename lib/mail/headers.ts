@@ -74,22 +74,39 @@ export function unsubscribeOptions(headers: Record<string, string | undefined>):
   return { ...targets, oneClick: Boolean(targets.https) && /^List-Unsubscribe=One-Click$/i.test(post) };
 }
 
-/** `mailto:list@x.example?subject=…&body=…` → a prefilled draft. */
-export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
-  let url: URL;
-  let to: string;
+export type MailtoFields = { to: string; cc?: string; bcc?: string; subject?: string; body?: string };
+
+/**
+ * Any `mailto:` link (RFC 6068) → draft fields. Only `%XX` escapes are decoded:
+ * a `+` is a literal plus here, not a space as in form data.
+ */
+export function mailtoFields(href: string): MailtoFields | undefined {
+  const match = /^mailto:([^?]*)(?:\?([\s\S]*))?$/i.exec(href.trim());
+  if (!match) return undefined;
   try {
-    url = new URL(href);
-    to = decodeURIComponent(url.pathname);
+    const to = [decodeURIComponent(match[1]!)];
+    const rest: Omit<MailtoFields, "to"> = {};
+    for (const pair of (match[2] ?? "").split("&")) {
+      const eq = pair.indexOf("=");
+      if (eq < 0) continue;
+      const key = decodeURIComponent(pair.slice(0, eq)).toLowerCase();
+      const value = decodeURIComponent(pair.slice(eq + 1));
+      if (!value) continue;
+      if (key === "to") to.push(value);
+      else if (key === "cc" || key === "bcc" || key === "subject") rest[key] ??= value;
+      else if (key === "body") rest.body ??= value.replace(/\r\n?/g, "\n");
+    }
+    return { to: to.filter(Boolean).join(", "), ...rest };
   } catch {
     return undefined;
   }
-  if (url.protocol !== "mailto:" || !to.includes("@")) return undefined;
-  return {
-    to,
-    subject: url.searchParams.get("subject") || "unsubscribe",
-    body: url.searchParams.get("body") || "unsubscribe",
-  };
+}
+
+/** `mailto:list@x.example?subject=…&body=…` → a prefilled unsubscribe request. */
+export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
+  const fields = mailtoFields(href);
+  if (!fields?.to.includes("@")) return undefined;
+  return { to: fields.to, subject: fields.subject || "unsubscribe", body: fields.body || "unsubscribe" };
 }
 
 /**

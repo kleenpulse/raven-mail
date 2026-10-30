@@ -2,6 +2,8 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { mailtoFields } from "@/lib/mail/headers";
+import { useComposeStore } from "@/lib/store/compose";
 
 const FORWARDED_KEYS = new Set(["j", "k", "u", "c", "g", "/", "Escape", "ArrowUp", "ArrowDown"]);
 
@@ -180,6 +182,17 @@ export function EmailFrame({
 			window.dispatchEvent(new KeyboardEvent("keydown", { key: e.key, code: e.code, shiftKey: e.shiftKey }));
 		}
 
+		// Raven is the mail app: a mailto link starts a draft here, not in the OS handler.
+		// The target lives in the frame's realm, so `instanceof Element` would fail.
+		function composeMailto(e: MouseEvent) {
+			const link = (e.target as Element | null)?.closest?.("a[href]");
+			const fields = link ? mailtoFields(link.getAttribute("href") ?? "") : undefined;
+			if (!fields) return;
+			e.preventDefault();
+			const { body, subject, ...recipients } = fields;
+			useComposeStore.getState().openCompose("new", { ...recipients, subject: subject ?? "", text: body ?? "" });
+		}
+
 		function setup() {
 			const doc = frame?.contentDocument;
 			if (!doc?.body) return;
@@ -207,8 +220,10 @@ export function EmailFrame({
 			observer = new ResizeObserver(measure);
 			observer.observe(doc.body);
 			win?.removeEventListener("keydown", forwardKey);
+			win?.removeEventListener("click", composeMailto);
 			win = frame?.contentWindow ?? null;
 			win?.addEventListener("keydown", forwardKey);
+			win?.addEventListener("click", composeMailto);
 		}
 
 		// `load` waits for every remote image, so a newsletter would sit at the 48px
@@ -226,6 +241,7 @@ export function EmailFrame({
 			frame.removeEventListener("load", setup);
 			observer?.disconnect();
 			win?.removeEventListener("keydown", forwardKey);
+			win?.removeEventListener("click", composeMailto);
 		};
 	}, [srcDoc]);
 

@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	listHeaders,
+	mailtoFields,
 	parseDateHeader,
 	parseHeaderBlock,
 	parseListUnsubscribe,
@@ -180,6 +181,36 @@ describe("parseMailto", () => {
 		["not a URL", "nope"],
 	])("%s → undefined", (_, href) => {
 		expect(parseMailto(href)).toBeUndefined();
+	});
+});
+
+describe("mailtoFields", () => {
+	test("a bare address", () => {
+		expect(mailtoFields("mailto:reid@rides.co")).toEqual({ to: "reid@rides.co" });
+	});
+
+	test("every field, with extra recipients from the query", () => {
+		expect(
+			mailtoFields("MAILTO:a@x.example,b@x.example?to=c@x.example&CC=d@x.example&bcc=e@x.example&subject=Hi%20there&body=one%0D%0Atwo"),
+		).toEqual({
+			to: "a@x.example,b@x.example, c@x.example",
+			cc: "d@x.example",
+			bcc: "e@x.example",
+			subject: "Hi there",
+			body: "one\ntwo",
+		});
+	});
+
+	test("a plus stays a plus", () => {
+		expect(mailtoFields("mailto:a+tag@x.example?subject=1+1")).toEqual({ to: "a+tag@x.example", subject: "1+1" });
+	});
+
+	test("no address is still a draft", () => {
+		expect(mailtoFields("mailto:?subject=x")).toEqual({ to: "", subject: "x" });
+	});
+
+	test.each(["https://x.example/u", "nope", "mailto:%E0%A4%A@x.example"])("%p → undefined", (href) => {
+		expect(mailtoFields(href)).toBeUndefined();
 	});
 });
 
