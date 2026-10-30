@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.6.3] - 2026-10-30
+
 ### Fixed
 
 - Clicking an email address link inside a message now opens a new
