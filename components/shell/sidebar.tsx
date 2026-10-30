@@ -109,7 +109,7 @@ export function Sidebar({
 	onSelectFolder: (path: string) => void;
 	className?: string;
 }) {
-	const { data: folders, isPending, isError, error } = useFolders();
+	const { data: folders, isPending, isError, fetchStatus, error } = useFolders();
 	const account = useAccount();
 	const pillId = React.useId();
 
@@ -137,11 +137,15 @@ export function Sidebar({
 		);
 	}, [folders, specialPaths]);
 
-	const status = isError
-		? { dot: "bg-critical", label: "Mailbox unreachable" }
-		: isPending
-			? { dot: "bg-ink-3", label: "Connecting to mailbox" }
-			: { dot: "bg-ok", label: "Mailbox connected" };
+	// Paused beats error: a failed query waiting on the connection is still status "error".
+	const status =
+		fetchStatus === "paused"
+			? { dot: "bg-ink-3", label: "Waiting for a connection" }
+			: isError
+				? { dot: "bg-critical", label: "Mailbox unreachable" }
+				: isPending
+					? { dot: "bg-ink-3", label: "Connecting to mailbox" }
+					: { dot: "bg-ok", label: "Mailbox connected" };
 
 	return (
 		<aside
@@ -161,7 +165,8 @@ export function Sidebar({
 
 					{isPending && <FolderSkeleton />}
 
-					{isError && (
+					{/* Folders already on screen stay; the status dot says the refresh failed. */}
+					{isError && !folders && (
 						<p role="alert" className="px-3 py-2 text-xs leading-relaxed text-destructive">
 							{error instanceof Error ? error.message : "Failed to load folders"}
 						</p>

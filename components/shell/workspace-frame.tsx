@@ -8,6 +8,7 @@ import { NavRail, NAV_ITEMS, useNavBadges } from "@/components/shell/nav-rail";
 import { ExportRunToast } from "@/components/integrations/export-toast";
 import { NewMailBanner } from "@/components/mail/new-mail-banner";
 import { FollowUpBanner } from "@/components/mail/follow-up-banner";
+import { OfflineBanner } from "@/components/shell/offline-banner";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { ComposeDock } from "@/components/mail/compose";
 import { AskTray } from "@/components/jev/ask-tray";
@@ -120,6 +121,7 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 			<ExportRunToast />
 			<NewMailBanner />
 			<FollowUpBanner />
+			<OfflineBanner />
 		</div>
 	);
 }

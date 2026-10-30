@@ -16,6 +16,16 @@ as you work — it ships inside the app.
 - When your Inbox is split into tabs, there is now an All tab before
   Important. It shows every message in one list, whatever tab it
   belongs to.
+- When you lose your connection, a small banner at the top says
+  you're offline. When you're back, Raven loads your mail again by
+  itself.
+
+### Fixed
+
+- If a refresh fails, the mail you already had on screen now stays.
+  Before, an error took over the whole list.
+- A folder or message you open while offline now says it's waiting
+  for a connection, instead of loading forever.
 
 ## [0.6.3] - 2026-10-30
 

@@ -23,6 +23,8 @@ import { setFlagsAction } from "@/lib/actions/mail";
 import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { rowOf, type ThreadRow } from "@/lib/mail/thread";
 import { TAB_FILL, TAB_LABEL, type SplitTab } from "@/lib/mail/split-inbox";
+import { paneOf } from "@/lib/query-pane";
+import { useOffline } from "next/offline";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { motion } from "motion/react";
 import type { MailFolder } from "@/lib/mail/types";
@@ -196,8 +198,24 @@ function MailListInner({
 	visible: boolean;
 	onSelectUid: (uid: string | null) => void;
 }) {
-	const { data, isPending, isError, error, isFetching, hasNextPage, isFetchingNextPage, fetchNextPage } =
-		useMessages(folder, search || undefined);
+	const {
+		data,
+		isPending,
+		isError,
+		isRefetchError,
+		isFetchNextPageError,
+		fetchStatus,
+		error,
+		refetch,
+		isFetching,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	} = useMessages(folder, search || undefined);
+	const offline = useOffline();
+	const { pane, refreshFailed } = paneOf({ hasData: Boolean(data), isError, isRefetchError, isFetchNextPageError, fetchStatus });
+	// Idle, not just "not paused": the retry after reconnect is still "error" while it runs.
+	const staleNotice = refreshFailed && fetchStatus === "idle" && !offline;
 	const { data: folders } = useFolders();
 	const invalidate = useInvalidateMail();
 	const { defer } = useDeferredMailAction();
@@ -318,7 +336,7 @@ function MailListInner({
 
 	const solo = !selectedUid;
 
-	if (isPending) {
+	if (pane === "loading") {
 		return (
 			<ListPane solo={solo}>
 				<MailListSkeleton />
@@ -326,7 +344,15 @@ function MailListInner({
 		);
 	}
 
-	if (isError) {
+	if (pane === "waiting") {
+		return (
+			<ListPane solo={solo}>
+				<PaneState title="Waiting for a connection">This folder loads as soon as you&apos;re back online.</PaneState>
+			</ListPane>
+		);
+	}
+
+	if (pane === "failed") {
 		return (
 			<ListPane solo={solo}>
 				<PaneState
@@ -448,6 +474,20 @@ function MailListInner({
 					</div>
 				</div>
 			</TooltipGroup>
+
+			{staleNotice && (
+				<div role="status" className="flex shrink-0 items-center gap-2 px-4 pb-2 text-[12px] text-ink-2 @md/list:px-5">
+					<span aria-hidden className="size-1.5 shrink-0 rounded-full bg-critical" />
+					<span className="min-w-0 flex-1 truncate">Couldn&apos;t refresh. Showing what was loaded.</span>
+					<button
+						type="button"
+						onClick={() => void refetch()}
+						className="shrink-0 rounded-pill px-2 py-0.5 font-medium text-foreground outline-none transition-colors hover:bg-foreground/[0.06] focus-visible:ring-2 focus-visible:ring-ring"
+					>
+						Try again
+					</button>
+				</div>
+			)}
 
 			{split && messages.length > 0 && (
 				<SplitTabs

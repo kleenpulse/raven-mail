@@ -37,6 +37,7 @@ import { setPref, usePref } from "@/lib/prefs/store";
 import { promptAlwaysLoadImages, useRemoteImagesPref } from "@/components/mail/remote-images";
 import { ShareMenu } from "@/components/integrations/deliver-menu";
 import { replyOptions } from "@/lib/mail/reply";
+import { paneOf } from "@/lib/query-pane";
 import { useTheme } from "next-themes";
 import { useDeferredMailAction } from "@/hooks/use-deferred-mail-action";
 import { useMessage, useFolders, useSetFlags } from "@/hooks/use-mail";
@@ -270,7 +271,8 @@ function MailReaderInner({
 	onRestored,
 	onOpenReply,
 }: ReaderProps) {
-	const { data: message, isPending, isError, error } = useMessage(folder, uid);
+	const { data: message, isError, isRefetchError, fetchStatus, error } = useMessage(folder, uid);
+	const { pane } = paneOf({ hasData: Boolean(message), isError, isRefetchError, fetchStatus });
 	const { data: folders } = useFolders();
 	const { defer } = useDeferredMailAction();
 	const { mutate: mutateFlags } = useSetFlags();
@@ -370,7 +372,7 @@ function MailReaderInner({
 		return () => window.removeEventListener("keydown", handler);
 	}, []);
 
-	if (isPending) {
+	if (pane === "loading") {
 		return (
 			<ReaderPane wide={wide}>
 				<ReaderSkeleton />
@@ -378,7 +380,26 @@ function MailReaderInner({
 		);
 	}
 
-	if (isError || !message) {
+	if (pane === "waiting") {
+		return (
+			<ReaderPane wide={wide}>
+				<PaneState
+					title="Waiting for a connection"
+					action={
+						<Button variant="surface" size="pill-sm" onClick={onBack}>
+							<ArrowLeft />
+							Back to list
+						</Button>
+					}
+				>
+					This message opens as soon as you&apos;re back online.
+				</PaneState>
+			</ReaderPane>
+		);
+	}
+
+	// A failed refresh of a message already on screen leaves it there.
+	if (!message) {
 		return (
 			<ReaderPane wide={wide}>
 				<PaneState

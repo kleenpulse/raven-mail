@@ -16,6 +16,10 @@ const nextConfig: NextConfig = {
   // sanitize-html stays bundled: it's CommonJS but require()s the ESM-only
   // htmlparser2 12, which crashed at runtime on Vercel (ERR_REQUIRE_ESM).
   serverExternalPackages: ["imapflow", "nodemailer", "mailparser", "@typesafe-ai/sdk"],
+  experimental: {
+    // Offline detection + HEAD polling behind `useOffline` (next/offline); bridged into TanStack in QueryProvider.
+    useOffline: true,
+  },
 };
 
 export default nextConfig;
