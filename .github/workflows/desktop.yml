@@ -1,0 +1,80 @@
+name: Desktop
+
+# Builds the desktop installers. Installers for users come only from here,
+# never from a developer machine. No release is published yet: the
+# installers are uploaded as workflow artifacts.
+on:
+  workflow_dispatch:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: windows
+            os: windows-latest
+            targets: --win nsis --x64
+          # Both arches build here: the server folder has no native code.
+          - name: macos
+            os: macos-latest
+            targets: --mac dmg --arm64 --x64
+          - name: linux
+            os: ubuntu-latest
+            targets: --linux AppImage deb --x64
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      # Runs before install, so a poisoned tree never gets to execute anything.
+      - name: Payload check
+        run: bun scripts/check-payload.ts
+
+      # Electron needs no postinstall (since Electron 42); electron-builder downloads its own copy.
+      - run: bun install --frozen-lockfile --ignore-scripts
+      - run: bun install --cwd desktop --frozen-lockfile --ignore-scripts
+
+      # electron-builder and the server smoke test run on Node.
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+
+      - run: bun run desktop:typecheck
+
+      - name: Build installers
+        run: bun desktop/scripts/build.ts ${{ matrix.targets }}
+        env:
+          SESSION_SECRET: ci-only-not-a-real-secret-0123456789abcdef
+          NEXT_TELEMETRY_DISABLED: "1"
+
+      - name: Smoke-test the server
+        run: bun desktop/scripts/smoke.ts
+
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: raven-${{ matrix.name }}
+          if-no-files-found: error
+          retention-days: 14
+          path: |
+            desktop/.out/*.exe
+            desktop/.out/*.dmg
+            desktop/.out/*.AppImage
+            desktop/.out/*.deb
+            desktop/.out/SHA256SUMS.txt
