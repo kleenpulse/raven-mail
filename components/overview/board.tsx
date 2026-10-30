@@ -107,7 +107,6 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 						engine={engine}
 						suggestions={suggestions}
 						invites={data?.invites.length ?? 0}
-						weather={data?.weather}
 						onAsk={(q) => onAsk(q)}
 					/>
 				</div>

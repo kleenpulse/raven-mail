@@ -4,6 +4,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { logoutAction } from "@/lib/actions/auth";
 import { useComposeStore } from "@/lib/store/compose";
 import { exportRun } from "@/lib/store/export-run";
+import { forgetWeatherPlace } from "@/hooks/use-local-weather";
 import { stopPreloading } from "@/hooks/use-preload-in-view";
 import { forgetPersistedQueries } from "@/lib/query-persist";
 import { forgetPreviews } from "@/lib/mail/preview-cache";
@@ -18,6 +19,8 @@ export function useSignOut() {
 		stopPreloading();
 		queryClient.clear();
 		forgetPreviews();
+		// Where this person said they are is theirs, not the next person's on this device.
+		forgetWeatherPlace();
 		await forgetPersistedQueries();
 		useComposeStore.getState().closeCompose();
 		try {

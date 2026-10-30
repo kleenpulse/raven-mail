@@ -11,6 +11,19 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- The weather under the date on the Overview is now the real weather
+  where you are, with the temperature. Before, it was Raven's "inbox
+  weather" score, which said "Rain" when you had mail waiting, not
+  when it was raining. That score still has its own card further down.
+  Where Raven can't tell where you are, you can tap "Show local
+  weather" to share your location once. Raven rounds it to about 1 km,
+  keeps it on your device, and only uses it to look up the weather.
+  Don't want Raven to use your location at all? Turn off Local Weather
+  in Settings, under Appearance. That also forgets a location you
+  shared, and so does signing out.
+
 ## [0.8.0] - 2026-10-30
 
 ### Added

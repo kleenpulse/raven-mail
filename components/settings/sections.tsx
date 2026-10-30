@@ -39,6 +39,7 @@ import {
 import { stopPreloading } from "@/hooks/use-preload-in-view";
 import { requestChangelogOpen } from "@/components/whats-new/store";
 import { EntryList, useReleases } from "@/components/whats-new/whats-new";
+import { forgetWeatherPlace } from "@/hooks/use-local-weather";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useRefreshIntegrations } from "@/hooks/use-integrations";
 import { removeJevKeyAction, saveJevKeyAction } from "@/lib/actions/jev-key";
@@ -307,6 +308,24 @@ function BannerPositionRow() {
 				</RadioGroup>
 			)}
 		</SettingRow>
+	);
+}
+
+/** Any change starts over: off forgets a shared place, on lets Raven ask again after a "no". */
+function LocalWeatherRow() {
+	return (
+		<PrefSwitchRow
+			id="local-weather"
+			pref="overview.localWeather"
+			onChange={(on) => {
+				forgetWeatherPlace();
+				if (on) return;
+				toast("Local weather is off", {
+					description: "Raven won't look up where you are. A location you shared was removed from this device.",
+					action: { label: "Undo", onClick: () => setPref("overview.localWeather", true) },
+				});
+			}}
+		/>
 	);
 }
 
@@ -745,6 +764,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	),
 	transparency: () => <PrefSwitchRow id="transparency" pref="appearance.reduceTransparency" />,
 	"ask-pill": () => <PrefSwitchRow id="ask-pill" pref="appearance.askPill" />,
+	"local-weather": LocalWeatherRow,
 	"remote-images": () => <PrefSwitchRow id="remote-images" pref="mail.remoteImages" />,
 	"force-dark": () => <PrefSwitchRow id="force-dark" pref="mail.forceDark" />,
 	preload: () => <PrefSwitchRow id="preload" pref="mail.preload" />,

@@ -86,6 +86,16 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["appearance.askPill"],
 	},
 	{
+		id: "local-weather",
+		section: "appearance",
+		card: "Overview",
+		label: "Local Weather",
+		description:
+			"Show the weather where you are under the date. Raven uses your rough location, rounded to about 1 km, only to look up the weather. Turning this off also forgets a location you shared on this device.",
+		keywords: "location gps place weather temperature forecast privacy geolocation",
+		prefs: ["overview.localWeather"],
+	},
+	{
 		id: "remote-images",
 		section: "mail",
 		card: "Reading",

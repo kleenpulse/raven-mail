@@ -26,6 +26,8 @@ export const qk = {
 	ruleEvents: (account: string) => ["acct", account, "rules", "events"] as const,
 	overview: (account: string, days: number, tz: string) =>
 		["acct", account, "overview", days, tz] as const,
+	/** Memory only, like blocks: where the user is stays out of IndexedDB. `place` is "ip" or rounded "lat,lon". */
+	weather: (account: string, place: string) => ["acct", account, "weather", place] as const,
 	integrations: (account: string) => ["acct", account, "integrations"] as const,
 	integrationEvents: (account: string, filter: { integrationId?: string; target?: string } = {}) =>
 		["acct", account, "integrations", "events", filter.integrationId ?? null, filter.target ?? null] as const,

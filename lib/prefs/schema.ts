@@ -13,6 +13,8 @@ export const PREF_SCHEMAS = {
 	"appearance.reduceTransparency": z.boolean(),
 	/** The floating "Ask Jev" pill; ⌘K and the rail button work either way. */
 	"appearance.askPill": z.boolean(),
+	/** Real weather under the date on the Overview, which needs a rough location. */
+	"overview.localWeather": z.boolean(),
 	/** Absent = never answered (the reader asks once); false = "just this once". */
 	"mail.remoteImages": z.boolean(),
 	/** In the dark theme, darken author-styled mail instead of showing it on light paper. */
@@ -50,6 +52,7 @@ export const DEFAULTS: Prefs = {
 	"appearance.motion": "system",
 	"appearance.reduceTransparency": false,
 	"appearance.askPill": true,
+	"overview.localWeather": true,
 	"mail.remoteImages": false,
 	"mail.forceDark": true,
 	"mail.undoMs": 5000,

@@ -1,20 +1,11 @@
 "use client";
 
 import * as React from "react";
-import { ArrowRight, CalendarDays, Cloud, CloudLightning, CloudRain, CloudSun, Sun } from "lucide-react";
+import { ArrowRight, CalendarDays } from "lucide-react";
 import { HeroAsk } from "@/components/jev/hero-ask";
-import type { WeatherState } from "@/lib/insights/types";
+import { LocalWeather } from "@/components/overview/local-weather";
 import type { DecisionEngine } from "@/lib/jev/client";
-import { Tip } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
-
-const WEATHER_ICON: Record<WeatherState, typeof Sun> = {
-	clear: Sun,
-	fair: CloudSun,
-	cloudy: Cloud,
-	rain: CloudRain,
-	storm: CloudLightning,
-};
 
 const minuteStamp = () => Math.floor(Date.now() / 60_000) * 60_000;
 
@@ -42,17 +33,14 @@ export function HeroBand({
 	engine,
 	suggestions,
 	invites,
-	weather,
 	onAsk,
 }: {
 	firstName: string;
 	engine: DecisionEngine | null;
 	suggestions: string[];
 	invites: number;
-	weather?: { state: WeatherState; label: string; forecast: string };
 	onAsk: (question: string) => void;
 }) {
-	const WeatherIcon = weather ? WEATHER_ICON[weather.state] : null;
 	const today = useToday();
 
 	return (
@@ -74,12 +62,7 @@ export function HeroBand({
 							)}
 						</div>
 						<div className="text-ink-2">{today ? today.toLocaleDateString(undefined, { month: "long" }) : " "}</div>
-						{weather && WeatherIcon && (
-							<Tip label={weather.forecast} render={<div className="mt-1 flex w-fit items-center gap-1.5 text-[12px] text-ink-2" />}>
-								<WeatherIcon className="size-3.5 text-signal-ink dark:text-signal" />
-								{weather.label}
-							</Tip>
-						)}
+						<LocalWeather />
 					</div>
 				</div>
 
