@@ -2,6 +2,8 @@ import "server-only";
 import { choice, noul, type Questions } from "@typesafe-ai/sdk";
 import type { Jev } from "@/lib/jev/client";
 import { answeredBy } from "@/lib/kage";
+import { ARBITRATION, arbitrate, type ArbitrationThresholds } from "@/lib/kage/arbitrate";
+import { INTENT_POWER, sharpen } from "@/lib/kage/calibrate";
 import { DEFAULT_TIMEFRAME, INTENT_META, TIMEFRAME_META } from "@/lib/jev/ask/catalog";
 import { forcePlan, heuristicPlan } from "@/lib/jev/ask/heuristic-plan";
 import { explicitTimeframe } from "@/lib/jev/ask/timeframe";
@@ -30,6 +32,7 @@ export async function planAsk(
   senders: PersonRef[],
   jev: Jev | null,
   signal?: AbortSignal,
+  { arbitration = ARBITRATION, intentPower = INTENT_POWER }: { arbitration?: ArbitrationThresholds; intentPower?: number } = {},
 ): Promise<AskPlan> {
   if (request.forcedIntent) {
     const plan = forcePlan(request.question, request.forcedIntent, senders);
@@ -84,13 +87,25 @@ export async function planAsk(
     let intent = (INTENTS as readonly string[]).includes(intentAnswer.choice ?? "")
       ? (intentAnswer.choice as Intent)
       : heuristic.intent;
+    // Kage's temperature is shared with rules and triage; its intent answer gets its own fit.
+    const calibrated = source === "kage" && intentAnswer.probabilities ? sharpen(intentAnswer.probabilities, intentPower) : undefined;
+    const intentProbabilities = calibrated ?? intentAnswer.probabilities;
     // Kage reads words, not people: a named contact outranks its generic guesses.
-    let intentConfidence = intentAnswer.confidence ?? 0.5;
+    let intentConfidence = (calibrated && intent === intentAnswer.choice ? calibrated[intent] : undefined) ?? intentAnswer.confidence ?? 0.5;
+    if (source === "kage") {
+      const second = arbitrate(
+        { label: intent, confidence: intentConfidence },
+        { label: heuristic.intent, confidence: heuristic.intentConfidence },
+        arbitration.intent,
+      );
+      intent = second.label;
+      intentConfidence = second.confidence;
+    }
     if (source === "kage" && sender && (senderConfidence ?? 0) >= 0.8 && YIELDS_TO_SENDER.has(intent)) {
       intent = "from_person";
       intentConfidence = 0.7;
     }
-    const alternatives = Object.entries(intentAnswer.probabilities ?? {})
+    const alternatives = Object.entries(intentProbabilities ?? {})
       .filter(([k]) => k !== intent && k !== "other")
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)

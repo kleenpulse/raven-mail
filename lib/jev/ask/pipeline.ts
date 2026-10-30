@@ -28,7 +28,7 @@ export async function* runAsk(
 ): AsyncGenerator<AskEvent> {
   yield { type: "stage", stage: "understand", detail: "Reading your question" };
 
-  const jev = jevFor(session);
+  const jev = jevFor(session, { interactive: true });
   const now = Date.now();
   const snapshot = await getSnapshot(session, { days: 30 });
   const { rows, local, today } = enrichSnapshot(snapshot, { now, tz });

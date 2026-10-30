@@ -1,5 +1,6 @@
 import "server-only";
 import { AuthenticationError, PermissionDeniedError, TypeSafeClient } from "@typesafe-ai/sdk";
+import { fallbackCount, fallbackReason, recordFallback, type FallbackCount } from "@/lib/jev/fallbacks";
 import { kage, kageEnabled, withKageFallback, type DecisionClient } from "@/lib/kage";
 import type { MailSession } from "@/lib/session";
 
@@ -114,17 +115,39 @@ export function typesafeFor(session: Pick<MailSession, "jevKey"> | null): TypeSa
 }
 
 /**
+ * How long an interactive call (Ask) waits for Jev before Kage answers, retries
+ * included. Background triage keeps the client's 8 s timeout and its retry.
+ */
+export const INTERACTIVE_DEADLINE_MS = 3_000;
+
+/**
  * The engine this request may use. A key the user saved in Settings wins over
  * the deployment's TYPESAFE_API_KEY, and a failed Jev call is answered by Kage.
  * With no key, or a key TypeSafe recently rejected, Kage answers alone; with
- * KAGE=off too, callers use heuristics.
+ * KAGE=off too, callers use heuristics. `interactive` caps the wait on Jev at
+ * `INTERACTIVE_DEADLINE_MS` for the whole request.
  */
-export function jevFor(session: Pick<MailSession, "jevKey"> | null): Jev | null {
+export function jevFor(session: Pick<MailSession, "jevKey"> | null, { interactive = false } = {}): Jev | null {
   const found = keyFor(session);
   const rejected = found ? cached(found.key)?.rejected === true : false;
   const typesafe = rejected && kageEnabled() ? null : typesafeFor(session);
-  if (typesafe) return { client: withKageFallback(typesafe.client), source: typesafe.source };
-  return kageEnabled() ? { client: kage, source: "kage" } : null;
+  if (found && typesafe) {
+    const client = withKageFallback(typesafe.client, {
+      deadlineMs: interactive ? INTERACTIVE_DEADLINE_MS : undefined,
+      onFallback: (err, timedOut) => recordFallback(found.key, found.source, fallbackReason(err, timedOut), err),
+    });
+    return { client, source: typesafe.source };
+  }
+  if (!kageEnabled()) return null;
+  if (!found) return { client: kage, source: "kage" };
+  // The key was rejected: Kage answers alone, and each answer still counts.
+  const skipped: DecisionClient = {
+    systemOne(request, options) {
+      recordFallback(found.key, found.source, "auth");
+      return kage.systemOne(request, options);
+    },
+  };
+  return { client: skipped, source: "kage" };
 }
 
 /** Which engine Ask and Deep triage run on, for labels and live dots. */
@@ -142,13 +165,21 @@ export async function decisionEngine(session: Pick<MailSession, "jevKey"> | null
 /**
  * What the UI may know about the key: never the key, only its last four
  * characters. `live` is false when TypeSafe didn't accept it at the last check.
+ * `fallbacks` counts this key's answers that Kage gave since the server started.
  */
-export type JevStatus = { source: Exclude<JevSource, "kage"> | null; hint: string | null; kage: boolean; live: boolean };
+export type JevStatus = {
+  source: Exclude<JevSource, "kage"> | null;
+  hint: string | null;
+  kage: boolean;
+  live: boolean;
+  fallbacks?: FallbackCount;
+};
 
 export async function jevStatus(session: Pick<MailSession, "jevKey"> | null): Promise<JevStatus> {
   const kage = kageEnabled();
   const found = keyFor(session);
-  if (!found) return { source: null, hint: null, kage, live: false };
+  if (!found) return { source: null, hint: null, kage, live: false, fallbacks: { count: 0, last: null } };
   const live = await keyLive(found.key);
-  return { source: found.source, hint: found.source === "user" ? found.key.slice(-4) : null, kage, live };
+  const fallbacks = fallbackCount(found.key);
+  return { source: found.source, hint: found.source === "user" ? found.key.slice(-4) : null, kage, live, fallbacks };
 }

@@ -11,6 +11,43 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- Kage is more honest about how sure it is. When nothing in an email
+  fits a category, it used to say about 68% for "Other". Now it says
+  under 50%, so a low number means Kage is really guessing.
+- Kage now gets a second opinion from Raven's simple word rules. When
+  they agree with Kage, on a question or on an email's category, Raven
+  shows the higher of the two scores. The word rules never overrule Kage.
+- Kage now looks at who sent an email. A person's address, a no-reply
+  or marketing address, a "Re:" in the subject, and a question for you
+  all count now. On our test emails, Kage put 82% in the right inbox
+  category, up from 76%. And your rules stopped catching mail from
+  people by mistake: 5 wrong matches on our test set went to 0.
+- When you ask "unread invoices" or "how many receipts this month",
+  Kage now finds your receipts. Before, it gave you a summary of unread
+  mail. Words like "unread", "new", "how many" and "this week" no
+  longer win over what you're looking for. Kage got 92% of our test
+  questions right, up from 86%.
+- Kage mixes up fewer words. "news" is not "new" anymore, "lately" is
+  not "late", a signed lease is not a sign-in, and a pull request is
+  not someone asking you for something.
+- The % Kage shows next to your question is now closer to how often it
+  is right. It got 92% of our test questions right but said about 84%.
+  Now it says about 90%. The answers are the same.
+- Kage now reads how urgent an email is as a scale, from "can wait" to
+  "do it now". Marketing mail that shouts "URGENT" or "final notice"
+  no longer shows up when you ask what's pressing. On our test emails,
+  wrong "pressing" picks went from 3 to 0. Kage also puts urgent mail
+  above calm mail more often than Raven's simple word rules do.
+- If Jev is slow or down, Ask now waits about 3 seconds for it, then
+  Kage answers. Before, you could wait up to 16 seconds. Deep triage
+  runs in the background, so it still gives Jev more time.
+- Settings now shows how many times Kage had to answer because Jev
+  failed, and why it failed last time. For example, TypeSafe refused
+  the key, or Jev took too long. So a broken key doesn't go unnoticed
+  anymore.
+
 ## [0.7.0] - 2026-10-30
 
 ### Added

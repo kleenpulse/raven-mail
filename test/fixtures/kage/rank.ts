@@ -119,24 +119,94 @@ export const RANK_CASES: RankCase[] = [
     split: "holdout",
   },
 
-  // Blind split (2026-10-22).
+  // Was the blind split (2026-10-22). Read case by case on 2026-10-30, so now holdout.
   {
     question: "the shipping update for my order",
     pool: [...NOISE],
     expect: [2],
-    split: "blind",
+    split: "holdout",
   },
   {
     question: "notes from the design review",
     pool: pool({ from: "Leo Martins", subject: "Design review notes", preview: "Summary of feedback on the onboarding flow.", hoursAgo: 30 }),
     expect: [8],
-    split: "blind",
+    split: "holdout",
   },
   {
     question: "anything about the mortgage",
     pool: [...NOISE],
     expect: [],
     noneExpected: true,
-    split: "blind",
+    split: "holdout",
+  },
+
+  // Added to dev (2026-10-30): the right email uses other words than the
+  // question, next to a distractor that shares one of them.
+  {
+    question: "the agreement with the vendor",
+    pool: pool(
+      { from: "Legal", subject: "Contract for review", preview: "Final contract with Acme Supplies, signature page included.", hoursAgo: 20 },
+      { from: "Events Team", subject: "Vendor fair booths", preview: "Booths for the spring vendor fair are now open.", hoursAgo: 15 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "my boarding pass",
+    pool: pool(
+      { from: "TAP Air Portugal", subject: "Check-in is open for TP1234", preview: "Check in now and get your mobile pass for Lisbon.", hoursAgo: 6 },
+      { from: "Sam Okafor", subject: "Boarding the train now", preview: "Will be there by 6.", hoursAgo: 3 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "the bill from the dentist",
+    pool: pool(
+      { from: "Smile Dental", subject: "Invoice for your visit on Oct 12", preview: "Amount due $140. Pay online.", hoursAgo: 40 },
+      { from: "Bill Turner", subject: "Re: garden fence", preview: "Happy to split the cost with you.", hoursAgo: 10 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "news about the launch",
+    pool: pool(
+      { from: "Maya Chen", subject: "Launch moved to the 20th", preview: "We slipped a week, details inside.", hoursAgo: 8 },
+      { from: "Morning Brew", subject: "Today's news: markets rally", preview: "Stocks closed higher on tech earnings.", hoursAgo: 4 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "latest on the apartment lease",
+    pool: pool(
+      { from: "Harbor Rentals", subject: "Your lease renewal", preview: "Please sign the renewal for flat 4B by Nov 15.", hoursAgo: 30 },
+      { from: "Leo Martins", subject: "Latest mockups", preview: "Here are the latest screens for the app.", hoursAgo: 2 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "the signed NDA",
+    pool: pool({ from: "Jonas Weber", subject: "NDA back", preview: "Attached the countersigned copy.", hoursAgo: 12 }),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "the slides maya updated",
+    pool: pool(
+      { from: "Maya Chen", subject: "Deck v3", preview: "Updated the slides with the new numbers.", hoursAgo: 14 },
+      { from: "Status Page", subject: "Service updated", preview: "We updated our API to version 2.", hoursAgo: 7 },
+    ),
+    expect: [8],
+    split: "dev",
+  },
+  {
+    question: "my vaccine appointment",
+    pool: [...NOISE],
+    expect: [],
+    noneExpected: true,
+    split: "dev",
   },
 ];

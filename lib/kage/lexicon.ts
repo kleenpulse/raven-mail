@@ -31,8 +31,8 @@ export const CONCEPTS: Record<string, string[]> = {
   urgent: [
     "urgent", "urgently", "asap", "immediately", "immediate", "emergency", "critical", "important", "deadline",
     "deadlines", "time sensitive", "time critical", "overdue", "right away", "priority", "blocked", "blocker",
-    "action required", "final notice", "expires", "expiring", "tonight", "end of day", "eod", "right now", "down",
-    "outage", "attention", "pressing",
+    "action required", "final notice", "expires", "expiring", "tonight", "end of day", "eod", "right now", "is down",
+    "are down", "went down", "goes down", "outage", "attention", "pressing",
   ],
   money: [
     "receipt", "invoice", "order", "orders", "payment", "paid", "pay", "bill", "billing", "charge", "charged",
@@ -45,7 +45,8 @@ export const CONCEPTS: Record<string, string[]> = {
   ],
   promo: [
     "promotion", "promotions", "promo", "promos", "marketing", "discount", "sale", "offer", "deal", "deals",
-    "coupon", "% off", "black friday", "limited time", "exclusive", "save", "shop", "upgrade now", "checkout",
+    "coupon", "% off", "black friday", "limited time", "exclusive", "and save", "save up to", "save on", "save big",
+    "shop", "upgrade now", "checkout",
   ],
   newsletter: [
     "newsletter", "newsletters", "digest", "roundup", "edition", "briefing", "top stories", "subscribe",
@@ -58,9 +59,15 @@ export const CONCEPTS: Record<string, string[]> = {
   ],
   meeting: [
     "meeting", "meetings", "invite", "invites", "invitation", "invited", "calendar", "schedule", "scheduled",
-    "event", "events", "call", "calls", "zoom", "google meet", "standup", "appointment", "reschedule", "rsvp",
+    "event", "events", "a call", "the call", "phone call", "video call", "quick call", "zoom", "google meet", "standup",
+    "appointment", "reschedule", "rsvp",
     "agenda", "tomorrow",
   ],
+  /**
+   * "code" stays a single word though "discount code" isn't security: the
+   * stem a sale's "discount codes" and a sign-in's "codes" share keeps rules
+   * about each competing for keyword-stuffed mail (test/fixtures/rules e3).
+   */
   security: [
     "security", "sign in", "sign ins", "signin", "signing in", "login", "log in", "logins", "password",
     "passwords", "2fa", "two factor", "verification", "verify", "code", "codes", "otp", "suspicious", "new device",
@@ -96,29 +103,33 @@ export const CONCEPTS: Record<string, string[]> = {
     "anything from",
   ],
   social: [
-    "friend request", "follower", "followers", "followed you", "connection request", "wants to connect", "connect",
+    "friend request", "follower", "followers", "followed you", "connection request", "wants to connect",
+    "connect with you", "connect on linkedin",
     "tagged you", "liked your", "commented on", "reacted to", "linkedin", "facebook", "facebookmail", "twitter",
     "instagram", "tiktok", "reddit", "social network", "professional network",
   ],
   system_notice: [
     "notification", "notifications", "alert", "alerts", "system status", "maintenance", "status", "terms of service",
-    "privacy policy", "your account", "account", "updating", "system update", "system",
+    "privacy policy", "your account", "updating", "system update", "system",
   ],
   automated: [
     "noreply", "no reply@", "do not reply", "donotreply", "mailer", "automated", "fyi", "no action", "for reference",
-    "marketing", "unsubscribe", "notification", "notifications", "notify", "receipt", "confirmation",
-    "confirmed", "has shipped", "contact support", "manage your", "track your", "thank you for your",
+    "marketing", "unsubscribe", "notification", "notifications", "notify", "receipt", "order confirmation",
+    "booking confirmation", "confirmation number", "has been confirmed", "is confirmed", "has shipped",
+    "contact support", "manage your", "track your", "thank you for your",
   ],
   /** Kept apart from `request`: every typed question ends in "?", so it must only meet labels that mention questions. */
   question_mark: ["?", "question", "questions"],
   request: [
     "could you", "can you", "would you", "will you", "please", "let me know", "thoughts", "feedback",
-    "approve", "review", "confirm", "are you", "do you", "what do you think", "need your", "waiting on you",
+    "approve", "review", "please confirm", "can you confirm", "could you confirm", "are you", "do you",
+    "what do you think", "need your", "waiting on you",
     "get back to me", "request", "sign and send", "call me",
   ],
   person_talk: [
-    "hi", "hey", "hello", "thanks", "thank you", "cheers", "regards", "lunch", "coffee", "direct", "person to person",
-    "correspondence", "conversation", "sounds good", "free", "need you", "call me", "let me know", "could you",
+    "hi", "hey", "hello", "thanks", "thank you", "cheers", "best regards", "kind regards", "warm regards", "lunch",
+    "coffee", "direct", "person to person", "correspondence", "conversation", "sounds good", "are you free",
+    "you free", "free for", "need you", "call me", "let me know", "could you",
     "can you", "what do you think", "thoughts", "i attached", "see you",
   ],
   time_today: ["today", "this morning", "tonight", "so far today", "right now"],

@@ -4,6 +4,10 @@ import type { TriageResult } from "@/lib/mail/types";
 import { heuristicTriage } from "@/lib/triage/heuristic";
 import type { Jev } from "@/lib/jev/client";
 import { answeredBy } from "@/lib/kage";
+import { ARBITRATION, arbitrate, noulConfidence, type ArbitrationThresholds } from "@/lib/kage/arbitrate";
+
+/** needsReply's yes/no cut on the `noul` answer. */
+const REPLY_CUT = 0.6;
 
 export async function jevTriage(
   input: {
@@ -12,7 +16,11 @@ export async function jevTriage(
     from?: string;
     body?: string;
   },
-  { jev, signal }: { jev: Jev | null; signal?: AbortSignal },
+  {
+    jev,
+    signal,
+    arbitration = ARBITRATION,
+  }: { jev: Jev | null; signal?: AbortSignal; arbitration?: ArbitrationThresholds },
 ): Promise<TriageResult> {
   if (!jev) {
     return heuristicTriage(input);
@@ -55,16 +63,33 @@ export async function jevTriage(
       { signal },
     );
 
-    const category = response.answers.category.choice as TriageResult["category"];
-    const confidence =
+    let category = response.answers.category.choice as TriageResult["category"];
+    let confidence =
       response.answers.category.confidence ?? response.answers.urgency.confidence ?? 0.7;
+    const noulAnswer = response.answers.needsReply.noul;
+    let needsReply = noulAnswer >= REPLY_CUT;
+    const source = answeredBy(response);
+    if (source === "kage") {
+      const keywords = heuristicTriage(input);
+      ({ label: category, confidence } = arbitrate(
+        { label: category, confidence },
+        { label: keywords.category, confidence: keywords.confidence },
+        arbitration.category,
+      ));
+      // The heuristic's yes/no has no confidence of its own; only Kage's decides.
+      needsReply = arbitrate(
+        { label: needsReply, confidence: noulConfidence(noulAnswer, REPLY_CUT) },
+        { label: keywords.needsReply, confidence: 0 },
+        arbitration.needsReply,
+      ).label;
+    }
 
     return {
       category,
       urgency: Math.max(0, Math.min(1, response.answers.urgency.score / 3)),
-      needsReply: response.answers.needsReply.noul >= 0.6,
+      needsReply,
       confidence,
-      source: answeredBy(response),
+      source,
     };
   } catch {
     return heuristicTriage(input);
