@@ -46,12 +46,17 @@ function unpackedApps(): { resources: string; app: string }[] {
 const apps = unpackedApps();
 if (apps.length === 0) throw new Error(`no unpacked app found in ${out}`);
 const fuses = join(desktop, "node_modules", "@electron", "fuses", "dist", "bin.js");
+// The electronFuses block of electron-builder.yml, named the way the fuses CLI prints them.
+const fuseBlock = /^electronFuses:\r?\n((?:[ \t]+\w+: (?:true|false)\r?\n)+)/m.exec(readFileSync(join(desktop, "electron-builder.yml"), "utf8"))?.[1] ?? "";
+const expected = [...fuseBlock.matchAll(/(\w+): (true|false)/g)].map(([, key, value]) => ({ name: key[0].toUpperCase() + key.slice(1), on: value === "true" }));
+if (expected.length !== 8) throw new Error(`expected 8 electronFuses in electron-builder.yml, found ${expected.length}`);
 for (const { resources, app } of apps) {
 	verifyServerDir(join(resources, "server"));
 	const read = spawnSync(node, [fuses, "read", "--app", app], { encoding: "utf8", env: { ...env, FORCE_COLOR: "0", NO_COLOR: "1" } });
 	console.log(read.stdout.trim());
-	if (read.status !== 0 || !/RunAsNode is Disabled/.test(read.stdout) || !/EnableCookieEncryption is Enabled/.test(read.stdout)) {
-		throw new Error(`fuses aren't set as expected on ${app}`);
+	const wrong = expected.filter(({ name, on }) => !read.stdout.includes(` ${name} is ${on ? "Enabled" : "Disabled"}`));
+	if (read.status !== 0 || wrong.length > 0) {
+		throw new Error(`fuses aren't set as expected on ${app}: ${wrong.map((fuse) => fuse.name).join(", ") || "read failed"}`);
 	}
 }
 
