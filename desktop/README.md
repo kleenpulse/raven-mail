@@ -36,6 +36,8 @@ A real local server keeps everything a browser expects: cookies, streamed respon
 - Every request must name it exactly (`Host: 127.0.0.1:<port>`). A web page using DNS rebinding can't fake that.
 - Every request must carry a token that's new on each launch. The main process adds it to the app's own requests (`session.webRequest`), and only to those. Browser tabs and other programs don't have it. Page scripts never see it.
 
+`desktop:dev` doesn't have this guard. It runs plain `next dev` on `127.0.0.1`, so other programs on your computer can reach it while it runs.
+
 The port is picked at random on first launch and kept in `desktop.json`. It's part of the page's origin, and the origin decides what localStorage and IndexedDB the app sees (settings, drafts, undo-send recovery). If another program takes the port, Raven picks a new one, and that local data starts fresh once.
 
 ## Security model
@@ -44,7 +46,7 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 - Links to other sites, `mailto:` and `tel:` open in the system's apps. Other schemes are dropped.
 - Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key, so the local weather can't find you on desktop yet.
 - Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, and cookie encryption and asar integrity checks are on. Installed builds refuse `--remote-debugging-port`.
-- `SESSION_SECRET` and `INTEGRATIONS_SECRET` are made on first launch and stored with Electron `safeStorage` (the OS keychain).
+- `SESSION_SECRET` and `INTEGRATIONS_SECRET` are made on first launch and kept in `secrets.json`, locked with Electron `safeStorage` (the OS keychain). If the keychain changes, or isn't available, Raven asks before it makes new ones: Quit, or Start fresh. New secrets sign you out, and saved integrations, rules, blocked senders and reminders can't be read anymore. Raven only makes new ones without asking when the keychain works but can't read the file. On Linux without a keyring, the secrets are saved unencrypted, readable only by your user.
 - The server never writes into its install folder: ISR flushing and gzip are off.
 - The `resources/server` folder isn't covered by asar integrity. Code signing (a later phase) is what will protect it.
 
@@ -54,4 +56,4 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 | --- | --- | --- | --- |
 | Installed app | `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
 
-The folder holds `db/` (the local database), `logs/` (`main.log`, `server.log`), `desktop.json` and Chromium's own profile files. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.
+The folder holds `db/` (the local database), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.

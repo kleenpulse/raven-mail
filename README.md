@@ -139,7 +139,7 @@ Builds come from the **Desktop** workflow in GitHub Actions. Open a run and down
 - Integrations, rules, blocked senders and reminders use a database built into the app. There's nothing to set up.
 - Proton Bridge works. It runs on your own computer, and the desktop app allows that.
 - Jev works with your own key (Settings → Account). Without one, Kage answers.
-- The weather under the date can't use your location yet, so it stays hidden.
+- The weather under the date can't find your location yet. If you click "Show local weather", Raven can't find you, and the button goes away.
 - There are no automatic updates yet. To update, install a newer build over the old one.
 
 **Where your data lives**
