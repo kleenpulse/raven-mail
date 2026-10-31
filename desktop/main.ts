@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, Menu, screen, session, shell, type MenuItem
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
@@ -313,7 +314,10 @@ function boot(): void {
 		});
 	}
 
-	/** Adds the token to requests for the server only (never to remote images or other sites), and tracks them. */
+	/**
+	 * Adds the token to requests for the server only (never to remote images
+	 * or other sites), tracks them, and adds the CSP to the server's responses.
+	 */
 	function routeToken(ses: Session, origin: string): void {
 		const filter = { urls: [`${origin}/*`] };
 		ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
@@ -324,6 +328,14 @@ function boot(): void {
 		ses.webRequest.onSendHeaders(filter, (details) => void inFlight.add(details.id));
 		ses.webRequest.onCompleted(filter, (details) => void inFlight.delete(details.id));
 		ses.webRequest.onErrorOccurred(filter, (details) => void inFlight.delete(details.id));
+		// `next dev` needs eval and its HMR websocket, so dev runs without the policy.
+		if (mode !== "dev") {
+			const policy = contentSecurityPolicy();
+			ses.webRequest.onHeadersReceived(filter, (details, callback) => {
+				if (new URL(details.url).origin !== origin) return callback({});
+				callback({ responseHeaders: withCsp(details.responseHeaders, policy) });
+			});
+		}
 	}
 
 	function harden(contents: WebContents): void {
