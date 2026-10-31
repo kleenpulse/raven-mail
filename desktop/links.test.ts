@@ -112,6 +112,15 @@ describe("windowsMailRegistration", () => {
 			"Raven Preview",
 			"/f",
 		]);
+		expect(preview).toContainEqual([
+			"add",
+			"HKCU\\Software\\Classes\\RavenPreview.mailto\\Application",
+			"/v",
+			"ApplicationIcon",
+			"/d",
+			'"D:\\repo\\desktop\\node_modules\\electron\\dist\\electron.exe",0',
+			"/f",
+		]);
 	});
 });
 
