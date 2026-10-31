@@ -9,8 +9,9 @@ import type { Sealer } from "./secrets";
  */
 export async function electronSealer(): Promise<Sealer> {
 	const linux = process.platform === "linux";
-	const backend = linux ? safeStorage.getSelectedStorageBackend() : process.platform;
 	const available = await safeStorage.isAsyncEncryptionAvailable();
+	// Linux picks its backend while the async encryptor starts, so read it after.
+	const backend = linux ? safeStorage.getSelectedStorageBackend() : process.platform;
 	const protects = available && !(linux && (backend === "basic_text" || backend === "unknown"));
 	return {
 		backend,

@@ -75,6 +75,15 @@ describe("loadSecrets", () => {
 		expect(await ok(await loadSecrets(fileStore(file), keychain("kwallet6")))).toEqual(await ok(reset));
 	});
 
+	test("a keychain that can't encrypt right now is reported, not silently replaced", async () => {
+		await loadSecrets(fileStore(file), keychain("darwin"));
+		const before = readFileSync(file, "utf8");
+		const down: Sealer = { ...keychain("darwin", false), open: async () => Promise.reject(new Error("keychain unavailable")) };
+		expect(await loadSecrets(fileStore(file), down)).toEqual({ kind: "keychain-unavailable", backend: "darwin" });
+		expect(readFileSync(file, "utf8")).toBe(before);
+		expect(readdirSync(dir).some((name) => name.startsWith("secrets.json.broken-"))).toBe(false);
+	});
+
 	test("Linux without a keyring stores them as is, and seals them once a keyring appears", async () => {
 		const plain = await ok(await loadSecrets(fileStore(file), keychain("basic_text", false)));
 		expect(JSON.parse(readFileSync(file, "utf8"))).toMatchObject({ backend: "basic_text", protected: false });

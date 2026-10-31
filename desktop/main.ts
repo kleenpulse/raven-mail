@@ -158,13 +158,17 @@ function boot(): void {
 		}
 		const store = fileStore(join(userData, "secrets.json"));
 		let result = await loadSecrets(store, sealer);
-		if (result.kind === "keychain-changed") {
-			log.info(`keychain changed from ${result.was} to ${result.now}`);
+		if (result.kind === "keychain-changed" || result.kind === "keychain-unavailable") {
+			const why =
+				result.kind === "keychain-changed"
+					? `They were locked with "${result.was}", and this system now uses "${result.now}". If you switch back, Raven can open them again.`
+					: "They're locked with your system's keychain, and it isn't available right now. Quit and try again once it's back.";
+			log.info(result.kind === "keychain-changed" ? `keychain changed from ${result.was} to ${result.now}` : `keychain unavailable (${result.backend})`);
 			const { response } = await dialog.showMessageBox({
 				type: "warning",
 				title: "Raven",
 				message: "Raven can't open its saved keys.",
-				detail: `They were locked with "${result.was}", and this system now uses "${result.now}". If you switch back, Raven can open them again. Starting fresh signs you out, and saved integrations, rules, blocked senders and reminders can't be read anymore.`,
+				detail: `${why} Starting fresh signs you out, and saved integrations, rules, blocked senders and reminders can't be read anymore.`,
 				buttons: ["Quit", "Start fresh"],
 				defaultId: 0,
 				cancelId: 0,
@@ -266,7 +270,7 @@ function boot(): void {
 		});
 		win.once("ready-to-show", () => win.show());
 		// Windows log-off or shutdown: stop the server cleanly while we still can.
-		win.on("session-end", () => void server?.stop());
+		win.on("session-end", () => void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]));
 		void win.loadURL(appOrigin ? `${appOrigin}${START_PATH}` : SPLASH);
 		mainWindow = win;
 		return win;

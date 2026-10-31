@@ -9,8 +9,9 @@ import { readFileSync, renameSync, writeFileSync } from "node:fs";
  *
  * They must never change by accident: a new secret signs the user out and
  * leaves every stored row unreadable. So a keychain that changed under us
- * (Linux: libsecret today, basic_text tomorrow) is reported, not silently
- * replaced; only a file that can't be read with the same keychain is.
+ * (Linux: libsecret today, basic_text tomorrow) or that can't encrypt right now
+ * is reported, not silently replaced; only a file that the same, working
+ * keychain can't read is.
  */
 
 export type Secrets = { SESSION_SECRET: string; INTEGRATIONS_SECRET: string };
@@ -33,7 +34,8 @@ export interface SecretStore {
 
 export type SecretsResult =
 	| { kind: "ok"; secrets: Secrets; created: boolean; reset: boolean }
-	| { kind: "keychain-changed"; was: string; now: string };
+	| { kind: "keychain-changed"; was: string; now: string }
+	| { kind: "keychain-unavailable"; backend: string };
 
 type Envelope = { v: 1; backend: string; protected: boolean; data: string };
 
@@ -52,6 +54,7 @@ export async function loadSecrets(store: SecretStore, sealer: Sealer, random: ()
 	const opened = envelope ? await openEnvelope(envelope, sealer) : null;
 	if (!opened) {
 		if (envelope && !sameKeychain) return { kind: "keychain-changed", was: envelope.backend, now: sealer.backend };
+		if (envelope?.protected && !sealer.protects) return { kind: "keychain-unavailable", backend: sealer.backend };
 		return resetSecrets(store, sealer, random);
 	}
 	if (opened.reseal || !sameKeychain) store.write(await envelopeFor(opened.secrets, sealer));
