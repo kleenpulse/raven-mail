@@ -13,6 +13,11 @@ as you work — it ships inside the app.
 
 ### Added
 
+- A link to Raven can now start a new email for you. Put an email
+  link after `?compose=`, like `/mail?compose=mailto:sam@example.com`,
+  and Raven opens a new message with the address, subject and text
+  filled in. If you have unsaved changes in the message you're
+  writing, Raven asks first.
 - Raven now has a desktop app for Windows, macOS and Linux. It's the
   same Raven, running on your own computer. Your integrations, rules,
   blocked senders and reminders are kept in a small database inside

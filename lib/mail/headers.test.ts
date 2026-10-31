@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import {
 	listHeaders,
+	mailtoDraft,
 	mailtoFields,
 	parseDateHeader,
 	parseHeaderBlock,
@@ -211,6 +212,17 @@ describe("mailtoFields", () => {
 
 	test.each(["https://x.example/u", "nope", "mailto:%E0%A4%A@x.example"])("%p → undefined", (href) => {
 		expect(mailtoFields(href)).toBeUndefined();
+	});
+});
+
+describe("mailtoDraft", () => {
+	test("body becomes the text, and subject and text are always there", () => {
+		expect(mailtoDraft("mailto:a@x.example?cc=b@x.example&body=hi%0Athere")).toEqual({ to: "a@x.example", cc: "b@x.example", subject: "", text: "hi\nthere" });
+		expect(mailtoDraft("mailto:a@x.example?subject=Hey")).toEqual({ to: "a@x.example", subject: "Hey", text: "" });
+	});
+
+	test("not a mailto link", () => {
+		expect(mailtoDraft("raven://open/mail")).toBeUndefined();
 	});
 });
 

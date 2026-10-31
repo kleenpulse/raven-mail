@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { mailtoFields } from "@/lib/mail/headers";
+import { mailtoDraft } from "@/lib/mail/headers";
 import { useComposeStore } from "@/lib/store/compose";
 
 const FORWARDED_KEYS = new Set(["j", "k", "u", "c", "g", "/", "Escape", "ArrowUp", "ArrowDown"]);
@@ -186,11 +186,10 @@ export function EmailFrame({
 		// The target lives in the frame's realm, so `instanceof Element` would fail.
 		function composeMailto(e: MouseEvent) {
 			const link = (e.target as Element | null)?.closest?.("a[href]");
-			const fields = link ? mailtoFields(link.getAttribute("href") ?? "") : undefined;
-			if (!fields) return;
+			const draft = link ? mailtoDraft(link.getAttribute("href") ?? "") : undefined;
+			if (!draft) return;
 			e.preventDefault();
-			const { body, subject, ...recipients } = fields;
-			useComposeStore.getState().openCompose("new", { ...recipients, subject: subject ?? "", text: body ?? "" });
+			useComposeStore.getState().openCompose("new", draft);
 		}
 
 		function setup() {
