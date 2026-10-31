@@ -457,6 +457,8 @@ function boot(): void {
 
 	/** Brings the window back from the tray, the Dock or a minimise (or makes it again on macOS). */
 	function showWindow(): void {
+		// Shut down and waiting for the updater to quit Raven: the server is gone.
+		if (quitting === "done") return;
 		if (!mainWindow || mainWindow.isDestroyed()) {
 			if (appOrigin) createWindow();
 			return;
