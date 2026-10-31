@@ -24,7 +24,13 @@ export function ravenDesktop(): RavenDesktop | undefined {
 
 /** Same-app paths only: the desktop app already checked it, this is a second lock. */
 export function isAppPath(path: string): boolean {
-	return path.startsWith("/") && !path.startsWith("//") && !path.includes("\\");
+	if (!path.startsWith("/") || path.startsWith("//") || path.includes("\\")) return false;
+	try {
+		// The URL parser drops tabs and newlines, so "/\t/evil.test" would leave the app.
+		return new URL(path, "http://raven.invalid").origin === "http://raven.invalid";
+	} catch {
+		return false;
+	}
 }
 
 /** Most items the desktop app takes in one message. */

@@ -26,6 +26,6 @@ describe("newMailForDesktop", () => {
 describe("isAppPath", () => {
 	test("same-app paths only", () => {
 		expect(isAppPath("/mail?uid=1")).toBe(true);
-		for (const bad of ["//evil.test", "https://evil.test", "/\\evil.test", "mail"]) expect(isAppPath(bad)).toBe(false);
+		for (const bad of ["//evil.test", "https://evil.test", "/\\evil.test", "/\t/evil.test", "/\n/evil.test", "mail"]) expect(isAppPath(bad)).toBe(false);
 	});
 });

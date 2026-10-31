@@ -15,10 +15,13 @@ const WATCH_LIMIT = 10;
 
 const POLL_MS = { live: 20_000, balanced: 60_000, saver: 5 * 60_000 } as const;
 
+// The desktop app's window is the whole app: keep checking while it's minimised or covered.
+const DESKTOP = Boolean(process.env.RAVEN_DESKTOP_BUILD);
+
 /**
  * Polls the newest Inbox rows and hands over unread arrivals, newest first.
- * Polling pauses in a background tab; the focus refetch on return reports
- * whatever landed meanwhile.
+ * On the web, polling pauses in a background tab; the focus refetch on
+ * return reports whatever landed meanwhile.
  */
 export function useNewMail(onArrive: (messages: MailSummary[]) => void) {
 	const { email } = useAccount();
@@ -34,6 +37,7 @@ export function useNewMail(onArrive: (messages: MailSummary[]) => void) {
 		queryFn: ({ signal }) =>
 			getJson<MessagesPage>(`/api/mail/messages?folder=INBOX&limit=${WATCH_LIMIT}`, signal),
 		refetchInterval: POLL_MS[freshness],
+		refetchIntervalInBackground: DESKTOP,
 		staleTime: 0,
 	});
 

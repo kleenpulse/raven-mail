@@ -210,6 +210,7 @@ function boot(): void {
 			});
 			if (response !== 1) {
 				quitting = "done";
+				tray?.destroy();
 				app.exit(0);
 				return new Promise<never>(() => {});
 			}
@@ -276,6 +277,7 @@ function boot(): void {
 		});
 		quitting = "done";
 		await server?.stop();
+		tray?.destroy();
 		app.exit(1);
 	}
 
