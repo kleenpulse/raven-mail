@@ -27,7 +27,11 @@ export type SettingEntry = {
 	prefs?: PrefKey[];
 	/** Control sits under the label instead of beside it. */
 	stack?: boolean;
+	/** Only the desktop app has this setting; the web hides the row. */
+	desktopOnly?: boolean;
 };
+
+const DESKTOP = Boolean(process.env.RAVEN_DESKTOP_BUILD);
 
 /** Every row, in display order. Search and the section pages both read this. */
 export const SETTINGS: SettingEntry[] = [
@@ -233,6 +237,16 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["notify.bannerPosition"],
 	},
 	{
+		id: "system-notifications",
+		section: "notifications",
+		card: "New mail",
+		label: "Desktop Notifications",
+		description: "Show a notification from your computer when new mail reaches your Inbox and Raven isn't the window you're using. Click it to open the message.",
+		keywords: "system notification alert toast windows mac linux action center",
+		prefs: ["notify.system"],
+		desktopOnly: true,
+	},
+	{
 		id: "focus-refetch",
 		section: "sync",
 		card: "Checking for mail",
@@ -370,8 +384,13 @@ export const SETTINGS: SettingEntry[] = [
 
 export const SETTINGS_BY_ID = new Map(SETTINGS.map((s) => [s.id, s]));
 
+/** Whether this app shows the row: desktop-only rows are hidden on the web. */
+export function shown(entry: SettingEntry, desktop = DESKTOP): boolean {
+	return desktop || !entry.desktopOnly;
+}
+
 export function sectionEntries(section: SectionId): SettingEntry[] {
-	return SETTINGS.filter((s) => s.section === section);
+	return SETTINGS.filter((s) => s.section === section && shown(s));
 }
 
 export function sectionPrefs(section: SectionId): PrefKey[] {
@@ -383,6 +402,7 @@ export function searchSettings(query: string): SettingEntry[] {
 	const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
 	if (terms.length === 0) return [];
 	return SETTINGS.filter((s) => {
+		if (!shown(s)) return false;
 		const hay = `${s.label} ${s.description ?? ""} ${s.keywords ?? ""} ${SECTIONS[s.section].label}`.toLowerCase();
 		return terms.every((t) => hay.includes(t));
 	});

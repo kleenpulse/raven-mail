@@ -26,3 +26,17 @@ export function ravenDesktop(): RavenDesktop | undefined {
 export function isAppPath(path: string): boolean {
 	return path.startsWith("/") && !path.startsWith("//") && !path.includes("\\");
 }
+
+/** Most items the desktop app takes in one message. */
+export const MAX_NOTIFY = 50;
+
+type Arrival = { uid: string; subject: string; from: { name?: string; address: string } };
+
+/**
+ * What to hand the desktop app for a system notification, or null: only
+ * when the setting is on and Raven isn't the window in use.
+ */
+export function newMailForDesktop(arrivals: readonly Arrival[], opts: { enabled: boolean; focused: boolean }): DesktopNewMail[] | null {
+	if (!opts.enabled || opts.focused || arrivals.length === 0) return null;
+	return arrivals.slice(0, MAX_NOTIFY).map((m) => ({ uid: m.uid, from: m.from.name || m.from.address, subject: m.subject }));
+}

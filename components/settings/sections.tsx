@@ -780,6 +780,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	"rules-activity": RuleActivityRow,
 	"mail-layout": MailLayoutRow,
 	"banner-position": BannerPositionRow,
+	"system-notifications": () => <PrefSwitchRow id="system-notifications" pref="notify.system" />,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,
 	freshness: () => (
 		<PrefSegmentedRow

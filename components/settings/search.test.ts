@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { highlightParts, searchSettings, SECTION_IDS, sectionPrefs, SETTINGS } from "@/components/settings";
+import { highlightParts, searchSettings, SECTION_IDS, sectionEntries, sectionPrefs, SETTINGS, shown } from "@/components/settings";
 import { PREF_KEYS } from "@/lib/prefs/schema";
 
 describe("searchSettings", () => {
@@ -52,7 +52,19 @@ describe("registry", () => {
 	test("every pref has a row, exactly once", () => {
 		const owned = SETTINGS.flatMap((s) => s.prefs ?? []);
 		expect([...owned].sort()).toEqual([...PREF_KEYS].sort());
-		expect(SECTION_IDS.flatMap(sectionPrefs).length).toBe(PREF_KEYS.length);
+		// Tests run as the web build, which hides desktop-only rows.
+		const desktopOnly = SETTINGS.filter((s) => s.desktopOnly).flatMap((s) => s.prefs ?? []);
+		expect(SECTION_IDS.flatMap(sectionPrefs).length).toBe(PREF_KEYS.length - desktopOnly.length);
+	});
+
+	test("desktop-only rows show in the desktop app and nowhere on the web", () => {
+		const row = SETTINGS.find((s) => s.id === "system-notifications")!;
+		expect(row.desktopOnly).toBe(true);
+		expect(shown(row, true)).toBe(true);
+		expect(shown(row, false)).toBe(false);
+		expect(sectionEntries("notifications").map((s) => s.id)).not.toContain("system-notifications");
+		expect(searchSettings("desktop notifications").map((s) => s.id)).not.toContain("system-notifications");
+		expect(shown(SETTINGS.find((s) => s.id === "banner-position")!, false)).toBe(true);
 	});
 
 	test("row ids are unique", () => {

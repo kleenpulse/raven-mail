@@ -9,6 +9,7 @@ import { SenderAvatar } from "@/components/mail/mail-row";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useNewMail } from "@/hooks/use-new-mail";
 import { usePref } from "@/lib/prefs/store";
+import { newMailForDesktop, ravenDesktop } from "@/lib/desktop/bridge";
 import { useComposeStore } from "@/lib/store/compose";
 import type { NotifyBannerPosition } from "@/lib/prefs/schema";
 import type { MailSummary } from "@/lib/mail/types";
@@ -51,6 +52,7 @@ function senderName(m: MailSummary) {
 export function NewMailBanner() {
 	const router = useRouter();
 	const position = usePref("notify.bannerPosition");
+	const systemNotify = usePref("notify.system");
 	const desktop = useMediaQuery("(min-width: 48rem)");
 	const compose = useComposeStore((s) => (!s.open ? "closed" : s.minimized ? "pill" : s.maximized ? "max" : "window"));
 	const [held, setHeld] = React.useState<MailSummary[]>([]);
@@ -61,6 +63,9 @@ export function NewMailBanner() {
 			const seen = new Set(arrivals.map((m) => m.uid));
 			return [...arrivals, ...prev.filter((m) => !seen.has(m.uid))].slice(0, MAX_HELD);
 		});
+		// Desktop app, Raven in the background (or hidden in the tray): tell the system too.
+		const notice = newMailForDesktop(arrivals, { enabled: systemNotify, focused: document.hasFocus() });
+		if (notice) ravenDesktop()?.notifyNewMail(notice);
 	});
 
 	// A full-screen draft would be covered: hold the news until it's out of the way.

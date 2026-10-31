@@ -39,6 +39,9 @@ as you work — it ships inside the app.
   use Quit Raven. If you'd rather it closes for good, turn off
   "Keep running when the window is closed". It's in the tray menu
   and the File menu (the Raven menu on a Mac).
+- On desktop, Raven now shows a notification when new mail comes
+  in and you're using another window. Click it to open the message.
+  You can turn this off in Settings, under Notifications.
 
 ## [0.9.0] - 2026-10-30
 

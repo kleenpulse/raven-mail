@@ -1,8 +1,9 @@
-import { app, BrowserWindow, dialog, Menu, Notification, screen, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell, type IpcMainEvent, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { latestBackup } from "./backups";
+import { CHANNELS, newMailNotice, openPath, parseNewMail, pathForNewMail, trustedSender } from "./bridge";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
@@ -70,6 +71,20 @@ function boot(): void {
 	log.info(`starting (${mode}, Electron ${process.versions.electron})`);
 
 	const lifecycle = (): Lifecycle => ({ keepRunning: settings.keepRunning, quitting: quitting !== "no" || sessionEnding, platform: process.platform });
+
+	// Notifications are kept until clicked or closed: one that's garbage collected loses its click.
+	const notices = new Set<Notification>();
+
+	ipcMain.on(CHANNELS.notifyNewMail, (event, payload: unknown) => {
+		if (!fromMainWindow(event)) return;
+		const items = parseNewMail(payload);
+		if (!items) return log.info("dropped a malformed new-mail message from the page");
+		const { title, body } = newMailNotice(items);
+		notify(title, body, () => {
+			showWindow();
+			openInApp(pathForNewMail(items));
+		});
+	});
 
 	app.on("second-instance", () => showWindow());
 	app.on("web-contents-created", (_event, contents) => harden(contents));
@@ -328,8 +343,36 @@ function boot(): void {
 	function notify(title: string, body: string, onClick: () => void): void {
 		if (!Notification.isSupported()) return;
 		const notice = new Notification({ title, body, icon: join(app.getAppPath(), "icon.png") });
-		notice.on("click", onClick);
+		notices.add(notice);
+		notice.on("click", () => {
+			notices.delete(notice);
+			onClick();
+		});
+		notice.on("close", () => notices.delete(notice));
 		notice.show();
+	}
+
+	/** Only the main window's own page, in its top frame, on the app's origin. */
+	function fromMainWindow(event: IpcMainEvent): boolean {
+		if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return false;
+		const frame = event.senderFrame;
+		return trustedSender(frame ? { origin: frame.origin, isTop: frame.parent === null } : null, appOrigin);
+	}
+
+	/** Shows an allowed path in the main window: routed by the page if it's up, else loaded. */
+	function openInApp(path: string): void {
+		const safe = openPath(path);
+		const win = mainWindow;
+		if (!safe || !appOrigin || !win || win.isDestroyed()) return;
+		const contents = win.webContents;
+		let onApp = false;
+		try {
+			onApp = new URL(contents.getURL()).origin === appOrigin;
+		} catch {
+			// The splash page (data:) or nothing yet.
+		}
+		if (onApp && !contents.isLoading()) contents.send(CHANNELS.open, safe);
+		else void win.loadURL(`${appOrigin}${safe}`);
 	}
 
 	function createWindow(): BrowserWindow {
