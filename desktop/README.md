@@ -23,6 +23,15 @@ Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (d
 - Staging replaces Turbopack's PGlite alias (`.next/node_modules/@electric-sql/pglite-<hash>`) with a small package that re-exports the real one, and leaves out PGlite's extension files. Otherwise PGlite would ship twice.
 - Next's offline check asks the page's own server, and on desktop that server always answers. So desktop asks `/api/mail/reach` whether your mail server can be reached instead (`lib/desktop/reach-watch.ts`).
 
+## Tray and notifications
+
+- Closing the window hides it, and Raven keeps running so the page can keep checking for mail. To stop that, turn off "Keep running when the window is closed". It's in the tray menu and the File menu (the Raven menu on macOS), and it's saved in `settings.json`. Quit Raven, Windows logging off and shutting down all still close the app for real.
+- Windows and Linux get a tray icon (`tray.ts`). Click it to show the window. The first time the window hides, a notification says where Raven went. macOS has no tray icon. Raven stays in the Dock, and clicking it shows the window.
+- Some Linux desktops (GNOME without the AppIndicator extension) show no tray icon. Opening Raven again from the app menu shows the hidden window.
+- While "keep running" is on, the window isn't slowed down in the background (`backgroundThrottling` off). So a hidden window checks for mail as often as a visible one: every 20 seconds, 1 minute or 5 minutes, following the Sync setting.
+- When new mail comes in and Raven isn't the focused window, the page asks main for a notification through the preload bridge. One message shows the sender and subject; several show a count. Clicking it shows the window and opens the message. Settings → Notifications has a switch for it, shown only in the desktop app.
+- On Windows, notifications need the app's ID and a Start Menu shortcut. The installer makes the shortcut, so `desktop:dev` and `desktop:preview` may not show them.
+
 ## Why the server listens on 127.0.0.1
 
 We first looked at serving the app with no open port, through an Electron protocol handler (the `next-electron-rsc` approach). It didn't hold up:
@@ -63,4 +72,4 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 | --- | --- | --- | --- |
 | Installed app | `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
 
-The folder holds `db/` (the local database), `db.backups/` (copies from before database updates), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` (the port), `window-state.json` (the window's size and place) and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.
+The folder holds `db/` (the local database), `db.backups/` (copies from before database updates), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` (the port), `window-state.json` (the window's size and place), `settings.json` (the desktop app's own settings) and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.
