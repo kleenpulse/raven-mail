@@ -2,11 +2,21 @@ name: Desktop
 
 # Builds the desktop installers. Installers for users come only from here,
 # never from a developer machine. No release is published yet: the
-# installers are uploaded as workflow artifacts.
+# installers are uploaded as workflow artifacts. Pull requests that touch
+# the desktop app or what it packages build them too, as a check.
 on:
   workflow_dispatch:
   push:
     tags: ["v*"]
+  pull_request:
+    paths:
+      - "desktop/**"
+      - "lib/db/**"
+      - "next.config.ts"
+      - "instrumentation.ts"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/desktop.yml"
 
 permissions:
   contents: read
