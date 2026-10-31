@@ -147,12 +147,9 @@ function boot(): void {
 			quitting = "done";
 			tray?.destroy();
 			// Only now, with the server stopped, can an installer replace the app.
-			if (updater.installOnQuit(restartForUpdate) === "app-quits") {
-				// Squirrel.Mac quits Raven itself; this is the fallback if it doesn't.
-				setTimeout(() => app.exit(0), 10_000);
-				return;
-			}
-			app.exit(0);
+			const wait = updater.installOnQuit(restartForUpdate);
+			if (wait > 0) setTimeout(() => app.exit(0), wait);
+			else app.exit(0);
 		});
 	});
 

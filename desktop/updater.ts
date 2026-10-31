@@ -26,15 +26,21 @@ export type Updater = {
 	checkNow(): void;
 	/**
 	 * The last step of quitting, once the server has stopped. Starts the
-	 * downloaded update's installer, if there is one. "app-quits" means the
-	 * updater quits the app itself (macOS), so don't call app.exit.
+	 * downloaded update's installer, if there is one, and says how long to
+	 * wait before app.exit (0: exit now).
 	 */
-	installOnQuit(restart: boolean): "app-quits" | "exit";
+	installOnQuit(restart: boolean): number;
 };
+
+/**
+ * electron-updater's code for a 404 on the latest release's latest*.yml. (Its
+ * "latest version not found" code also covers being offline, so it isn't here.)
+ */
+const NO_UPDATE_FEED = new Set(["ERR_UPDATER_CHANNEL_FILE_NOT_FOUND"]);
 
 export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 	const { log } = hooks;
-	if (mode === "off") return { mode, start() {}, checkNow() {}, installOnQuit: () => "exit" };
+	if (mode === "off") return { mode, start() {}, checkNow() {}, installOnQuit: () => 0 };
 
 	let ready: string | null = null;
 	const announced = new Set<string>();
@@ -96,12 +102,14 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 				await dialog.showMessageBox({ type: "info", title: "Raven", message: "You have the newest version of Raven.", detail: `Version ${autoUpdater.currentVersion.version}`, buttons: ["OK"] });
 				return;
 			}
-		} catch {
+		} catch (err) {
+			// The latest release has no update files: one made before the desktop app updated itself.
+			const noFeed = NO_UPDATE_FEED.has((err as { code?: unknown }).code as string);
 			await dialog.showMessageBox({
-				type: "warning",
+				type: noFeed ? "info" : "warning",
 				title: "Raven",
-				message: "Raven couldn't check for updates.",
-				detail: "Check your connection and try again.",
+				message: noFeed ? "There's no update for Raven yet." : "Raven couldn't check for updates.",
+				detail: noFeed ? `Version ${autoUpdater.currentVersion.version}` : "Check your connection and try again.",
 				buttons: ["OK"],
 			});
 			return;
@@ -136,17 +144,21 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 		installOnQuit(restart) {
 			clearTimeout(firstCheck);
 			clearInterval(everyFewHours);
-			if (!ready || mode !== "auto") return "exit";
+			if (!ready || mode !== "auto") return 0;
 			log.info(`installing Raven ${ready}${restart ? " and restarting" : ""}`);
 			if (process.platform === "darwin") {
-				// Squirrel installs what it staged when Raven exits; quitAndInstall also starts it again.
-				if (!restart) return "exit";
+				// Squirrel installs what it staged when Raven exits; quitAndInstall also starts it again
+				// and quits Raven itself, once its own copy of the update is ready. The wait is a fallback.
+				if (!restart) return 0;
 				autoUpdater.quitAndInstall();
-				return "app-quits";
+				return 60_000;
 			}
 			// Silent: the user already chose. NSIS starts Raven again with --force-run; an AppImage spawns the new file.
 			if (autoUpdater instanceof BaseUpdater) autoUpdater.install(true, restart);
-			return "exit";
+			// A failed spawn is reported (and retried with elevate.exe) a tick later; give it a moment,
+			// well under the 1.3 s the installer waits before closing Raven. Not on Linux: the new
+			// AppImage is already starting and must find the single-instance lock free.
+			return process.platform === "win32" ? 500 : 0;
 		},
 	};
 }

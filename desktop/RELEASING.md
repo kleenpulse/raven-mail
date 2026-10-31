@@ -45,7 +45,7 @@ The installer only starts once Raven has closed its windows and stopped its serv
 
 Downloads wait in `%LOCALAPPDATA%\raven-updater` on Windows (`~/Library/Caches/raven-updater` on macOS, `~/.cache/raven-updater` on Linux).
 
-**Today's latest release is v0.2.0.** It came before the desktop app and has no `latest*.yml`, so until the first release made by this workflow is published, a check finds nothing and only logs it in `main.log`. Builds made before this change don't check for updates at all. Their users need to install one new build by hand.
+**Today's latest release is v0.2.0.** It came before the desktop app and has no `latest*.yml`, so until the first release made by this workflow is published, a check finds nothing. Background checks only log it in `main.log`, and "Check for updates…" says "There's no update for Raven yet." Builds made before this change don't check for updates at all. Their users need to install one new build by hand.
 
 **Unsigned Windows builds** don't check who signed an update (there's no signature to check). They trust GitHub's HTTPS and the sha512 in `latest.yml`, both from the same release. Signed builds also check the publisher name (see below).
 
