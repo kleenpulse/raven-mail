@@ -9,6 +9,7 @@ import { ExportRunToast } from "@/components/integrations/export-toast";
 import { NewMailBanner } from "@/components/mail/new-mail-banner";
 import { FollowUpBanner } from "@/components/mail/follow-up-banner";
 import { OfflineBanner } from "@/components/shell/offline-banner";
+import { DesktopOpen } from "@/components/shell/desktop-open";
 import { AccountMenu } from "@/components/shell/account-menu";
 import { ComposeDock } from "@/components/mail/compose";
 import { ReplaceComposeDialog } from "@/components/mail/replace-compose-dialog";
@@ -124,6 +125,7 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 			<NewMailBanner />
 			<FollowUpBanner />
 			<OfflineBanner />
+			<DesktopOpen />
 		</div>
 	);
 }

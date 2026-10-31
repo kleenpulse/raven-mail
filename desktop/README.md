@@ -44,7 +44,11 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 
 ## Security model
 
-- The window runs sandboxed and context-isolated, with no Node.js, no preload and no webviews. DevTools are off in installed builds.
+- The window runs sandboxed and context-isolated, with no Node.js and no webviews. DevTools are off in installed builds.
+- The main window has one small preload (`preload.ts`). It gives the page `window.ravenDesktop` with two calls and nothing else:
+  - `notifyNewMail(items)` asks for a new-mail notification. Main takes it only from the main window's top frame on the app's origin. It takes at most 50 items, each a numeric IMAP uid with a sender and subject cut to 200 characters. Anything else is dropped (`bridge.ts`).
+  - `onOpen(callback)` gets a path in the app when you click a notification. Main only sends `/overview`, or `/mail` with `folder`, `uid`, `mid` or `compose`.
+  - The preload has no Node.js. Child windows and email frames don't get it.
 - Links to other sites, `mailto:` and `tel:` open in the system's apps. Other schemes are dropped.
 - Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key. So on desktop the weather asks you to type a city, and the local server looks it up with Open-Meteo.
 - Every response from the local server gets a Content Security Policy (`csp.ts`), in preview and installed builds. Scripts, plugins, frames and fetches must come from the app itself, and other pages can't frame it. It can't block inline scripts yet: Next's page data and the theme script are inline, and nonces would need middleware. It also lets images load from any site, because emails show remote images once you allow them. `desktop:dev` runs without it, since `next dev` needs `eval` and a websocket.

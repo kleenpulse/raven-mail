@@ -280,7 +280,15 @@ function boot(): void {
 			title: "Raven",
 			backgroundColor: "#050a0b",
 			autoHideMenuBar: process.platform !== "darwin",
-			webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: !app.isPackaged, spellcheck: true },
+			webPreferences: {
+				contextIsolation: true,
+				nodeIntegration: false,
+				sandbox: true,
+				devTools: !app.isPackaged,
+				spellcheck: true,
+				// Bundled next to main.js; Bun.build bakes __dirname in as the source folder, so ask Electron.
+				preload: join(app.getAppPath(), "preload.js"),
+			},
 		});
 		win.once("ready-to-show", () => {
 			if (!place.maximized) return win.show();
