@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Desktop shell: dependencies and generated build output.
+    "desktop/node_modules/**",
+    "desktop/.dev/**",
+    "desktop/.stage/**",
+    "desktop/.out/**",
   ]),
 ]);
 

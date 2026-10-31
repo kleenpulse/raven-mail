@@ -24,10 +24,16 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:studio": "drizzle-kit studio",
-    "tour:audio": "bun scripts/generate-tour-audio.ts"
+    "tour:audio": "bun scripts/generate-tour-audio.ts",
+    "desktop:setup": "bun install --cwd desktop --frozen-lockfile --ignore-scripts && node desktop/node_modules/electron/install.js",
+    "desktop:dev": "bun desktop/scripts/dev.ts",
+    "desktop:preview": "bun desktop/scripts/dev.ts --preview",
+    "desktop:build": "bun desktop/scripts/build.ts",
+    "desktop:typecheck": "tsc -p desktop --noEmit"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
+    "@electric-sql/pglite": "^0.5.11",
     "@neon/config": "^1.7.3",
     "@neon/env": "^1.4.4",
     "@neondatabase/serverless": "^1.1.0",
@@ -66,7 +72,6 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
-    "@electric-sql/pglite": "^0.5.11",
     "@happy-dom/global-registrator": "^20.14.5",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.2",

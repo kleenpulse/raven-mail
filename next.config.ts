@@ -12,10 +12,14 @@ const nextConfig: NextConfig = {
     BUILD_STAMP: String(Date.now()),
     // Inlined, so client code gets the version without bundling package.json.
     APP_VERSION: pkg.version,
+    // "1" only for the desktop app's builds. Code that loads PGlite checks it,
+    // so web builds compile that code away and never bundle the wasm.
+    RAVEN_DESKTOP_BUILD: process.env.RAVEN_DESKTOP_BUILD ?? "",
   },
   // sanitize-html stays bundled: it's CommonJS but require()s the ESM-only
   // htmlparser2 12, which crashed at runtime on Vercel (ERR_REQUIRE_ESM).
-  serverExternalPackages: ["imapflow", "nodemailer", "mailparser", "@typesafe-ai/sdk"],
+  // PGlite reads its wasm next to its own files, which bundling would break.
+  serverExternalPackages: ["imapflow", "nodemailer", "mailparser", "@typesafe-ai/sdk", "@electric-sql/pglite"],
   experimental: {
     // Offline detection + HEAD polling behind `useOffline` (next/offline); bridged into TanStack in QueryProvider.
     useOffline: true,

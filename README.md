@@ -50,7 +50,8 @@ An LLM "narrator" can be plugged in later at `lib/jev/ask/narrate.ts`; none ship
 - **TanStack Query** (reads via GET route handlers) · **nuqs** (URL state) · **Zustand** (compose, Ask history)
 - **imapflow** + **mailparser** to read, **nodemailer** to send
 - **@typesafe-ai/sdk** (Jev), with Kage and then keyword heuristics as fallbacks
-- **Neon Postgres** + **Drizzle** (integrations only) — `@neondatabase/serverless` over HTTP
+- **Neon Postgres** + **Drizzle** (integrations only) — `@neondatabase/serverless` over HTTP; the desktop app uses **PGlite** instead
+- **Electron** for the desktop app (`desktop/`)
 
 ## Quick start
 
@@ -112,8 +113,52 @@ The image runs Node 24 on port 3000 as a non-root user.
 
 ### Good to know
 
-- **Integrations need Neon.** They store data in Postgres through `@neondatabase/serverless`, which talks over HTTP. Use [Neon](https://neon.tech) (the free tier works), or Neon's local HTTP proxy in front of a plain Postgres. Everything else runs with no database.
+- **Integrations need Neon.** On the web they store data in Postgres through `@neondatabase/serverless`, which talks over HTTP. Use [Neon](https://neon.tech) (the free tier works), or Neon's local HTTP proxy in front of a plain Postgres. Everything else runs with no database. The desktop app doesn't need any of this: it has its own database built in.
 - **Point people to your source.** `NEXT_PUBLIC_SOURCE_URL` sets the "Source code" link in Settings → About and the landing footer. If you run a modified copy for other people, AGPL-3.0 asks you to offer them your source, so point it at your fork.
+
+## Desktop
+
+Raven also runs as a desktop app on Windows, macOS and Linux. It's the same Raven, with its server running on your own computer.
+
+| System | Download |
+| --- | --- |
+| Windows 10/11 (x64) | the `.exe` installer (installs for your user, no admin needed) |
+| macOS 13+ (Apple Silicon or Intel) | the `.dmg` for your Mac (`arm64` or `x64`) |
+| Linux (x64) | the `.deb`, or the `.AppImage` |
+
+Builds come from the **Desktop** workflow in GitHub Actions. Open a run and download your system's installer from **Artifacts**. Each download includes `SHA256SUMS.txt` so you can check the file.
+
+**First launch.** The builds aren't code-signed yet, so your system warns you once:
+
+- **Windows:** SmartScreen says "Windows protected your PC". Click **More info**, then **Run anyway**.
+- **macOS:** macOS says it can't verify Raven. Open **System Settings → Privacy & Security** and click **Open Anyway**. Or run `xattr -dr com.apple.quarantine /Applications/Raven.app` once.
+- **Linux:** the `.deb` is the easy way. For the AppImage, run `chmod +x` on it first. On Ubuntu 24.04 and later it may also need an AppArmor allowance.
+
+**What's different on desktop**
+
+- Integrations, rules, blocked senders and reminders use a database built into the app. There's nothing to set up.
+- Proton Bridge works. It runs on your own computer, and the desktop app allows that.
+- Jev works with your own key (Settings → Account). Without one, Kage answers.
+- The weather under the date can't find your location yet. If you click "Show local weather", Raven can't find you, and the button goes away.
+- There are no automatic updates yet. To update, install a newer build over the old one.
+
+**Where your data lives**
+
+| Windows | macOS | Linux |
+| --- | --- | --- |
+| `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
+
+That folder holds the database, the logs and the keys that lock your session. The keys are kept in your system's keychain. On Linux without GNOME Keyring or KWallet they're saved unencrypted, and only your user can read them, so install a keyring if you can.
+
+**Working on the desktop app**
+
+```bash
+bun run desktop:setup     # once: installs desktop/ packages and Electron
+bun run desktop:dev       # Electron on next dev (stop your own next dev first)
+bun run desktop:preview   # Electron on a production build, no installer
+```
+
+[`desktop/README.md`](desktop/README.md) explains how it works and why. Installers for other people are only built by CI.
 
 ## Privacy & security model
 
@@ -152,6 +197,7 @@ bun run db:generate  # new migration from lib/db/schema.ts
 bun run db:migrate   # apply migrations (direct connection)
 bun run db:studio    # browse the integrations tables
 bun run bump patch   # cut a release (patch|minor|major|x.y.z) — see Releases
+bun run desktop:dev  # desktop app on next dev (see Desktop)
 ```
 
 ## Releases
@@ -184,7 +230,7 @@ lib/
   insights/          pure metrics: obligations, reply times, rhythm, newsletters, weather
   jev/ask/           planner, retrieval, ranking, answers (pure where possible)
   integrations/      providers (Slack, Discord, webhook), delivery + retries, SSRF-safe fetch, sealing, diagnostics, mbox export
-  db/                Drizzle schema + migrations (Neon)
+  db/                Drizzle schema + migrations (Neon on the web, PGlite in the desktop app)
   actions/           server actions (mutations only)
   server/            route guard, TTL cache, rate limiter, connection semaphore
 components/

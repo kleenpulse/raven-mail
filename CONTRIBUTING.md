@@ -27,6 +27,10 @@ bun run db:migrate
 
 If you change `lib/db/schema.ts`, run `bun run db:generate` and commit the new migration.
 
+### Desktop app (optional)
+
+The desktop app lives in `desktop/` and has its own packages. Run `bun run desktop:setup` once, then `bun run desktop:dev`. Stop your own `next dev` first, because Next.js allows only one per project. The desktop app keeps its data in a database built into the app (PGlite), so it doesn't need `DATABASE_URL`, and new migrations apply there on their own. See [`desktop/README.md`](desktop/README.md).
+
 ## House rules
 
 - **Changelog.** Every user-visible change gets a plain-English entry under `## [Unreleased]` in `CHANGELOG.md`. It ships inside the app as the What's New card, so write it for users, not for developers.

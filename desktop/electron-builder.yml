@@ -1,0 +1,68 @@
+# Raven desktop installers. Run through `bun run desktop:build` (scripts/build.ts),
+# which builds and stages the app first. Installers for users come from CI only.
+appId: io.github.kleenpulse.raven
+productName: Raven
+copyright: Raven contributors, AGPL-3.0-or-later
+artifactName: Raven-${version}-${os}-${arch}.${ext}
+publish: null
+
+directories:
+  # The staged main process; it has no dependencies, so nothing is collected.
+  app: .stage/app
+  output: .out
+  buildResources: build
+
+asar: true
+npmRebuild: false
+nodeGypRebuild: false
+
+extraResources:
+  - from: .stage/server
+    to: server
+    filter: ["**/*"]
+  # electron-builder drops a node_modules folder at the root of `from`, so it gets its own entry.
+  - from: .stage/server/node_modules
+    to: server/node_modules
+    filter: ["**/*"]
+  - from: ../LICENSE
+    to: LICENSE
+
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  enableEmbeddedAsarIntegrityValidation: true
+  onlyLoadAppFromAsar: true
+  loadBrowserProcessSpecificV8Snapshot: false
+  grantFileProtocolExtraPrivileges: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: true
+  perMachine: false
+
+mac:
+  target:
+    - target: dmg
+      arch: [arm64, x64]
+  category: public.app-category.productivity
+  # Ad-hoc signature: Apple Silicon won't run an unsigned app at all. Real signing comes later.
+  identity: "-"
+  hardenedRuntime: false
+
+linux:
+  target:
+    - target: AppImage
+      arch: [x64]
+    - target: deb
+      arch: [x64]
+  category: Network;Email
+  executableName: raven
+  maintainer: Raven <kleenpulse@users.noreply.github.com>
+  synopsis: Mail, briefed.
+  description: Raven is an email client that reads your inbox and tells you what matters.
