@@ -20,6 +20,9 @@ as you work — it ships inside the app.
   signed yet, so your computer will warn you the first time you open
   Raven. The README shows what to click. It doesn't update itself yet:
   to get a newer version, install a newer build over the old one.
+- On desktop, Raven now opens where you left it, at the same size,
+  and maximized if it was. If that screen isn't plugged in anymore,
+  it opens on your main screen.
 
 ## [0.9.0] - 2026-10-30
 

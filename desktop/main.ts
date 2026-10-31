@@ -1,4 +1,4 @@
-import { app, BrowserWindow, dialog, Menu, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, Menu, screen, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
@@ -10,6 +10,7 @@ import { fileStore, loadSecrets, resetSecrets, type Secrets } from "./secrets";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { TOKEN_HEADER } from "./shared";
+import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } from "./window-state";
 
 /*
  * Raven's desktop shell. The Next.js server runs as a separate process on
@@ -257,23 +258,50 @@ function boot(): void {
 	}
 
 	function createWindow(): BrowserWindow {
+		const place = placeWindow(loadWindowState(userData), screenAreas());
 		const win = new BrowserWindow({
-			width: 1280,
-			height: 840,
-			minWidth: 900,
-			minHeight: 600,
+			width: place.width,
+			height: place.height,
+			...(place.x !== undefined && place.y !== undefined ? { x: place.x, y: place.y } : {}),
+			minWidth: MIN_SIZE.width,
+			minHeight: MIN_SIZE.height,
 			show: false,
 			title: "Raven",
 			backgroundColor: "#050a0b",
 			autoHideMenuBar: process.platform !== "darwin",
 			webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: !app.isPackaged, spellcheck: true },
 		});
-		win.once("ready-to-show", () => win.show());
+		// maximize() also shows the window.
+		win.once("ready-to-show", () => (place.maximized ? win.maximize() : win.show()));
+		rememberPlace(win);
 		// Windows log-off or shutdown: stop the server cleanly while we still can.
 		win.on("session-end", () => void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]));
 		void win.loadURL(appOrigin ? `${appOrigin}${START_PATH}` : SPLASH);
 		mainWindow = win;
 		return win;
+	}
+
+	/** Saves the window's size and place a moment after it changes, and when it closes. */
+	function rememberPlace(win: BrowserWindow): void {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const save = () => {
+			clearTimeout(timer);
+			if (win.isDestroyed()) return;
+			try {
+				saveWindowState(userData, { bounds: win.getNormalBounds(), maximized: win.isMaximized() });
+			} catch (err) {
+				log.info(`couldn't save the window's place: ${err instanceof Error ? err.message : String(err)}`);
+			}
+		};
+		const later = () => {
+			clearTimeout(timer);
+			timer = setTimeout(save, 500);
+		};
+		win.on("resize", later);
+		win.on("move", later);
+		win.on("maximize", later);
+		win.on("unmaximize", later);
+		win.on("close", save);
 	}
 
 	function hardenSession(ses: Session): void {
@@ -339,6 +367,12 @@ function boot(): void {
 			if (choice === 1) event.preventDefault();
 		});
 	}
+}
+
+/** Every display's work area, primary first. */
+function screenAreas(): Rect[] {
+	const primary = screen.getPrimaryDisplay();
+	return [primary, ...screen.getAllDisplays().filter((display) => display.id !== primary.id)].map((display) => display.workArea);
 }
 
 /** Resolves true once every window is gone, false if one stayed open (the user chose "Stay"). */
