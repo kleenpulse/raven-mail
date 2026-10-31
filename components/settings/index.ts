@@ -190,6 +190,15 @@ export const SETTINGS: SettingEntry[] = [
 		keywords: "reset split pane reading pane width wide reader",
 	},
 	{
+		id: "email-links",
+		section: "mail",
+		card: "Email links",
+		label: "Use Raven for Email Links",
+		description: "When you click an email link in another app or on a website, Raven opens a new message with it.",
+		keywords: "mailto default email app client handler links protocol",
+		desktopOnly: true,
+	},
+	{
 		id: "blocked",
 		section: "mail",
 		card: "Blocked senders",

@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { Webhook } from "standardwebhooks";
-import { briefCard, emailCard } from "@/lib/integrations/cards";
+import { briefCard, emailCard, webLinker } from "@/lib/integrations/cards";
 import { IntegrationError } from "@/lib/integrations/errors";
 import type { HttpResult, UrlPolicy } from "@/lib/integrations/http";
 import { discord, escapeDiscord, judgeDiscord, readDiscordLookup } from "@/lib/integrations/providers/discord";
@@ -35,7 +35,7 @@ const email = emailCard(
 		date: "2026-09-24T10:02:00.000Z",
 		preview: "Line one\n\nFrom the team: see [this](https://evil.test) <@123>",
 	},
-	"https://mail.example.com",
+	webLinker("https://mail.example.com"),
 	"FYI — ping me",
 );
 
@@ -129,7 +129,7 @@ describe("discord", () => {
 					why: ["Waiting 2 days", "VIP"],
 				})),
 			},
-			"https://mail.example.com",
+			webLinker("https://mail.example.com"),
 		);
 		const body = JSON.parse(discord.brief({ url: new URL(DISCORD_URL) }, card).body!);
 		for (const field of body.embeds[0].fields) {

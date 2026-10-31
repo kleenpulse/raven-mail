@@ -65,6 +65,8 @@ describe("registry", () => {
 		expect(sectionEntries("notifications").map((s) => s.id)).not.toContain("system-notifications");
 		expect(searchSettings("desktop notifications").map((s) => s.id)).not.toContain("system-notifications");
 		expect(shown(SETTINGS.find((s) => s.id === "banner-position")!, false)).toBe(true);
+		expect(SETTINGS.find((s) => s.id === "email-links")?.desktopOnly).toBe(true);
+		expect(sectionEntries("mail").map((s) => s.id)).not.toContain("email-links");
 	});
 
 	test("row ids are unique", () => {

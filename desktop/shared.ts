@@ -4,6 +4,12 @@ export const TOKEN_HEADER = "x-raven-desktop";
 /** The local server only ever listens here. */
 export const HOST = "127.0.0.1";
 
+/**
+ * The public site whose `/open` page hands links in shared cards (Slack,
+ * Discord) to the desktop app. Any Raven deployment serves that page.
+ */
+export const LINK_BASE = "https://raven-mail.vercel.app";
+
 export function originFor(port: number): string {
 	return `http://${HOST}:${port}`;
 }

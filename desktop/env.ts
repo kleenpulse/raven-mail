@@ -6,6 +6,7 @@
  */
 
 import type { Secrets } from "./secrets";
+import { LINK_BASE } from "./shared";
 
 export type ServerMode = "dev" | "prod";
 
@@ -66,6 +67,7 @@ export function serverEnv(parent: Record<string, string | undefined>, opts: Serv
 	env.ALLOW_LOOPBACK_MAIL_HOSTS = "true";
 	env.RAVEN_DB = "pglite";
 	env.RAVEN_PGLITE_DIR = opts.dataDir;
+	env.RAVEN_LINK_BASE = LINK_BASE;
 	if (opts.restoreFrom) env.RAVEN_PGLITE_RESTORE = opts.restoreFrom;
 	if (opts.mode === "prod") {
 		env.NODE_ENV = "production";

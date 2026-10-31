@@ -32,6 +32,17 @@ Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (d
 - When new mail comes in and Raven isn't the focused window, the page asks main for a notification through the preload bridge. One message shows the sender and subject; several show a count. Clicking it shows the window and opens the message. Settings → Notifications has a switch for it, shown only in the desktop app.
 - On Windows, notifications need the app's ID and a Start Menu shortcut. The installer makes the shortcut, so `desktop:dev` and `desktop:preview` may not show them.
 
+## Links
+
+- `raven://open/mail?folder=<folder>&uid=<uid>` (or `mid=<Message-ID>`) opens a message, and `raven://open/overview` opens the overview. Raven takes nothing else. Other pages, other query keys and paths with `..` are dropped (`links.ts`), and main checks the path again before the page gets it (`bridge.ts`).
+- If Raven isn't running, the link starts it and opens there. If it is, the window comes forward and goes there without reloading.
+- Installed and preview builds register `raven://` each time they start. The NSIS installer doesn't register links, so this is how Windows learns about it. `desktop:dev` doesn't, because a link can't start `next dev`. Preview takes `raven://` from an installed Raven until the installed one starts again.
+- Unpackaged builds register `electron <app folder> --raven-mode=<mode> "<link>"`. The mode has to come before the link: Electron refuses to start if anything follows a link on the command line (its fix for argument injection).
+- Raven only takes email (`mailto:`) links when you ask, with "Use Raven for email links" (File menu, the Raven menu on macOS, or Settings → Mail). macOS and Linux make Raven the default right away. Windows doesn't let apps do that. So Raven lists itself under Default apps (`HKCU\Software\RegisteredApplications`, `Software\Raven\Capabilities` and a `Raven.mailto` ProgId) and opens that page, where you pick it. Raven reads your pick from `UserChoice`. Uninstalling removes those keys, and updating keeps them.
+- A `mailto:` link opens `/mail?compose=<link>`. That works on the web too: on any page, `?compose=` opens the link in compose and then leaves the URL.
+- Cards you share to Slack, Discord or a webhook can't link to the app's own server, since it's only on your computer. So on desktop their links go to `https://raven-mail.vercel.app/open?to=<raven link>` (`LINK_BASE` in `shared.ts`, passed to the server as `RAVEN_LINK_BASE`). That page tries the `raven://` link, and has buttons to open it in Raven or in the browser, and a link to install Raven. It only passes on `raven://open/mail` and `raven://open/overview` links (`lib/desktop/open-link.ts`). Any Raven deployment serves `/open`. Webhook JSON also carries the raw link as `ravenLink`. The web app's cards don't change.
+- The macOS app declares both schemes (its URL types). That only says Raven can open them. The Linux `.desktop` file lists only `raven`: when you haven't picked an email app, Linux opens email links with any app that lists `mailto`, and Raven would take them without asking. On Linux, Electron finds its `.desktop` file through `desktopName` (`raven.desktop`), set when staging.
+
 ## Why the server listens on 127.0.0.1
 
 We first looked at serving the app with no open port, through an Electron protocol handler (the `next-electron-rsc` approach). It didn't hold up:
@@ -54,9 +65,10 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 ## Security model
 
 - The window runs sandboxed and context-isolated, with no Node.js and no webviews. DevTools are off in installed builds.
-- The main window has one small preload (`preload.ts`). It gives the page `window.ravenDesktop` with two calls and nothing else:
+- The main window has one small preload (`preload.ts`). It gives the page `window.ravenDesktop` with these calls and nothing else:
   - `notifyNewMail(items)` asks for a new-mail notification. Main takes it only from the main window's top frame on the app's origin. It takes at most 50 items, each a numeric IMAP uid with a sender and subject cut to 200 characters. Anything else is dropped (`bridge.ts`).
-  - `onOpen(callback)` gets a path in the app when you click a notification. Main only sends `/overview`, or `/mail` with `folder`, `uid`, `mid` or `compose`.
+  - `onOpen(callback)` gets a path in the app when you click a notification or a link. Main only sends `/overview`, or `/mail` with `folder`, `uid`, `mid` or `compose`.
+  - `mailApp.status()` and `mailApp.claim()` say whether Raven opens email links, and ask for it. Main answers only the main window's top frame on the app's origin.
   - The preload has no Node.js. Child windows and email frames don't get it.
 - Links to other sites, `mailto:` and `tel:` open in the system's apps. Other schemes are dropped.
 - Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key. So on desktop the weather asks you to type a city, and the local server looks it up with Open-Meteo.

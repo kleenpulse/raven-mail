@@ -61,6 +61,7 @@ import { requestTourResume, requestTourRestart } from "@/components/tour/store";
 import { setTourVoice, useTourStateStore } from "@/lib/tour/state";
 import { DEFAULT_TOUR_STATE, TOUR_VOICES, VOICE_LABELS, type TourVoice } from "@/lib/tour/types";
 import { BlockedSendersRow } from "@/components/settings/blocked-senders-row";
+import { ravenDesktop, type DesktopMailAppStatus } from "@/lib/desktop/bridge";
 import { NewRuleRow, RuleActivityRow, RulesListRow } from "@/components/settings/rules-rows";
 
 /* ─── Appearance ─────────────────────────────────────────────────────── */
@@ -258,6 +259,50 @@ function MailLayoutRow() {
 					Reset
 				</Button>
 			)}
+		</SettingRow>
+	);
+}
+
+/** Desktop only. On Windows the user picks Raven in Windows Settings, so the row checks again on return. */
+function EmailLinksRow() {
+	const [status, setStatus] = React.useState<DesktopMailAppStatus | null>(null);
+	const [busy, setBusy] = React.useState(false);
+
+	React.useEffect(() => {
+		const mailApp = ravenDesktop()?.mailApp;
+		if (!mailApp) return;
+		const check = () => void mailApp.status().then(setStatus, () => setStatus(null));
+		check();
+		window.addEventListener("focus", check);
+		return () => window.removeEventListener("focus", check);
+	}, []);
+
+	async function claim() {
+		const mailApp = ravenDesktop()?.mailApp;
+		if (!mailApp) return;
+		setBusy(true);
+		try {
+			const next = await mailApp.claim();
+			setStatus(next);
+			if (!next.viaSettings && !next.isDefault) toast.error("Raven couldn't become the app for email links");
+		} catch {
+			toast.error("Raven couldn't become the app for email links");
+		} finally {
+			setBusy(false);
+		}
+	}
+
+	return (
+		<SettingRow id="email-links">
+			{(labelId) =>
+				status?.isDefault ? (
+					<span className="text-[13px] text-ink-2">Raven opens them</span>
+				) : (
+					<Button variant="surface" size="pill-sm" aria-describedby={labelId} disabled={!status || busy} onClick={() => void claim()}>
+						{status?.viaSettings ? "Choose in Windows…" : "Use Raven"}
+					</Button>
+				)
+			}
 		</SettingRow>
 	);
 }
@@ -779,6 +824,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	"rules-new": NewRuleRow,
 	"rules-activity": RuleActivityRow,
 	"mail-layout": MailLayoutRow,
+	"email-links": EmailLinksRow,
 	"banner-position": BannerPositionRow,
 	"system-notifications": () => <PrefSwitchRow id="system-notifications" pref="notify.system" />,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,

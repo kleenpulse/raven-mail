@@ -102,6 +102,14 @@ export function mailtoFields(href: string): MailtoFields | undefined {
   }
 }
 
+/** Any `mailto:` link → what a new message in compose starts with. */
+export function mailtoDraft(href: string): { to: string; cc?: string; bcc?: string; subject: string; text: string } | undefined {
+  const fields = mailtoFields(href);
+  if (!fields) return undefined;
+  const { body, subject, ...recipients } = fields;
+  return { ...recipients, subject: subject ?? "", text: body ?? "" };
+}
+
 /** `mailto:list@x.example?subject=…&body=…` → a prefilled unsubscribe request. */
 export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
   const fields = mailtoFields(href);

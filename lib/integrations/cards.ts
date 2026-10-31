@@ -11,20 +11,41 @@ export type EmailCard = {
 	preview: string;
 	note?: string;
 	messageId?: string;
-	link: string;
-};
+} & CardLink;
 
 export type BriefCard = {
 	dateLabel: string;
-	items: { subject: string; fromName: string; fromAddress: string; why: string[]; link: string }[];
-	link: string;
-};
+	items: ({ subject: string; fromName: string; fromAddress: string; why: string[] } & CardLink)[];
+} & CardLink;
 
-export function absoluteMailLink(origin: string, ref: { folder: string; uid: string; messageId?: string | null }): string {
-	return new URL(mailLink({ folder: ref.folder, uid: ref.uid, messageId: ref.messageId ?? undefined }), origin).toString();
+/** Where a card's "open" link goes. `ravenLink` is the desktop app's own link, when there is one. */
+export type CardLink = { link: string; ravenLink?: string };
+
+/** Turns a path in the app (`/mail?…`, `/overview`) into a card's links. */
+export type CardLinker = (path: string) => CardLink;
+
+/** The web app: links go straight to its pages. */
+export function webLinker(origin: string): CardLinker {
+	return (path) => ({ link: new URL(path, origin).toString() });
 }
 
-export function emailCard(email: SharedEmail, origin: string, note?: string): EmailCard {
+/**
+ * The desktop app: its server is only on this computer, so links go through
+ * the public site's `/open` page, which hands them to the app as `raven://`.
+ */
+export function desktopLinker(base: string): CardLinker {
+	const open = new URL("/open", base).toString();
+	return (path) => {
+		const ravenLink = `raven://open${path}`;
+		return { link: `${open}?to=${encodeURIComponent(ravenLink)}`, ravenLink };
+	};
+}
+
+function mailPath(ref: { folder: string; uid: string; messageId?: string | null }): string {
+	return mailLink({ folder: ref.folder, uid: ref.uid, messageId: ref.messageId ?? undefined });
+}
+
+export function emailCard(email: SharedEmail, links: CardLinker, note?: string): EmailCard {
 	const date = new Date(email.date);
 	return {
 		subject: truncate(email.subject, 250) || "(no subject)",
@@ -34,11 +55,11 @@ export function emailCard(email: SharedEmail, origin: string, note?: string): Em
 		preview: truncate(email.preview, PREVIEW_MAX),
 		...(note?.trim() ? { note: truncate(note, NOTE_MAX) } : {}),
 		...(email.messageId ? { messageId: email.messageId } : {}),
-		link: absoluteMailLink(origin, email),
+		...links(mailPath(email)),
 	};
 }
 
-export function briefCard(input: Pick<SendBriefInput, "dateLabel" | "items">, origin: string): BriefCard {
+export function briefCard(input: Pick<SendBriefInput, "dateLabel" | "items">, links: CardLinker): BriefCard {
 	return {
 		dateLabel: truncate(input.dateLabel, 60),
 		items: input.items.map((item) => ({
@@ -46,8 +67,8 @@ export function briefCard(input: Pick<SendBriefInput, "dateLabel" | "items">, or
 			fromName: truncate(item.from.name || item.from.address, 80),
 			fromAddress: item.from.address.trim(),
 			why: item.why.map((w) => truncate(w, 60)).filter(Boolean),
-			link: absoluteMailLink(origin, item),
+			...links(mailPath(item)),
 		})),
-		link: new URL("/overview", origin).toString(),
+		...links("/overview"),
 	};
 }

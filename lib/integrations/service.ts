@@ -5,7 +5,7 @@ import { dbConfigured, dbError } from "@/lib/db";
 import type { IntegrationRow } from "@/lib/db/schema";
 import { jevStatus } from "@/lib/jev/client";
 import type { MailSession } from "@/lib/session";
-import { briefCard, emailCard } from "./cards";
+import { briefCard, desktopLinker, emailCard, webLinker, type CardLinker } from "./cards";
 import { fingerprint, openTarget, sealTarget, tenantKey } from "./crypto";
 import { deliver } from "./deliver";
 import { jevDiagnostics, pinnedModel } from "./diagnostics/jev";
@@ -59,6 +59,15 @@ export function appOrigin(request: Request): string {
 	const host = request.headers.get("x-forwarded-host") ?? request.headers.get("host") ?? url.host;
 	const proto = request.headers.get("x-forwarded-proto") ?? url.protocol.replace(":", "");
 	return `${proto}://${host}`;
+}
+
+/**
+ * How shared cards link back to Raven. The desktop app's own server is only
+ * on this computer, so its cards go through the public site (RAVEN_LINK_BASE).
+ */
+export function cardLinker(request: Request): CardLinker {
+	const base = process.env.RAVEN_DESKTOP_BUILD ? process.env.RAVEN_LINK_BASE?.trim() : undefined;
+	return base ? desktopLinker(base) : webLinker(appOrigin(request));
 }
 
 /* ── Overview ────────────────────────────────────────────────────────────── */
@@ -397,8 +406,8 @@ async function deliverTo(
 
 const quoteSubject = (subject: string) => `“${subject.length > 80 ? `${subject.slice(0, 79)}…` : subject || "(no subject)"}”`;
 
-export function shareEmail(session: MailSession, input: ShareEmailInput, origin: string, opts: { signal?: AbortSignal; record: Recorder }) {
-	const card = emailCard(input.email, origin, input.note);
+export function shareEmail(session: MailSession, input: ShareEmailInput, links: CardLinker, opts: { signal?: AbortSignal; record: Recorder }) {
+	const card = emailCard(input.email, links, input.note);
 	return deliverTo(
 		session,
 		input.integrationId,
@@ -410,8 +419,8 @@ export function shareEmail(session: MailSession, input: ShareEmailInput, origin:
 	);
 }
 
-export function sendBrief(session: MailSession, input: SendBriefInput, origin: string, opts: { signal?: AbortSignal; record: Recorder }) {
-	const card = briefCard(input, origin);
+export function sendBrief(session: MailSession, input: SendBriefInput, links: CardLinker, opts: { signal?: AbortSignal; record: Recorder }) {
+	const card = briefCard(input, links);
 	const n = input.items.length;
 	return deliverTo(
 		session,

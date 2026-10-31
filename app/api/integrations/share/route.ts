@@ -2,7 +2,7 @@ import { after } from "next/server";
 import { json, readJson, requireApiSession } from "@/lib/server/guard";
 import { tryRecordEvent } from "@/lib/integrations/repo";
 import { integrationRoute, limiter } from "@/lib/integrations/route";
-import { appOrigin, shareEmail } from "@/lib/integrations/service";
+import { cardLinker, shareEmail } from "@/lib/integrations/service";
 import { shareEmailSchema } from "@/lib/integrations/types";
 
 export const maxDuration = 60;
@@ -15,7 +15,7 @@ export const POST = integrationRoute(async (request) => {
 	const session = await requireApiSession();
 	const input = await readJson(request, shareEmailSchema);
 	take(session);
-	const report = await shareEmail(session, input, appOrigin(request), {
+	const report = await shareEmail(session, input, cardLinker(request), {
 		signal: request.signal,
 		record: (event) => after(() => tryRecordEvent(event)),
 	});

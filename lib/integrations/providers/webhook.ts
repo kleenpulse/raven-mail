@@ -47,6 +47,7 @@ export function emailEvent(card: EmailCard): Event {
 				preview: card.preview,
 				messageId: card.messageId ?? null,
 				link: card.link,
+				...(card.ravenLink ? { ravenLink: card.ravenLink } : {}),
 			},
 			note: card.note ?? null,
 		},
@@ -59,11 +60,13 @@ export function briefEvent(card: BriefCard): Event {
 		data: {
 			date: card.dateLabel,
 			link: card.link,
+			...(card.ravenLink ? { ravenLink: card.ravenLink } : {}),
 			items: card.items.map((item) => ({
 				subject: item.subject,
 				from: { name: item.fromName, address: item.fromAddress },
 				why: item.why,
 				link: item.link,
+				...(item.ravenLink ? { ravenLink: item.ravenLink } : {}),
 			})),
 		},
 	};
