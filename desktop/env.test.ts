@@ -41,9 +41,17 @@ describe("serverEnv", () => {
 		expect(env.RAVEN_PGLITE_DIR).toBe("/data/db");
 		expect(env.SESSION_SECRET).toBe(SECRETS.SESSION_SECRET);
 		expect(env.INTEGRATIONS_SECRET).toBe(SECRETS.INTEGRATIONS_SECRET);
-		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG"]) {
+		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG", "RAVEN_PGLITE_RESTORE"]) {
 			expect(env[key]).toBeUndefined();
 		}
+	});
+
+	test("restoring: names the backup for that start only", () => {
+		const opts = { mode: "prod", port: 52731, token: "t0k", dataDir: "/data/db", secrets: SECRETS } as const;
+		expect(serverEnv(PARENT, { ...opts, restoreFrom: "/data/db.backups/before-x.tar.gz" }).RAVEN_PGLITE_RESTORE).toBe(
+			"/data/db.backups/before-x.tar.gz",
+		);
+		expect(serverEnv({ ...PARENT, RAVEN_PGLITE_RESTORE: "/evil.tar.gz" }, opts).RAVEN_PGLITE_RESTORE).toBeUndefined();
 	});
 
 	test("dev: blanks DATABASE_URL so .env's Neon URL can't fill it, leaves NODE_ENV to next dev", () => {

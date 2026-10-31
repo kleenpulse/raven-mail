@@ -30,6 +30,9 @@ as you work — it ships inside the app.
   this is the only way, since the desktop app can't use your
   location. On the web it shows if you said no to sharing your
   location.
+- Before the desktop app updates its database, it now saves a copy.
+  If the database won't open after that, Raven offers to go back to
+  the copy.
 
 ## [0.9.0] - 2026-10-30
 

@@ -24,6 +24,7 @@ for (const key of [
 	"RAVEN_DB",
 	"RAVEN_PGLITE_DIR",
 	"RAVEN_MIGRATIONS_DIR",
+	"RAVEN_PGLITE_RESTORE",
 	"RAVEN_DESKTOP_TOKEN",
 ]) {
 	delete process.env[key];

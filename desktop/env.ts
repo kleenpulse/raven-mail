@@ -16,6 +16,8 @@ export type ServerEnvOptions = {
 	/** Folder for the local database (PGlite). */
 	dataDir: string;
 	secrets: Secrets;
+	/** A database backup to start the (empty) data folder from, for this one start. */
+	restoreFrom?: string;
 };
 
 const PASS = new Set([
@@ -64,6 +66,7 @@ export function serverEnv(parent: Record<string, string | undefined>, opts: Serv
 	env.ALLOW_LOOPBACK_MAIL_HOSTS = "true";
 	env.RAVEN_DB = "pglite";
 	env.RAVEN_PGLITE_DIR = opts.dataDir;
+	if (opts.restoreFrom) env.RAVEN_PGLITE_RESTORE = opts.restoreFrom;
 	if (opts.mode === "prod") {
 		env.NODE_ENV = "production";
 	} else {

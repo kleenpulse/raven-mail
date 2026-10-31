@@ -2,6 +2,7 @@ import { app, BrowserWindow, dialog, Menu, screen, session, shell, type MenuItem
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { latestBackup } from "./backups";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { createLog } from "./log";
@@ -104,19 +105,20 @@ function boot(): void {
 		await mainWindow?.loadURL(`${server.origin}${START_PATH}`);
 	}
 
-	async function startServer(): Promise<ServerHandle> {
+	/** Starts the server; `restoreFrom` names a database backup to fill the (empty) data folder from. */
+	async function startServer(restoreFrom?: string): Promise<ServerHandle> {
 		if (!secrets) throw new Error("secrets not loaded");
 		const port = await pickPort();
 		const serverLog = createLog(logs, "server.log", !app.isPackaged);
 		if (mode === "dev") {
 			const repoRoot = process.env.RAVEN_REPO_ROOT;
 			if (!repoRoot) throw new ServerStartError("Start dev mode with `bun run desktop:dev`.");
-			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets });
+			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
 		// Packaged: resources/server. Preview: desktop/.stage/server next to the staged app.
 		const serverDir = app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
-		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets });
+		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
 		const handle = await startStandaloneServer({ serverDir, port, env, log: serverLog });
 		if (handle.port !== port) {
 			log.info(`port ${port} was taken; the server moved to ${handle.port}. Data the window keeps per origin starts fresh.`);
@@ -126,8 +128,9 @@ function boot(): void {
 	}
 
 	/**
-	 * Starts the server; if the local database won't open (e.g. after a crash),
-	 * offers to move it aside and start with an empty one.
+	 * Starts the server; if the local database won't open (after a crash, or
+	 * an update that went wrong), offers to go back to the copy saved before
+	 * its last update, or to move it aside and start with an empty one.
 	 */
 	async function startServerOrRecover(): Promise<ServerHandle> {
 		try {
@@ -135,20 +138,27 @@ function boot(): void {
 		} catch (err) {
 			if (!(err instanceof ServerStartError && err.localDb)) throw err;
 			log.info(`local database trouble: ${err.message}`);
+			const db = join(userData, "db");
+			const backup = latestBackup(db);
+			const when = backup?.at.toLocaleString();
+			const fresh =
+				"put the database aside (it keeps a copy in its data folder) and start with an empty one. Your mail isn't affected, but integrations, rules, blocked senders and reminders will need setting up again.";
 			const { response } = await dialog.showMessageBox({
 				type: "error",
 				title: "Raven",
 				message: "Raven's local database didn't open.",
-				detail:
-					"Raven can put the old database aside (it keeps a copy in its data folder) and start with an empty one. Your mail isn't affected, but integrations, rules, blocked senders and reminders will need setting up again.",
-				buttons: ["Put it aside and start fresh", "Quit"],
+				detail: backup
+					? `Raven can go back to the copy it saved on ${when}, before the database was last updated. Or it can ${fresh}`
+					: `Raven can ${fresh}`,
+				buttons: backup ? [`Go back to the copy from ${when}`, "Start fresh", "Quit"] : ["Put it aside and start fresh", "Quit"],
 				defaultId: 0,
-				cancelId: 1,
+				cancelId: backup ? 2 : 1,
 			});
-			if (response !== 0) throw err;
-			const db = join(userData, "db");
+			const restore = backup !== null && response === 0;
+			if (!restore && response !== (backup ? 1 : 0)) throw err;
 			if (existsSync(db)) renameSync(db, `${db}.broken-${new Date().toISOString().replace(/[:.]/g, "-")}`);
-			return startServer();
+			if (restore) log.info(`restoring the local database from ${backup.path}`);
+			return startServer(restore ? backup.path : undefined);
 		}
 	}
 
