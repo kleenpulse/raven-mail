@@ -39,6 +39,7 @@ describe("serverEnv", () => {
 		expect(env.NEXT_TELEMETRY_DISABLED).toBe("1");
 		expect(env.RAVEN_DB).toBe("pglite");
 		expect(env.RAVEN_PGLITE_DIR).toBe("/data/db");
+		expect(env.RAVEN_LINK_BASE).toBe("https://raven-mail.vercel.app");
 		expect(env.SESSION_SECRET).toBe(SECRETS.SESSION_SECRET);
 		expect(env.INTEGRATIONS_SECRET).toBe(SECRETS.INTEGRATIONS_SECRET);
 		for (const key of ["NODE_OPTIONS", "DATABASE_URL", "TYPESAFE_API_KEY", "__NEXT_PRIVATE_STANDALONE_CONFIG", "RAVEN_PGLITE_RESTORE"]) {
