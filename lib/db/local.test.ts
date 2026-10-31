@@ -160,6 +160,19 @@ describe("backups before migrations", () => {
 		}
 	}, 120_000);
 
+	test("a backup that can't be written doesn't stop the database from opening", async () => {
+		const copy = migrationsCopy();
+		copy.cut(JOURNAL.entries.length - 1);
+		await openLocalDb();
+		await closeLocalDb();
+		// A file where the backups folder should be: mkdir fails.
+		writeFileSync(backupsDir(process.env.RAVEN_PGLITE_DIR!), "in the way");
+
+		copy.restore();
+		const db = await openLocalDb();
+		expect(await applied(db)).toBe(JOURNAL.entries.length);
+	}, 60_000);
+
 	test("keeps the newest three", async () => {
 		const copy = migrationsCopy();
 		copy.cut(JOURNAL.entries.length - 1);
@@ -175,10 +188,12 @@ describe("backups before migrations", () => {
 			utimesSync(old, long, new Date(long.getTime() + n * 1000));
 		}
 		writeFileSync(path.join(dir, "notes.txt"), "not a backup");
+		writeFileSync(path.join(dir, "before-0000_crashed-0.tar.gz.tmp"), "half");
 
 		copy.restore();
 		await openLocalDb();
 		const left = readdirSync(dir).sort();
+		expect(left).not.toContain("before-0000_crashed-0.tar.gz.tmp");
 		expect(left).toHaveLength(4);
 		expect(left).toContain("notes.txt");
 		expect(left).toContain("before-0000_old-4.tar.gz");

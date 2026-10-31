@@ -128,9 +128,9 @@ function boot(): void {
 	}
 
 	/**
-	 * Starts the server; if the local database won't open (after a crash, or
-	 * an update that went wrong), offers to go back to the copy saved before
-	 * its last update, or to move it aside and start with an empty one.
+	 * Starts the server; if the local database won't open (after a crash, for
+	 * example), offers to go back to the copy saved before its last update,
+	 * or to move it aside and start with an empty one.
 	 */
 	async function startServerOrRecover(): Promise<ServerHandle> {
 		try {
@@ -282,8 +282,12 @@ function boot(): void {
 			autoHideMenuBar: process.platform !== "darwin",
 			webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: !app.isPackaged, spellcheck: true },
 		});
-		// maximize() also shows the window.
-		win.once("ready-to-show", () => (place.maximized ? win.maximize() : win.show()));
+		win.once("ready-to-show", () => {
+			if (!place.maximized) return win.show();
+			// maximize() shows the window too, but doesn't focus it.
+			win.maximize();
+			win.focus();
+		});
 		rememberPlace(win);
 		// Windows log-off or shutdown: stop the server cleanly while we still can.
 		win.on("session-end", () => void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]));

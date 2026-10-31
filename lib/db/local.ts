@@ -59,7 +59,12 @@ async function open(): Promise<Local> {
 	try {
 		const db = drizzle({ client, schema });
 		const migrationsFolder = migrationsDir();
-		if (existed) await backUpBeforeMigrating(client, dataDir, migrationsFolder);
+		if (existed) {
+			// A backup that can't be written (disk full, a locked file) must not stop a healthy database from opening.
+			await backUpBeforeMigrating(client, dataDir, migrationsFolder).catch((err: unknown) => {
+				console.error(`[local db] couldn't back up before migrating: ${err instanceof Error ? err.message : String(err)}`);
+			});
+		}
 		await migrate(db, { migrationsFolder });
 		registry[CLOSE] = closeLocalDb;
 		return { client, db };
@@ -82,8 +87,10 @@ const KEEP_BACKUPS = 3;
 
 /**
  * Saves a copy of the database before a new migration changes it, so a
- * migration that goes wrong can be undone (the desktop app offers to
- * restore it). Pending means what drizzle's migrator will apply: journal
+ * database that's damaged afterwards (a crash mid-write, say) can be
+ * brought back; the desktop app offers the newest copy. A migration that
+ * fails outright rolls back on its own, and would run again after a
+ * restore. Pending means what drizzle's migrator will apply: journal
  * entries newer than the last applied one. Keeps the newest three.
  */
 async function backUpBeforeMigrating(client: PGlite, dataDir: string, migrationsFolder: string): Promise<void> {
@@ -106,7 +113,10 @@ async function backUpBeforeMigrating(client: PGlite, dataDir: string, migrations
 	writeFileSync(`${file}.tmp`, Buffer.from(await dump.arrayBuffer()));
 	renameSync(`${file}.tmp`, file);
 
-	const old = readdirSync(dir)
+	const names = readdirSync(dir);
+	// Half-written copies from a crash mid-backup.
+	for (const name of names) if (/^before-.+\.tar\.gz\.tmp$/.test(name)) rmSync(join(dir, name), { force: true });
+	const old = names
 		.filter((name) => /^before-.+\.tar\.gz$/.test(name))
 		.map((name) => ({ path: join(dir, name), at: statSync(join(dir, name)).mtimeMs }))
 		.sort((a, b) => b.at - a.at)

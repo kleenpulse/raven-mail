@@ -30,6 +30,8 @@ export function useDesktopReachWatch(client: QueryClient): void {
 		window.addEventListener("offline", offline);
 		window.addEventListener("online", online);
 		if (!navigator.onLine) reach.browserOffline();
+		// Mounted again while offline (cleanup stopped the recheck): check now, which re-arms it.
+		else if (reach.get()) reach.mailUnreachable();
 		const stopQueries = client.getQueryCache().subscribe((event) => {
 			if (event.type !== "updated" || event.action.type !== "error") return;
 			const error: unknown = event.action.error;
