@@ -19,7 +19,9 @@ Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (d
 - `main.ts` is the Electron main process. It owns the window, the session and the server's lifetime.
 - `server/bootstrap.ts` runs Next's standalone server in a separate Electron utility process. It is bundled into the server folder as `raven-server.js`.
 - `scripts/stage.ts` builds the web app with `RAVEN_DESKTOP_BUILD=1` and copies what ships into `.stage/`. `scripts/verify.ts` checks that folder.
-- With `RAVEN_DB=pglite`, the server keeps integrations, rules, blocked senders, reminders and tour progress in a local Postgres (PGlite) under the data folder. It applies new migrations when it starts.
+- With `RAVEN_DB=pglite`, the server keeps integrations, rules, blocked senders, reminders and tour progress in a local Postgres (PGlite) under the data folder. It applies new migrations when it starts. Before it applies one to an existing database, it saves a copy to `db.backups` (`dumpDataDir`) and keeps the last three. If the database won't open, the app offers to start from the newest copy (`RAVEN_PGLITE_RESTORE`), or to start fresh.
+- Staging replaces Turbopack's PGlite alias (`.next/node_modules/@electric-sql/pglite-<hash>`) with a small package that re-exports the real one, and leaves out PGlite's extension files. Otherwise PGlite would ship twice.
+- Next's offline check asks the page's own server, and on desktop that server always answers. So desktop asks `/api/mail/reach` whether your mail server can be reached instead (`lib/desktop/reach-watch.ts`).
 
 ## Why the server listens on 127.0.0.1
 
@@ -44,8 +46,9 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 
 - The window runs sandboxed and context-isolated, with no Node.js, no preload and no webviews. DevTools are off in installed builds.
 - Links to other sites, `mailto:` and `tel:` open in the system's apps. Other schemes are dropped.
-- Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key, so the local weather can't find you on desktop yet.
-- Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, and cookie encryption and asar integrity checks are on. Installed builds refuse `--remote-debugging-port`.
+- Only a few permissions are granted, and only to the app's own pages: copying to the clipboard, full screen and saving files. Location is refused: Electron's location service needs a Google API key. So on desktop the weather asks you to type a city, and the local server looks it up with Open-Meteo.
+- Every response from the local server gets a Content Security Policy (`csp.ts`), in preview and installed builds. Scripts, plugins, frames and fetches must come from the app itself, and other pages can't frame it. It can't block inline scripts yet: Next's page data and the theme script are inline, and nonces would need middleware. It also lets images load from any site, because emails show remote images once you allow them. `desktop:dev` runs without it, since `next dev` needs `eval` and a websocket.
+- Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, and cookie encryption and asar integrity checks are on. Installed builds refuse `--remote-debugging-port`. Electron 45 also has a ninth fuse, `wasmTrapHandlers`. It stays on (the default): it makes WebAssembly fast, and the local database runs on WebAssembly. electron-builder 26 can't set it, so `scripts/build.ts` checks that it's on.
 - `SESSION_SECRET` and `INTEGRATIONS_SECRET` are made on first launch and kept in `secrets.json`, locked with Electron `safeStorage` (the OS keychain). If the keychain changes, or isn't available, Raven asks before it makes new ones: Quit, or Start fresh. New secrets sign you out, and saved integrations, rules, blocked senders and reminders can't be read anymore. Raven only makes new ones without asking when the keychain works but can't read the file. On Linux without a keyring, the secrets are saved unencrypted, readable only by your user.
 - The server never writes into its install folder: ISR flushing and gzip are off.
 - The `resources/server` folder isn't covered by asar integrity. Code signing (a later phase) is what will protect it.
@@ -56,4 +59,4 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 | --- | --- | --- | --- |
 | Installed app | `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
 
-The folder holds `db/` (the local database), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.
+The folder holds `db/` (the local database), `db.backups/` (copies from before database updates), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` (the port), `window-state.json` (the window's size and place) and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.

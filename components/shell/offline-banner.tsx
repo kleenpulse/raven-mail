@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { useOffline } from "next/offline";
+import { useAppOffline } from "@/hooks/use-app-offline";
 import { useComposeStore } from "@/lib/store/compose";
 import { cn } from "@/lib/utils";
 
@@ -13,7 +13,7 @@ const BACK_MS = 2000;
  * the reconnect itself is OnlineBridge's job in QueryProvider.
  */
 export function OfflineBanner() {
-	const offline = useOffline();
+	const offline = useAppOffline();
 	const pill = useComposeStore((s) => s.open && s.minimized);
 	const [back, setBack] = React.useState(false);
 	const was = React.useRef(false);

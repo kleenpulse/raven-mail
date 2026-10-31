@@ -20,6 +20,19 @@ as you work — it ships inside the app.
   signed yet, so your computer will warn you the first time you open
   Raven. The README shows what to click. It doesn't update itself yet:
   to get a newer version, install a newer build over the old one.
+- On desktop, Raven now opens where you left it, at the same size,
+  and maximized if it was. If that screen isn't plugged in anymore,
+  it opens on your main screen.
+- On desktop, Raven now tells you when you're offline. It checks if
+  it can reach your mail server, so the notice shows when your
+  internet is down.
+- You can now type your city to get the local weather. On desktop
+  this is the only way, since the desktop app can't use your
+  location. On the web it shows if you said no to sharing your
+  location.
+- Before the desktop app updates its database, it now saves a copy.
+  If the database won't open after that, Raven offers to go back to
+  the copy.
 
 ## [0.9.0] - 2026-10-30
 

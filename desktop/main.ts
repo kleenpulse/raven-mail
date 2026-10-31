@@ -1,7 +1,9 @@
-import { app, BrowserWindow, dialog, Menu, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, Menu, screen, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { latestBackup } from "./backups";
+import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
@@ -10,6 +12,7 @@ import { fileStore, loadSecrets, resetSecrets, type Secrets } from "./secrets";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { TOKEN_HEADER } from "./shared";
+import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } from "./window-state";
 
 /*
  * Raven's desktop shell. The Next.js server runs as a separate process on
@@ -102,19 +105,20 @@ function boot(): void {
 		await mainWindow?.loadURL(`${server.origin}${START_PATH}`);
 	}
 
-	async function startServer(): Promise<ServerHandle> {
+	/** Starts the server; `restoreFrom` names a database backup to fill the (empty) data folder from. */
+	async function startServer(restoreFrom?: string): Promise<ServerHandle> {
 		if (!secrets) throw new Error("secrets not loaded");
 		const port = await pickPort();
 		const serverLog = createLog(logs, "server.log", !app.isPackaged);
 		if (mode === "dev") {
 			const repoRoot = process.env.RAVEN_REPO_ROOT;
 			if (!repoRoot) throw new ServerStartError("Start dev mode with `bun run desktop:dev`.");
-			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets });
+			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
 		// Packaged: resources/server. Preview: desktop/.stage/server next to the staged app.
 		const serverDir = app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
-		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets });
+		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
 		const handle = await startStandaloneServer({ serverDir, port, env, log: serverLog });
 		if (handle.port !== port) {
 			log.info(`port ${port} was taken; the server moved to ${handle.port}. Data the window keeps per origin starts fresh.`);
@@ -124,8 +128,9 @@ function boot(): void {
 	}
 
 	/**
-	 * Starts the server; if the local database won't open (e.g. after a crash),
-	 * offers to move it aside and start with an empty one.
+	 * Starts the server; if the local database won't open (after a crash, for
+	 * example), offers to go back to the copy saved before its last update,
+	 * or to move it aside and start with an empty one.
 	 */
 	async function startServerOrRecover(): Promise<ServerHandle> {
 		try {
@@ -133,20 +138,27 @@ function boot(): void {
 		} catch (err) {
 			if (!(err instanceof ServerStartError && err.localDb)) throw err;
 			log.info(`local database trouble: ${err.message}`);
+			const db = join(userData, "db");
+			const backup = latestBackup(db);
+			const when = backup?.at.toLocaleString();
+			const fresh =
+				"put the database aside (it keeps a copy in its data folder) and start with an empty one. Your mail isn't affected, but integrations, rules, blocked senders and reminders will need setting up again.";
 			const { response } = await dialog.showMessageBox({
 				type: "error",
 				title: "Raven",
 				message: "Raven's local database didn't open.",
-				detail:
-					"Raven can put the old database aside (it keeps a copy in its data folder) and start with an empty one. Your mail isn't affected, but integrations, rules, blocked senders and reminders will need setting up again.",
-				buttons: ["Put it aside and start fresh", "Quit"],
+				detail: backup
+					? `Raven can go back to the copy it saved on ${when}, before the database was last updated. Or it can ${fresh}`
+					: `Raven can ${fresh}`,
+				buttons: backup ? [`Go back to the copy from ${when}`, "Start fresh", "Quit"] : ["Put it aside and start fresh", "Quit"],
 				defaultId: 0,
-				cancelId: 1,
+				cancelId: backup ? 2 : 1,
 			});
-			if (response !== 0) throw err;
-			const db = join(userData, "db");
+			const restore = backup !== null && response === 0;
+			if (!restore && response !== (backup ? 1 : 0)) throw err;
 			if (existsSync(db)) renameSync(db, `${db}.broken-${new Date().toISOString().replace(/[:.]/g, "-")}`);
-			return startServer();
+			if (restore) log.info(`restoring the local database from ${backup.path}`);
+			return startServer(restore ? backup.path : undefined);
 		}
 	}
 
@@ -257,23 +269,54 @@ function boot(): void {
 	}
 
 	function createWindow(): BrowserWindow {
+		const place = placeWindow(loadWindowState(userData), screenAreas());
 		const win = new BrowserWindow({
-			width: 1280,
-			height: 840,
-			minWidth: 900,
-			minHeight: 600,
+			width: place.width,
+			height: place.height,
+			...(place.x !== undefined && place.y !== undefined ? { x: place.x, y: place.y } : {}),
+			minWidth: MIN_SIZE.width,
+			minHeight: MIN_SIZE.height,
 			show: false,
 			title: "Raven",
 			backgroundColor: "#050a0b",
 			autoHideMenuBar: process.platform !== "darwin",
 			webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, devTools: !app.isPackaged, spellcheck: true },
 		});
-		win.once("ready-to-show", () => win.show());
+		win.once("ready-to-show", () => {
+			if (!place.maximized) return win.show();
+			// maximize() shows the window too, but doesn't focus it.
+			win.maximize();
+			win.focus();
+		});
+		rememberPlace(win);
 		// Windows log-off or shutdown: stop the server cleanly while we still can.
 		win.on("session-end", () => void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]));
 		void win.loadURL(appOrigin ? `${appOrigin}${START_PATH}` : SPLASH);
 		mainWindow = win;
 		return win;
+	}
+
+	/** Saves the window's size and place a moment after it changes, and when it closes. */
+	function rememberPlace(win: BrowserWindow): void {
+		let timer: ReturnType<typeof setTimeout> | undefined;
+		const save = () => {
+			clearTimeout(timer);
+			if (win.isDestroyed()) return;
+			try {
+				saveWindowState(userData, { bounds: win.getNormalBounds(), maximized: win.isMaximized() });
+			} catch (err) {
+				log.info(`couldn't save the window's place: ${err instanceof Error ? err.message : String(err)}`);
+			}
+		};
+		const later = () => {
+			clearTimeout(timer);
+			timer = setTimeout(save, 500);
+		};
+		win.on("resize", later);
+		win.on("move", later);
+		win.on("maximize", later);
+		win.on("unmaximize", later);
+		win.on("close", save);
 	}
 
 	function hardenSession(ses: Session): void {
@@ -285,7 +328,10 @@ function boot(): void {
 		});
 	}
 
-	/** Adds the token to requests for the server only (never to remote images or other sites), and tracks them. */
+	/**
+	 * Adds the token to requests for the server only (never to remote images
+	 * or other sites), tracks them, and adds the CSP to the server's responses.
+	 */
 	function routeToken(ses: Session, origin: string): void {
 		const filter = { urls: [`${origin}/*`] };
 		ses.webRequest.onBeforeSendHeaders(filter, (details, callback) => {
@@ -296,6 +342,14 @@ function boot(): void {
 		ses.webRequest.onSendHeaders(filter, (details) => void inFlight.add(details.id));
 		ses.webRequest.onCompleted(filter, (details) => void inFlight.delete(details.id));
 		ses.webRequest.onErrorOccurred(filter, (details) => void inFlight.delete(details.id));
+		// `next dev` needs eval and its HMR websocket, so dev runs without the policy.
+		if (mode !== "dev") {
+			const policy = contentSecurityPolicy();
+			ses.webRequest.onHeadersReceived(filter, (details, callback) => {
+				if (new URL(details.url).origin !== origin) return callback({});
+				callback({ responseHeaders: withCsp(details.responseHeaders, policy) });
+			});
+		}
 	}
 
 	function harden(contents: WebContents): void {
@@ -339,6 +393,12 @@ function boot(): void {
 			if (choice === 1) event.preventDefault();
 		});
 	}
+}
+
+/** Every display's work area, primary first. */
+function screenAreas(): Rect[] {
+	const primary = screen.getPrimaryDisplay();
+	return [primary, ...screen.getAllDisplays().filter((display) => display.id !== primary.id)].map((display) => display.workArea);
 }
 
 /** Resolves true once every window is gone, false if one stayed open (the user chose "Stay"). */

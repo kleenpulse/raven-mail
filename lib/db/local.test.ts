@@ -1,9 +1,9 @@
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, utimesSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { sql } from "drizzle-orm";
-import { closeLocalDb, openLocalDb } from "@/lib/db/local";
+import { backupsDir, closeLocalDb, openLocalDb } from "@/lib/db/local";
 import { tourProgress } from "@/lib/db/schema";
 
 // The desktop app's local Postgres, on disk, with the committed migrations.
@@ -94,5 +94,110 @@ describe("local database", () => {
 
 		process.env.RAVEN_PGLITE_DIR = dir;
 		expect(await applied(await openLocalDb())).toBe(JOURNAL.entries.length);
+	}, 60_000);
+});
+
+describe("backups before migrations", () => {
+	/** A copy of the migrations whose journal can be cut back to the first `count` entries. */
+	function migrationsCopy(): { cut(count: number): void; restore(): void } {
+		const migrations = path.join(tmp, "migrations");
+		cpSync(MIGRATIONS, migrations, { recursive: true });
+		const journalFile = path.join(migrations, "meta", "_journal.json");
+		const full = readFileSync(journalFile, "utf8");
+		process.env.RAVEN_MIGRATIONS_DIR = migrations;
+		return {
+			cut(count) {
+				const journal = JSON.parse(full) as { entries: unknown[] };
+				journal.entries = journal.entries.slice(0, count);
+				writeFileSync(journalFile, JSON.stringify(journal));
+			},
+			restore: () => writeFileSync(journalFile, full),
+		};
+	}
+
+	const backups = () => {
+		const dir = backupsDir(process.env.RAVEN_PGLITE_DIR!);
+		return existsSync(dir) ? readdirSync(dir).sort() : [];
+	};
+
+	test("a fresh database makes no backup", async () => {
+		await openLocalDb();
+		expect(backups()).toEqual([]);
+	}, 60_000);
+
+	test("nothing new to apply makes no backup", async () => {
+		await openLocalDb();
+		await closeLocalDb();
+		await openLocalDb();
+		expect(backups()).toEqual([]);
+	}, 60_000);
+
+	test("a new migration backs up first, and the backup restores into an empty folder", async () => {
+		const copy = migrationsCopy();
+		copy.cut(JOURNAL.entries.length - 1);
+		await (await openLocalDb()).insert(tourProgress).values(row);
+		await closeLocalDb();
+
+		copy.restore();
+		await openLocalDb();
+		const saved = backups();
+		const lastTag = (JOURNAL.entries.at(-1) as { tag: string }).tag;
+		expect(saved).toHaveLength(1);
+		expect(saved[0]).toStartWith(`before-${lastTag}-`);
+		expect(saved[0]).toEndWith(".tar.gz");
+		await closeLocalDb();
+
+		const file = path.join(backupsDir(process.env.RAVEN_PGLITE_DIR!), saved[0]!);
+		process.env.RAVEN_PGLITE_DIR = path.join(tmp, "restored", "db");
+		process.env.RAVEN_PGLITE_RESTORE = file;
+		try {
+			const db = await openLocalDb();
+			// The copy is from before the migration, which then runs again.
+			expect(await applied(db)).toBe(JOURNAL.entries.length);
+			expect(await db.select().from(tourProgress)).toEqual([expect.objectContaining({ accountKey: "acct", lastStep: 3 })]);
+		} finally {
+			delete process.env.RAVEN_PGLITE_RESTORE;
+		}
+	}, 120_000);
+
+	test("a backup that can't be written doesn't stop the database from opening", async () => {
+		const copy = migrationsCopy();
+		copy.cut(JOURNAL.entries.length - 1);
+		await openLocalDb();
+		await closeLocalDb();
+		// A file where the backups folder should be: mkdir fails.
+		writeFileSync(backupsDir(process.env.RAVEN_PGLITE_DIR!), "in the way");
+
+		copy.restore();
+		const db = await openLocalDb();
+		expect(await applied(db)).toBe(JOURNAL.entries.length);
+	}, 60_000);
+
+	test("keeps the newest three", async () => {
+		const copy = migrationsCopy();
+		copy.cut(JOURNAL.entries.length - 1);
+		await openLocalDb();
+		await closeLocalDb();
+
+		const dir = backupsDir(process.env.RAVEN_PGLITE_DIR!);
+		mkdirSync(dir, { recursive: true });
+		const long = new Date("2026-01-01T00:00:00Z");
+		for (const n of [1, 2, 3, 4]) {
+			const old = path.join(dir, `before-0000_old-${n}.tar.gz`);
+			writeFileSync(old, "x");
+			utimesSync(old, long, new Date(long.getTime() + n * 1000));
+		}
+		writeFileSync(path.join(dir, "notes.txt"), "not a backup");
+		writeFileSync(path.join(dir, "before-0000_crashed-0.tar.gz.tmp"), "half");
+
+		copy.restore();
+		await openLocalDb();
+		const left = readdirSync(dir).sort();
+		expect(left).not.toContain("before-0000_crashed-0.tar.gz.tmp");
+		expect(left).toHaveLength(4);
+		expect(left).toContain("notes.txt");
+		expect(left).toContain("before-0000_old-4.tar.gz");
+		expect(left).toContain("before-0000_old-3.tar.gz");
+		expect(left.filter((name) => name.startsWith(`before-${(JOURNAL.entries.at(-1) as { tag: string }).tag}-`))).toHaveLength(1);
 	}, 60_000);
 });

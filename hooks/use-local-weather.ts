@@ -11,15 +11,22 @@ import type { WeatherReply } from "@/lib/weather/forecast";
 /** Where the user said they are (rounded to about 1 km), or that they said no. This device only. */
 const STORAGE_KEY = "raven:weather-place";
 
-type Place = { lat: number; lon: number } | { declined: true };
+/** `label` is set when the user picked a city by name. */
+type Place = { lat: number; lon: number; label?: string } | { declined: true };
 
 const round = (n: number) => Math.round(n * 100) / 100;
 
+/** The desktop app refuses location (Electron's location service needs a Google key), so it asks for a city. */
+const DESKTOP = Boolean(process.env.RAVEN_DESKTOP_BUILD);
+
 function parsePlace(stored: string | null): Place | null {
 	try {
-		const raw = JSON.parse(stored ?? "null") as Partial<{ lat: number; lon: number; declined: boolean }> | null;
+		const raw = JSON.parse(stored ?? "null") as Partial<{ lat: number; lon: number; label: string; declined: boolean }> | null;
 		if (raw?.declined) return { declined: true };
-		if (typeof raw?.lat === "number" && typeof raw.lon === "number") return { lat: raw.lat, lon: raw.lon };
+		if (typeof raw?.lat === "number" && typeof raw.lon === "number") {
+			const label = typeof raw.label === "string" && raw.label.length <= 80 ? raw.label : undefined;
+			return label ? { lat: raw.lat, lon: raw.lon, label } : { lat: raw.lat, lon: raw.lon };
+		}
 	} catch {
 		// Corrupt or blocked storage: start over.
 	}
@@ -72,7 +79,9 @@ function subscribe(notify: () => void) {
  * Local weather for the Overview. The server locates the user by IP where it
  * can (Vercel); elsewhere `canLocate` is true and `locate()` asks the browser
  * once. A "no" is remembered, so Raven doesn't ask again until the setting
- * is switched off and on. Off (`overview.localWeather`), nothing is looked up.
+ * is switched off and on; after a "no", and always on desktop, `canChoose`
+ * offers typing a city instead. Off (`overview.localWeather`), nothing is
+ * looked up.
  */
 export function useLocalWeather() {
 	const { email } = useAccount();
@@ -110,7 +119,23 @@ export function useLocalWeather() {
 		);
 	}, []);
 
+	const choosePlace = React.useCallback((picked: { lat: number; lon: number; label: string }) => {
+		savePlace({ lat: round(picked.lat), lon: round(picked.lon), label: picked.label.slice(0, 80) });
+	}, []);
+
 	const declined = place !== undefined && place !== null && "declined" in place;
-	const canLocate = query.data?.located === false && !declined && typeof navigator !== "undefined" && "geolocation" in navigator;
-	return { on, reply: on ? query.data : undefined, canLocate: on && canLocate, locate, locating };
+	const geolocation = !DESKTOP && typeof navigator !== "undefined" && "geolocation" in navigator;
+	const unlocated = on && query.data?.located === false;
+	return {
+		on,
+		reply: on ? query.data : undefined,
+		/** The city the user picked, when they picked one. */
+		placeLabel: coords?.label ?? null,
+		canLocate: unlocated && !declined && geolocation,
+		locate,
+		locating,
+		/** Typing a city: on desktop, and on the web once the browser's location was refused. */
+		canChoose: unlocated && (declined || !geolocation),
+		choosePlace,
+	};
 }

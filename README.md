@@ -139,7 +139,7 @@ Builds come from the **Desktop** workflow in GitHub Actions. Open a run and down
 - Integrations, rules, blocked senders and reminders use a database built into the app. There's nothing to set up.
 - Proton Bridge works. It runs on your own computer, and the desktop app allows that.
 - Jev works with your own key (Settings → Account). Without one, Kage answers.
-- The weather under the date can't find your location yet. If you click "Show local weather", Raven can't find you, and the button goes away.
+- The weather under the date can't use your location. Click "Choose your city for the weather" and type your city instead.
 - There are no automatic updates yet. To update, install a newer build over the old one.
 
 **Where your data lives**
@@ -148,7 +148,7 @@ Builds come from the **Desktop** workflow in GitHub Actions. Open a run and down
 | --- | --- | --- |
 | `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
 
-That folder holds the database, the logs and the keys that lock your session. The keys are kept in your system's keychain. On Linux without GNOME Keyring or KWallet they're saved unencrypted, and only your user can read them, so install a keyring if you can.
+That folder holds the database, the logs and the keys that lock your session. Before Raven updates the database, it saves a copy in `db.backups` next to it and keeps the last three. If the database ever won't open, Raven offers to go back to the newest copy. The keys are kept in your system's keychain. On Linux without GNOME Keyring or KWallet they're saved unencrypted, and only your user can read them, so install a keyring if you can.
 
 **Working on the desktop app**
 

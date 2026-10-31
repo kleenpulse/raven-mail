@@ -45,19 +45,41 @@ function unpackedApps(): { resources: string; app: string }[] {
 
 const apps = unpackedApps();
 if (apps.length === 0) throw new Error(`no unpacked app found in ${out}`);
-const fuses = join(desktop, "node_modules", "@electron", "fuses", "dist", "bin.js");
-// The electronFuses block of electron-builder.yml, named the way the fuses CLI prints them.
+// Positions on Electron 45's fuse wire. @electron/fuses 1.8 (pinned by
+// electron-builder 26) names only the first eight, so the list lives here.
+const FUSE_INDEX: Record<string, number> = {
+	runAsNode: 0,
+	enableCookieEncryption: 1,
+	enableNodeOptionsEnvironmentVariable: 2,
+	enableNodeCliInspectArguments: 3,
+	enableEmbeddedAsarIntegrityValidation: 4,
+	onlyLoadAppFromAsar: 5,
+	loadBrowserProcessSpecificV8Snapshot: 6,
+	grantFileProtocolExtraPrivileges: 7,
+	wasmTrapHandlers: 8,
+};
+// FuseState in @electron/fuses: the wire holds ASCII "0" / "1".
+const ENABLED = 49;
+const DISABLED = 48;
+// The electronFuses block of electron-builder.yml, plus the one it can't set yet:
+// wasmTrapHandlers stays at Electron's default (on), since PGlite runs on wasm.
 const fuseBlock = /^electronFuses:\r?\n((?:[ \t]+\w+: (?:true|false)\r?\n)+)/m.exec(readFileSync(join(desktop, "electron-builder.yml"), "utf8"))?.[1] ?? "";
-const expected = [...fuseBlock.matchAll(/(\w+): (true|false)/g)].map(([, key, value]) => ({ name: key[0].toUpperCase() + key.slice(1), on: value === "true" }));
+const expected = [...fuseBlock.matchAll(/(\w+): (true|false)/g)].map(([, key, value]) => ({ name: key, on: value === "true" }));
 if (expected.length !== 8) throw new Error(`expected 8 electronFuses in electron-builder.yml, found ${expected.length}`);
+expected.push({ name: "wasmTrapHandlers", on: true });
+type FusesLib = { getCurrentFuseWire(pathToElectron: string): Promise<Record<string, number | string>> };
+const fusesLib = (await import(join(desktop, "node_modules", "@electron", "fuses", "dist", "index.js"))) as FusesLib;
 for (const { resources, app } of apps) {
 	verifyServerDir(join(resources, "server"));
-	const read = spawnSync(node, [fuses, "read", "--app", app], { encoding: "utf8", env: { ...env, FORCE_COLOR: "0", NO_COLOR: "1" } });
-	console.log(read.stdout.trim());
-	const wrong = expected.filter(({ name, on }) => !read.stdout.includes(` ${name} is ${on ? "Enabled" : "Disabled"}`));
-	if (read.status !== 0 || wrong.length > 0) {
-		throw new Error(`fuses aren't set as expected on ${app}: ${wrong.map((fuse) => fuse.name).join(", ") || "read failed"}`);
-	}
+	const wire = await fusesLib.getCurrentFuseWire(app);
+	const wrong = expected.filter(({ name, on }) => {
+		const index = FUSE_INDEX[name];
+		if (index === undefined) throw new Error(`unknown fuse ${name} in electron-builder.yml`);
+		const state = wire[index];
+		console.log(`  ${name} is ${state === ENABLED ? "Enabled" : state === DISABLED ? "Disabled" : `in state ${String(state)}`}`);
+		return state !== (on ? ENABLED : DISABLED);
+	});
+	if (wrong.length > 0) throw new Error(`fuses aren't set as expected on ${app}: ${wrong.map((fuse) => fuse.name).join(", ")}`);
 }
 
 const installers = readdirSync(out).filter((f) => /\.(exe|dmg|AppImage|deb)$/.test(f));

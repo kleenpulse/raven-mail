@@ -16,6 +16,7 @@ import {
 	Sun,
 } from "lucide-react";
 import { Tip } from "@/components/ui/tooltip";
+import { WeatherCityPicker } from "@/components/overview/weather-city-picker";
 import { useLocalWeather } from "@/hooks/use-local-weather";
 import { describeSky, formatTemperature, usesFahrenheit, type SkyKind } from "@/lib/weather/codes";
 
@@ -35,14 +36,15 @@ const LINE = "mt-1 flex h-[18px] w-fit items-center gap-1.5 text-[12px] text-ink
 
 /** The real weather where the user is, under the date. Says nothing rather than guess; off in Settings, shows nothing. */
 export function LocalWeather() {
-	const { on, reply, canLocate, locate, locating } = useLocalWeather();
+	const { on, reply, placeLabel, canLocate, locate, locating, canChoose, choosePlace } = useLocalWeather();
 	if (!on) return null;
 	const sky = reply?.weather ? describeSky(reply.weather.code) : null;
 
 	if (reply?.weather && sky) {
 		const Icon = ICON[sky.kind][reply.weather.isDay ? "day" : "night"];
 		const temperature = formatTemperature(reply.weather.temperatureC, usesFahrenheit(navigator.language));
-		const where = reply.place ? ` in ${reply.place}` : "";
+		const place = reply.place ?? placeLabel;
+		const where = place ? ` in ${place}` : "";
 		return (
 			<Tip label={`${sky.label}${where}, ${temperature}. Weather from Open-Meteo.`} render={<div className={LINE} />}>
 				<Icon className="size-3.5 text-signal-ink dark:text-signal" aria-hidden />
@@ -60,6 +62,10 @@ export function LocalWeather() {
 				{locating ? "Finding you…" : "Show local weather"}
 			</button>
 		);
+	}
+
+	if (canChoose) {
+		return <WeatherCityPicker onPick={choosePlace} className={`${LINE} transition-colors hover:text-foreground`} />;
 	}
 
 	// Keeps the date block from jumping when the weather arrives.

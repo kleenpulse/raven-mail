@@ -27,6 +27,9 @@ extraResources:
   - from: ../LICENSE
     to: LICENSE
 
+# Electron 45 has a ninth fuse, wasmTrapHandlers. It stays at its default (on):
+# it makes WebAssembly fast, and the local database (PGlite) is wasm. This
+# version of electron-builder can't set it; scripts/build.ts checks it's on.
 electronFuses:
   runAsNode: false
   enableCookieEncryption: true
