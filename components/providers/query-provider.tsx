@@ -3,7 +3,7 @@
 import * as React from "react";
 import type { ReactNode } from "react";
 import { onlineManager, QueryClient, QueryClientProvider, useQueryClient } from "@tanstack/react-query";
-import { useOffline } from "next/offline";
+import { useAppOffline, useDesktopReachWatch } from "@/hooks/use-app-offline";
 import { focusRefetch, stale } from "@/lib/prefs/query";
 
 let browserQueryClient: QueryClient | undefined;
@@ -24,14 +24,16 @@ function getQueryClient() {
 }
 
 /**
- * Feeds Next's offline state into TanStack. TanStack already follows the
+ * Feeds the app's offline state into TanStack. TanStack already follows the
  * browser's online/offline events; this adds Next's own failed-request
- * detection and HEAD polling (captive portals, dead upstreams). Lives here,
- * always mounted, so TanStack can never be left offline by an unmount.
+ * detection and HEAD polling (captive portals, dead upstreams), or on desktop
+ * whether the mail server can be reached. Lives here, always mounted, so
+ * TanStack can never be left offline by an unmount.
  */
 function OnlineBridge() {
-  const offline = useOffline();
+  const offline = useAppOffline();
   const client = useQueryClient();
+  useDesktopReachWatch(client);
   const was = React.useRef(false);
   React.useEffect(() => {
     // Only act on a change: Next starts at false before hydration and must not override TanStack's own reading.

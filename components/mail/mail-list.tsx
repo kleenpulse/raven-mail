@@ -24,7 +24,7 @@ import { folderSpecialUse, resolveSpecialFolder } from "@/lib/mail/folders";
 import { rowOf, type ThreadRow } from "@/lib/mail/thread";
 import { TAB_FILL, TAB_LABEL, type SplitTab } from "@/lib/mail/split-inbox";
 import { paneOf } from "@/lib/query-pane";
-import { useOffline } from "next/offline";
+import { useAppOffline } from "@/hooks/use-app-offline";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import { motion } from "motion/react";
 import type { MailFolder } from "@/lib/mail/types";
@@ -212,7 +212,7 @@ function MailListInner({
 		isFetchingNextPage,
 		fetchNextPage,
 	} = useMessages(folder, search || undefined);
-	const offline = useOffline();
+	const offline = useAppOffline();
 	const { pane, refreshFailed } = paneOf({ hasData: Boolean(data), isError, isRefetchError, isFetchNextPageError, fetchStatus });
 	// Idle, not just "not paused": the retry after reconnect is still "error" while it runs.
 	const staleNotice = refreshFailed && fetchStatus === "idle" && !offline;

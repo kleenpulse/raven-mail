@@ -23,6 +23,9 @@ as you work — it ships inside the app.
 - On desktop, Raven now opens where you left it, at the same size,
   and maximized if it was. If that screen isn't plugged in anymore,
   it opens on your main screen.
+- On desktop, Raven now tells you when you're offline. It checks if
+  it can reach your mail server, so the notice shows when your
+  internet is down.
 
 ## [0.9.0] - 2026-10-30
 
