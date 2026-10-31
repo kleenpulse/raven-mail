@@ -32,7 +32,7 @@ export type SigningInput = {
 };
 
 /** Every variable electron-builder (or a publisher) reads keys or tokens from. */
-const SIGNING_ENV = [
+export const SIGNING_ENV = [
 	"CSC_LINK",
 	"CSC_KEY_PASSWORD",
 	"CSC_NAME",

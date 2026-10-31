@@ -14,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { MODE_LABEL, signingPlan, type SigningPlan } from "./signing";
+import { MODE_LABEL, SIGNING_ENV, signingPlan, type SigningPlan } from "./signing";
 import { buildAndStage } from "./stage";
 import { verifyServerDir } from "./verify";
 
@@ -27,6 +27,8 @@ const targets = process.argv.slice(2);
 // Before the long web build, so missing keys fail fast.
 const signing = signingPlan({ platform: process.platform, env: process.env, entitlements: join(desktop, "build", "entitlements.hardened.plist"), fileExists: existsSync });
 console.log(`signing: ${MODE_LABEL[signing.mode]}${signing.notarize ? ", notarized" : ""}`);
+// Only electron-builder gets the keys (signing.env); the web build never sees them.
+for (const name of SIGNING_ENV) delete process.env[name];
 
 const { app: stagedApp } = await buildAndStage(root);
 // The updater reads this: macOS installs updates itself only when signed.
@@ -96,7 +98,9 @@ for (const { resources, app } of apps) {
 
 const installers = readdirSync(out).filter((f) => /\.(exe|dmg|AppImage|deb)$/.test(f));
 verifySignatures(signing, apps, installers);
-const sums = installers.map((f) => `${createHash("sha256").update(readFileSync(join(out, f))).digest("hex")}  ${f}`);
+// Everything a release carries: installers, the macOS update zip, the updater's latest*.yml and blockmaps.
+const shipped = readdirSync(out).filter((f) => /\.(exe|dmg|zip|AppImage|deb|blockmap)$/.test(f) || /^latest(-\w+)?\.yml$/.test(f));
+const sums = shipped.map((f) => `${createHash("sha256").update(readFileSync(join(out, f))).digest("hex")}  ${f}`);
 writeFileSync(join(out, "SHA256SUMS.txt"), `${sums.join("\n")}\n`);
 console.log(sums.join("\n"));
 
