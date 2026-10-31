@@ -41,14 +41,14 @@ electronFuses:
   grantFileProtocolExtraPrivileges: false
 
 # Declares the links Raven opens (macOS CFBundleURLTypes, Linux .desktop
-# MimeType). Declaring mailto doesn't make Raven the default: only "Use Raven
-# for email links" asks for that. The NSIS target ignores this list; main.ts
-# registers raven:// at start instead.
+# MimeType). The NSIS target ignores this list; main.ts registers raven:// at
+# start instead. mailto is declared on macOS only: on Linux, xdg-open falls
+# back to any .desktop file listing it when the user has no default, so Raven
+# would take email links without being asked. "Use Raven for email links"
+# still claims it there.
 protocols:
   - name: Raven link
     schemes: [raven]
-  - name: Email link
-    schemes: [mailto]
 
 win:
   target:
@@ -64,6 +64,9 @@ mac:
     - target: dmg
       arch: [arm64, x64]
   category: public.app-category.productivity
+  protocols:
+    - name: Email link
+      schemes: [mailto]
   # Ad-hoc signature: Apple Silicon won't run an unsigned app at all. Real signing comes later.
   identity: "-"
   hardenedRuntime: false

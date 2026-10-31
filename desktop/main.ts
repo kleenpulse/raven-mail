@@ -207,7 +207,7 @@ function boot(): void {
 			return { isDefault, viaSettings: false };
 		}
 		try {
-			const { stdout } = await run("reg", ["query", WINDOWS_MAILTO_CHOICE, "/v", "ProgId"], { windowsHide: true });
+			const { stdout } = await run(REG, ["query", WINDOWS_MAILTO_CHOICE, "/v", "ProgId"], { windowsHide: true });
 			return { isDefault: userChoiceProgId(stdout) === windowsMailApp().progId, viaSettings: true };
 		} catch {
 			// No choice saved yet: Windows uses its own default.
@@ -220,13 +220,18 @@ function boot(): void {
 	 * Windows only lets the user pick it, so Raven lists itself and opens that page.
 	 */
 	async function claimMailApp(): Promise<MailAppStatus> {
+		if (mode === "dev") {
+			// As with raven://: a link can't start `next dev`.
+			log.info("email links aren't registered in dev mode; use desktop:preview");
+			return mailAppStatus();
+		}
 		if (process.platform !== "win32") {
 			if (!setDefaultFor("mailto")) log.info("couldn't become the app for email links");
 			return mailAppStatus();
 		}
 		const target = windowsMailApp();
 		try {
-			for (const args of windowsMailRegistration(target)) await run("reg", args, { windowsHide: true });
+			for (const args of windowsMailRegistration(target)) await run(REG, args, { windowsHide: true });
 		} catch (err) {
 			log.info(`couldn't list Raven as an email app: ${err instanceof Error ? err.message : String(err)}`);
 			return mailAppStatus();
@@ -720,6 +725,8 @@ function buildMenu(keepRunning: boolean, actions: MenuActions): Menu {
 }
 
 const run = promisify(execFile);
+// By full path: Windows looks for a bare "reg" in the current folder before PATH.
+const REG = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "reg.exe");
 
 // Not geolocation: Electron's location service needs a Google API key, so it
 // only ever fails, and a denial at least tells the weather card to stop asking.
