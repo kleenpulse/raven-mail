@@ -81,6 +81,8 @@ jobs:
         with:
           name: raven-${{ matrix.name }}
           if-no-files-found: error
+          # desktop/.out is a dot folder, which upload-artifact skips by default.
+          include-hidden-files: true
           retention-days: 14
           path: |
             desktop/.out/*.exe
