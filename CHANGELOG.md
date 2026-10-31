@@ -26,6 +26,10 @@ as you work — it ships inside the app.
 - On desktop, Raven now tells you when you're offline. It checks if
   it can reach your mail server, so the notice shows when your
   internet is down.
+- You can now type your city to get the local weather. On desktop
+  this is the only way, since the desktop app can't use your
+  location. On the web it shows if you said no to sharing your
+  location.
 
 ## [0.9.0] - 2026-10-30
 
