@@ -36,6 +36,8 @@ export const PREF_SCHEMAS = {
 	"sync.offlineCache": z.boolean(),
 	"keyboard.singleKey": z.boolean(),
 	"notify.bannerPosition": z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]),
+	/** Desktop app: a system notification for new mail while Raven isn't the focused window. */
+	"notify.system": z.boolean(),
 	/** Spoken tour narration on this device. The accent itself follows the account (lib/tour). */
 	"tour.narration": z.boolean(),
 } as const;
@@ -67,6 +69,7 @@ export const DEFAULTS: Prefs = {
 	"sync.offlineCache": true,
 	"keyboard.singleKey": true,
 	"notify.bannerPosition": "bottom-right",
+	"notify.system": true,
 	"tour.narration": true,
 };
 
