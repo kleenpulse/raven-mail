@@ -1,8 +1,10 @@
 import { describe, expect, test } from "bun:test";
+import { randomBytes } from "node:crypto";
 import { checkRequest } from "./guard";
 
 const PORT = 52731;
-const TOKEN = "Zk3y1o8mQq0V8m3g5yS0bq1k7v3t4c9wX2r6p5n4m3l";
+// Made the same way as main.ts makes the real one.
+const TOKEN = randomBytes(32).toString("base64url");
 const good = { host: `127.0.0.1:${PORT}`, "x-raven-desktop": TOKEN };
 
 describe("checkRequest", () => {
@@ -12,7 +14,7 @@ describe("checkRequest", () => {
 
 	test("a missing or wrong token is refused, whatever its length", () => {
 		const noToken = { host: good.host };
-		for (const headers of [noToken, { ...good, "x-raven-desktop": "" }, { ...good, "x-raven-desktop": TOKEN.slice(1) }, { ...good, "x-raven-desktop": `${TOKEN}x` }, { ...good, "x-raven-desktop": TOKEN.replace("Z", "Y") }]) {
+		for (const headers of [noToken, { ...good, "x-raven-desktop": "" }, { ...good, "x-raven-desktop": TOKEN.slice(1) }, { ...good, "x-raven-desktop": `${TOKEN}x` }, { ...good, "x-raven-desktop": `${TOKEN[0] === "a" ? "b" : "a"}${TOKEN.slice(1)}` }]) {
 			expect(checkRequest(headers, PORT, TOKEN)).toEqual({ ok: false, reason: "token" });
 		}
 	});
