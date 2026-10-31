@@ -2,7 +2,7 @@ import { utilityProcess } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import type { Log } from "./log";
-import { HOST, originFor, TOKEN_HEADER } from "./shared";
+import { HOST, isLocalDbTrouble, originFor, TOKEN_HEADER } from "./shared";
 
 export type ServerHandle = {
 	readonly port: number;
@@ -23,8 +23,6 @@ export class ServerStartError extends Error {
 		super(message);
 	}
 }
-
-const LOCAL_DB_TROUBLE = /pglite|__drizzle_migrations|RAVEN_PGLITE_DIR|RuntimeError: (unreachable|memory access)/i;
 
 /* ── Packaged / preview: the standalone server in a utility process ──────── */
 
@@ -66,7 +64,7 @@ export async function startStandaloneServer(opts: {
 	if (report.type !== "ready") {
 		child.kill();
 		opts.log.info(`server failed: ${report.message}`);
-		throw new ServerStartError("Raven's background server didn't start.", LOCAL_DB_TROUBLE.test(tail));
+		throw new ServerStartError("Raven's background server didn't start.", isLocalDbTrouble(tail));
 	}
 
 	let stopping = false;
