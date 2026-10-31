@@ -9,7 +9,7 @@ This folder holds the desktop app for Windows, macOS and Linux. It's built with 
 | `bun run desktop:setup` | Installs this folder's packages (no install scripts run) and downloads Electron. |
 | `bun run desktop:dev` | Opens Raven in Electron on `next dev`, with hot reload and "Continue in dev mode". Stop your own `next dev` first: Next.js allows only one per project. |
 | `bun run desktop:preview` | Builds the production server, stages it, and opens it in Electron. No installer. |
-| `bun run desktop:build` | Same as preview, then makes the installer for this OS. Installers for users are only built on CI (`.github/workflows/desktop.yml`). |
+| `bun run desktop:build` | Same as preview, then makes the installer for this OS. Installers for users are only built on CI (`.github/workflows/desktop.yml`). It signs when the keys are in the environment ([RELEASING.md](RELEASING.md)). |
 | `bun run desktop:typecheck` | Type-checks this folder. |
 
 Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (dev and preview only).
@@ -42,6 +42,15 @@ Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (d
 - A `mailto:` link opens `/mail?compose=<link>`. That works on the web too: on any page, `?compose=` opens the link in compose and then leaves the URL.
 - Cards you share to Slack, Discord or a webhook can't link to the app's own server, since it's only on your computer. So on desktop their links go to `https://raven-mail.vercel.app/open?to=<raven link>` (`LINK_BASE` in `shared.ts`, passed to the server as `RAVEN_LINK_BASE`). That page tries the `raven://` link, and has buttons to open it in Raven or in the browser, and a link to install Raven. It only passes on `raven://open/mail` and `raven://open/overview` links (`lib/desktop/open-link.ts`). Any Raven deployment serves `/open`. Webhook JSON also carries the raw link as `ravenLink`. The web app's cards don't change.
 - The macOS app declares both schemes (its URL types). That only says Raven can open them. The Linux `.desktop` file lists only `raven`: when you haven't picked an email app, Linux opens email links with any app that lists `mailto`, and Raven would take them without asking. On Linux, Electron finds its `.desktop` file through `desktopName` (`raven.desktop`), set when staging.
+
+## Updates and signing
+
+[RELEASING.md](RELEASING.md) has the whole story: cutting a release, the signing secrets and how to get them, and what updates on which system. In short:
+
+- A `v*` tag makes CI build, sign when the keys are set, and put everything in a draft GitHub release. A person publishes it. The app only sees published releases.
+- `updater.ts` uses electron-updater (bundled into `main.js`). It checks 30 seconds after start, every 6 hours, and from "Check for updates…" in the menu and the tray. `update-policy.ts` decides per build: Windows, the AppImage and signed macOS download the update and ask to restart. Unsigned macOS and the `.deb` open the release page instead. Dev and preview never check.
+- The installer only starts after Raven has closed its windows and stopped its server, as the last step of quitting. The Windows installer closes every Raven process it finds, and the server could be writing the local database.
+- `scripts/signing.ts` picks how to sign from the environment. With no keys, builds are unsigned (ad hoc on macOS), as before. Each build gets only its own OS's keys. `scripts/build.ts` writes `ravenBuild.signed` into the app's `package.json` for the updater, and checks the signatures it made.
 
 ## Why the server listens on 127.0.0.1
 
@@ -76,7 +85,8 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 - Electron fuses: `runAsNode`, `NODE_OPTIONS` and `--inspect` are off, and cookie encryption and asar integrity checks are on. Installed builds refuse `--remote-debugging-port`. Electron 45 also has a ninth fuse, `wasmTrapHandlers`. It stays on (the default): it makes WebAssembly fast, and the local database runs on WebAssembly. electron-builder 26 can't set it, so `scripts/build.ts` checks that it's on.
 - `SESSION_SECRET` and `INTEGRATIONS_SECRET` are made on first launch and kept in `secrets.json`, locked with Electron `safeStorage` (the OS keychain). If the keychain changes, or isn't available, Raven asks before it makes new ones: Quit, or Start fresh. New secrets sign you out, and saved integrations, rules, blocked senders and reminders can't be read anymore. Raven only makes new ones without asking when the keychain works but can't read the file. On Linux without a keyring, the secrets are saved unencrypted, readable only by your user.
 - The server never writes into its install folder: ISR flushing and gzip are off.
-- The `resources/server` folder isn't covered by asar integrity. Code signing (a later phase) is what will protect it.
+- The `resources/server` folder isn't covered by asar integrity. On a signed macOS build the code signature covers it, since it seals every file in the app bundle. On Windows, signing covers only `.exe` files, so the server folder relies on the install folder's permissions (it's in your own user's AppData). Unsigned builds have neither.
+- Updates come only from published releases on kleenpulse/raven-mail, over HTTPS, and each file must match the sha512 in `latest*.yml`. Signed Windows builds also check the update's publisher name. Unsigned ones can't yet.
 
 ## Where data lives
 

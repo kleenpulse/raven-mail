@@ -126,7 +126,7 @@ Raven also runs as a desktop app on Windows, macOS and Linux. It's the same Rave
 | macOS 13+ (Apple Silicon or Intel) | the `.dmg` for your Mac (`arm64` or `x64`) |
 | Linux (x64) | the `.deb`, or the `.AppImage` |
 
-Builds come from the **Desktop** workflow in GitHub Actions. Open a run and download your system's installer from **Artifacts**. Each download includes `SHA256SUMS.txt` so you can check the file.
+Installers come with each release on the [Releases](https://github.com/kleenpulse/raven-mail/releases) page, starting with the first release after the desktop app's update support. Between releases, the **Desktop** workflow in GitHub Actions builds them too: open a run and download your system's installer from **Artifacts**. Each download includes `SHA256SUMS.txt` so you can check the files.
 
 **First launch.** The builds aren't code-signed yet, so your system warns you once:
 
@@ -140,7 +140,7 @@ Builds come from the **Desktop** workflow in GitHub Actions. Open a run and down
 - Proton Bridge works. It runs on your own computer, and the desktop app allows that.
 - Jev works with your own key (Settings → Account). Without one, Kage answers.
 - The weather under the date can't use your location. Click "Choose your city for the weather" and type your city instead.
-- There are no automatic updates yet. To update, install a newer build over the old one.
+- Raven checks for new versions by itself. On Windows and with the AppImage, it downloads the update and asks you to restart. On a Mac and with the `.deb`, it opens the download page, and you install the new version over the old one. You can also pick **Check for updates…** in the File menu (the Raven menu on a Mac) or the tray menu.
 
 **Where your data lives**
 
@@ -158,7 +158,7 @@ bun run desktop:dev       # Electron on next dev (stop your own next dev first)
 bun run desktop:preview   # Electron on a production build, no installer
 ```
 
-[`desktop/README.md`](desktop/README.md) explains how it works and why. Installers for other people are only built by CI.
+[`desktop/README.md`](desktop/README.md) explains how it works and why. Installers for other people are only built by CI. [`desktop/RELEASING.md`](desktop/RELEASING.md) covers releases, updates and code signing.
 
 ## Privacy & security model
 
