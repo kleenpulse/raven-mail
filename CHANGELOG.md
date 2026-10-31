@@ -33,6 +33,12 @@ as you work — it ships inside the app.
 - Before the desktop app updates its database, it now saves a copy.
   If the database won't open after that, Raven offers to go back to
   the copy.
+- On desktop, closing the window now keeps Raven running, so it
+  can still check your mail. On Windows and Linux, open it again
+  from the tray icon. On a Mac, click Raven in the Dock. To quit,
+  use Quit Raven. If you'd rather it closes for good, turn off
+  "Keep running when the window is closed". It's in the tray menu
+  and the File menu (the Raven menu on a Mac).
 
 ## [0.9.0] - 2026-10-30
 

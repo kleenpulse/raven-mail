@@ -1,17 +1,20 @@
-import { app, BrowserWindow, dialog, Menu, screen, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
+import { app, BrowserWindow, dialog, Menu, Notification, screen, session, shell, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { latestBackup } from "./backups";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
+import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
 import { electronSealer } from "./sealer";
 import { fileStore, loadSecrets, resetSecrets, type Secrets } from "./secrets";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
+import { loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { TOKEN_HEADER } from "./shared";
+import { createTray, KEEP_RUNNING_LABEL, type RavenTray } from "./tray";
 import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } from "./window-state";
 
 /*
@@ -59,22 +62,23 @@ function boot(): void {
 	let appOrigin: string | null = null;
 	let mainWindow: BrowserWindow | null = null;
 	let quitting: "no" | "closing" | "done" = "no";
+	// Windows is logging off or shutting down: windows must close, not hide.
+	let sessionEnding = false;
+	let settings: DesktopSettings = loadSettings(userData);
+	let tray: RavenTray | null = null;
 
 	log.info(`starting (${mode}, Electron ${process.versions.electron})`);
 
-	app.on("second-instance", () => {
-		if (!mainWindow || mainWindow.isDestroyed()) return;
-		if (mainWindow.isMinimized()) mainWindow.restore();
-		mainWindow.focus();
-	});
+	const lifecycle = (): Lifecycle => ({ keepRunning: settings.keepRunning, quitting: quitting !== "no" || sessionEnding, platform: process.platform });
+
+	app.on("second-instance", () => showWindow());
 	app.on("web-contents-created", (_event, contents) => harden(contents));
 	app.on("window-all-closed", () => {
 		// macOS apps stay open without windows; the server keeps running.
-		if (process.platform !== "darwin") app.quit();
+		if (onAllWindowsClosed(lifecycle()) === "quit") app.quit();
 	});
-	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0 && appOrigin) createWindow();
-	});
+	// The Dock icon on macOS.
+	app.on("activate", () => showWindow());
 	app.on("before-quit", (event) => {
 		if (quitting === "done") return;
 		event.preventDefault();
@@ -86,6 +90,7 @@ function boot(): void {
 				return;
 			}
 			quitting = "done";
+			tray?.destroy();
 			app.exit(0);
 		});
 	});
@@ -96,7 +101,10 @@ function boot(): void {
 		.catch((err: unknown) => fail(err));
 
 	async function start(): Promise<void> {
-		Menu.setApplicationMenu(buildMenu());
+		Menu.setApplicationMenu(buildMenu(settings.keepRunning, setKeepRunning));
+		if (hasTray(process.platform)) {
+			tray = createTray({ open: showWindow, keepRunning: () => settings.keepRunning, setKeepRunning, quit: () => app.quit() });
+		}
 		hardenSession(session.defaultSession);
 		createWindow();
 		secrets = await loadOrAskSecrets();
@@ -268,6 +276,62 @@ function boot(): void {
 		return true;
 	}
 
+	/** Brings the window back from the tray, the Dock or a minimise (or makes it again on macOS). */
+	function showWindow(): void {
+		if (!mainWindow || mainWindow.isDestroyed()) {
+			if (appOrigin) createWindow();
+			return;
+		}
+		if (mainWindow.isMinimized()) mainWindow.restore();
+		mainWindow.show();
+		mainWindow.focus();
+	}
+
+	function setKeepRunning(on: boolean): void {
+		updateSettings({ keepRunning: on });
+		Menu.setApplicationMenu(buildMenu(on, setKeepRunning));
+		tray?.refresh();
+		// A hidden window still checks for mail at full pace (and keeps `visibilityState` "visible").
+		if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.setBackgroundThrottling(!on);
+	}
+
+	function updateSettings(change: Partial<DesktopSettings>): void {
+		settings = { ...settings, ...change };
+		try {
+			saveSettings(userData, settings);
+		} catch (err) {
+			log.info(`couldn't save the settings: ${err instanceof Error ? err.message : String(err)}`);
+		}
+	}
+
+	/** Closing hides the window while "keep running" is on; quitting closes it for real. */
+	function hideOnClose(win: BrowserWindow): void {
+		win.on("close", (event) => {
+			const state = lifecycle();
+			const action = onWindowClose(state);
+			if (action === "close") return;
+			event.preventDefault();
+			if (process.platform === "darwin" && win.isFullScreen()) {
+				// A full-screen window hidden on macOS leaves a black space behind.
+				win.once("leave-full-screen", () => win.hide());
+				win.setFullScreen(false);
+			} else {
+				win.hide();
+			}
+			if (showTrayHint(state, action, settings.trayHintShown)) {
+				updateSettings({ trayHintShown: true });
+				notify("Raven is still checking your mail.", "Open it from the tray.", showWindow);
+			}
+		});
+	}
+
+	function notify(title: string, body: string, onClick: () => void): void {
+		if (!Notification.isSupported()) return;
+		const notice = new Notification({ title, body, icon: join(app.getAppPath(), "icon.png") });
+		notice.on("click", onClick);
+		notice.show();
+	}
+
 	function createWindow(): BrowserWindow {
 		const place = placeWindow(loadWindowState(userData), screenAreas());
 		const win = new BrowserWindow({
@@ -286,6 +350,7 @@ function boot(): void {
 				sandbox: true,
 				devTools: !app.isPackaged,
 				spellcheck: true,
+				backgroundThrottling: !settings.keepRunning,
 				// Bundled next to main.js; Bun.build bakes __dirname in as the source folder, so ask Electron.
 				preload: join(app.getAppPath(), "preload.js"),
 			},
@@ -297,8 +362,12 @@ function boot(): void {
 			win.focus();
 		});
 		rememberPlace(win);
+		hideOnClose(win);
 		// Windows log-off or shutdown: stop the server cleanly while we still can.
-		win.on("session-end", () => void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]));
+		win.on("session-end", () => {
+			sessionEnding = true;
+			void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]);
+		});
 		void win.loadURL(appOrigin ? `${appOrigin}${START_PATH}` : SPLASH);
 		mainWindow = win;
 		return win;
@@ -425,7 +494,33 @@ async function closeWindows(): Promise<boolean> {
 	return BrowserWindow.getAllWindows().length === 0;
 }
 
-function buildMenu(): Menu {
+function buildMenu(keepRunning: boolean, setKeepRunning: (on: boolean) => void): Menu {
+	const keepRunningItem: MenuItemConstructorOptions = {
+		label: KEEP_RUNNING_LABEL,
+		type: "checkbox",
+		checked: keepRunning,
+		click: (item) => setKeepRunning(item.checked),
+	};
+	const appMenu: MenuItemConstructorOptions = {
+		label: app.name,
+		submenu: [
+			{ role: "about" },
+			{ type: "separator" },
+			keepRunningItem,
+			{ type: "separator" },
+			{ role: "services" },
+			{ type: "separator" },
+			{ role: "hide" },
+			{ role: "hideOthers" },
+			{ role: "unhide" },
+			{ type: "separator" },
+			{ role: "quit" },
+		],
+	};
+	const fileMenu: MenuItemConstructorOptions = {
+		label: "File",
+		submenu: [keepRunningItem, { type: "separator" }, { role: "quit", label: "Quit Raven" }],
+	};
 	const view: MenuItemConstructorOptions[] = [
 		{ role: "reload" },
 		{ role: "forceReload" },
@@ -438,7 +533,7 @@ function buildMenu(): Menu {
 		{ role: "togglefullscreen" },
 	];
 	return Menu.buildFromTemplate([
-		process.platform === "darwin" ? { role: "appMenu" } : { role: "fileMenu" },
+		process.platform === "darwin" ? appMenu : fileMenu,
 		{ role: "editMenu" },
 		{ label: "View", submenu: view },
 		{ role: "windowMenu" },
