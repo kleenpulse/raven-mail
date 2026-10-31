@@ -4,7 +4,16 @@ appId: io.github.kleenpulse.raven
 productName: Raven
 copyright: Raven contributors, AGPL-3.0-or-later
 artifactName: Raven-${version}-${os}-${arch}.${ext}
-publish: null
+
+# Where the app looks for updates: published releases on GitHub. This writes
+# resources/app-update.yml and the latest*.yml files next to the installers.
+# Builds still run with --publish never: CI uploads them to a draft release
+# that a person publishes (desktop/RELEASING.md). The updater can't see drafts.
+publish:
+  provider: github
+  owner: kleenpulse
+  repo: raven-mail
+  releaseType: draft
 
 directories:
   # The staged main process; it has no dependencies, so nothing is collected.
@@ -62,6 +71,9 @@ nsis:
 mac:
   target:
     - target: dmg
+      arch: [arm64, x64]
+    # The updater installs from the zip (Squirrel.Mac can't read a dmg).
+    - target: zip
       arch: [arm64, x64]
   category: public.app-category.productivity
   protocols:

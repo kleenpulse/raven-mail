@@ -13,6 +13,14 @@ as you work — it ships inside the app.
 
 ### Added
 
+- On desktop, Raven now checks for new versions by itself, when it
+  starts and every 6 hours. You can also pick "Check for updates…" in
+  the File menu (the Raven menu on a Mac) or in the tray menu. On
+  Windows and with the Linux AppImage, Raven downloads the new version
+  in the background and asks you to restart. If you pick Later, it
+  updates the next time you quit. On a Mac and with the Linux .deb
+  package, Raven tells you a new version is out and opens its download
+  page. You install it over the old one.
 - A link to Raven can now start a new email for you. Put an email
   link after `?compose=`, like `/mail?compose=mailto:sam@example.com`,
   and Raven opens a new message with the address, subject and text
@@ -35,8 +43,8 @@ as you work — it ships inside the app.
   blocked senders and reminders are kept in a small database inside
   the app, so there's nothing to set up. These first builds aren't
   signed yet, so your computer will warn you the first time you open
-  Raven. The README shows what to click. It doesn't update itself yet:
-  to get a newer version, install a newer build over the old one.
+  Raven. The README shows what to click. It tells you when a new
+  version is out.
 - On desktop, Raven now opens where you left it, at the same size,
   and maximized if it was. If that screen isn't plugged in anymore,
   it opens on your main screen.
