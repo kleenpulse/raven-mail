@@ -5,12 +5,16 @@
  * electron-builder (run by Node), then checks what got packaged and writes
  * SHA256SUMS.txt next to the installers. With no flags it builds for this OS.
  *
+ * It signs when the keys are in the environment (scripts/signing.ts and
+ * desktop/RELEASING.md), and builds exactly as before when they aren't.
+ *
  * Installers for users are built on CI only (.github/workflows/desktop.yml).
  */
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
+import { MODE_LABEL, signingPlan, type SigningPlan } from "./signing";
 import { buildAndStage } from "./stage";
 import { verifyServerDir } from "./verify";
 
@@ -20,12 +24,20 @@ const out = join(desktop, ".out");
 const node = process.env.RAVEN_NODE || "node";
 const targets = process.argv.slice(2);
 
-await buildAndStage(root);
+// Before the long web build, so missing keys fail fast.
+const signing = signingPlan({ platform: process.platform, env: process.env, entitlements: join(desktop, "build", "entitlements.hardened.plist"), fileExists: existsSync });
+console.log(`signing: ${MODE_LABEL[signing.mode]}${signing.notarize ? ", notarized" : ""}`);
+
+const { app: stagedApp } = await buildAndStage(root);
+// The updater reads this: macOS installs updates itself only when signed.
+const manifestPath = join(stagedApp, "package.json");
+const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<string, unknown>;
+writeFileSync(manifestPath, `${JSON.stringify({ ...manifest, ravenBuild: { signed: signing.signed } }, null, 2)}\n`);
 
 const builder = join(desktop, "node_modules", "electron-builder", "cli.js");
-const env: Record<string, string | undefined> = { ...process.env };
+const env = signing.env;
 delete env.ELECTRON_RUN_AS_NODE;
-const packed = spawnSync(node, [builder, "--config", "electron-builder.yml", "--publish", "never", ...targets], { cwd: desktop, env, stdio: "inherit" });
+const packed = spawnSync(node, [builder, "--config", "electron-builder.yml", "--publish", "never", ...targets, ...signing.args], { cwd: desktop, env, stdio: "inherit" });
 if (packed.status !== 0) throw new Error("electron-builder failed");
 
 /** Every unpacked app electron-builder left in .out, with its resources folder and executable. */
@@ -83,6 +95,36 @@ for (const { resources, app } of apps) {
 }
 
 const installers = readdirSync(out).filter((f) => /\.(exe|dmg|AppImage|deb)$/.test(f));
+verifySignatures(signing, apps, installers);
 const sums = installers.map((f) => `${createHash("sha256").update(readFileSync(join(out, f))).digest("hex")}  ${f}`);
 writeFileSync(join(out, "SHA256SUMS.txt"), `${sums.join("\n")}\n`);
 console.log(sums.join("\n"));
+
+/**
+ * macOS: the bundle's seal holds (ad hoc too), and Gatekeeper accepts a
+ * notarized app. Windows: signed builds carry a valid Authenticode signature
+ * on the app and the installer.
+ */
+function verifySignatures(plan: SigningPlan, built: { app: string }[], files: string[]): void {
+	const check = (what: string, cmd: string, args: string[], extraEnv: Record<string, string> = {}): string => {
+		const run = spawnSync(cmd, args, { encoding: "utf8", env: { ...process.env, ...extraEnv } });
+		if (run.status !== 0) throw new Error(`${what} failed: ${(run.stderr || run.stdout || run.error?.message || "").trim().slice(0, 600)}`);
+		return run.stdout.trim();
+	};
+	if (process.platform === "darwin") {
+		for (const { app } of built.filter(({ app }) => app.endsWith(".app"))) {
+			check(`codesign --verify on ${app}`, "codesign", ["--verify", "--deep", "--strict", "--verbose=2", app]);
+			if (plan.notarize) check(`spctl on ${app}`, "spctl", ["--assess", "--type", "execute", "--verbose=2", app]);
+			console.log(`  ${app}: signature verified${plan.notarize ? ", accepted by Gatekeeper" : ""}`);
+		}
+	}
+	if (process.platform === "win32" && plan.signed) {
+		const paths = [...built.map(({ app }) => app), ...files.filter((f) => f.endsWith(".exe")).map((f) => join(out, f))];
+		for (const path of paths) {
+			// The path goes in through the environment, so nothing in it is read as PowerShell.
+			const status = check(`Get-AuthenticodeSignature on ${path}`, "powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:RAVEN_SIGNED_FILE).Status"], { RAVEN_SIGNED_FILE: path });
+			if (status !== "Valid") throw new Error(`${path} isn't validly signed: ${status}`);
+			console.log(`  ${path}: Authenticode signature valid`);
+		}
+	}
+}

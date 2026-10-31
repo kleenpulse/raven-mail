@@ -67,8 +67,10 @@ mac:
   protocols:
     - name: Email link
       schemes: [mailto]
-  # Ad-hoc signature: Apple Silicon won't run an unsigned app at all. Real signing comes later.
-  identity: "-"
+  # scripts/build.ts decides how to sign. With a Developer ID it turns on the
+  # hardened runtime (build/entitlements.hardened.plist) and notarizes. With
+  # no keys it passes identity "-": an ad-hoc signature, since Apple Silicon
+  # won't run an unsigned app at all.
   hardenedRuntime: false
 
 linux:
