@@ -102,6 +102,16 @@ describe("windowsMailRegistration", () => {
 		expect(preview.find((args) => args[1]!.endsWith("\\command"))?.[4]).toBe(
 			'"D:\\repo\\desktop\\node_modules\\electron\\dist\\electron.exe" "D:\\repo\\desktop\\.stage\\app" "--raven-mode=preview" "%1"',
 		);
+		// The app picker would otherwise name it after electron.exe.
+		expect(preview).toContainEqual([
+			"add",
+			"HKCU\\Software\\Classes\\RavenPreview.mailto\\Application",
+			"/v",
+			"ApplicationName",
+			"/d",
+			"Raven Preview",
+			"/f",
+		]);
 	});
 });
 

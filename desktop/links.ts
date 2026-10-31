@@ -66,6 +66,9 @@ export function windowsMailRegistration(target: WindowsMailApp): string[][] {
 		["add", classes, "/ve", "/d", `${target.name} email link`, "/f"],
 		["add", classes, "/v", "URL Protocol", "/d", "", "/f"],
 		["add", `${classes}\\DefaultIcon`, "/ve", "/d", `${quote(target.exe)},0`, "/f"],
+		// The app picker reads these. Without them it shows the exe's description ("Electron" in preview).
+		["add", `${classes}\\Application`, "/v", "ApplicationName", "/d", target.name, "/f"],
+		["add", `${classes}\\Application`, "/v", "ApplicationIcon", "/d", `${quote(target.exe)},0`, "/f"],
 		["add", `${classes}\\shell\\open\\command`, "/ve", "/d", command, "/f"],
 		["add", capabilities, "/v", "ApplicationName", "/d", target.name, "/f"],
 		["add", capabilities, "/v", "ApplicationDescription", "/d", "Read and write email with Raven.", "/f"],
