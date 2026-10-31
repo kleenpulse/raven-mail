@@ -18,6 +18,13 @@ as you work — it ships inside the app.
   and Raven opens a new message with the address, subject and text
   filled in. If you have unsaved changes in the message you're
   writing, Raven asks first.
+- On desktop, Raven can now open the email links you click in other
+  apps. Turn on "Use Raven for email links" in the File menu (the
+  Raven menu on a Mac) or in Settings. On Windows, this opens the
+  Windows default apps page, and you pick Raven there, because
+  Windows doesn't let apps make themselves the default. Raven never
+  takes over email links unless you ask. `raven://` links now open a
+  message or the overview in Raven, even when it's closed.
 - Raven now has a desktop app for Windows, macOS and Linux. It's the
   same Raven, running on your own computer. Your integrations, rules,
   blocked senders and reminders are kept in a small database inside

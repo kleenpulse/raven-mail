@@ -9,9 +9,17 @@
 export const CHANNELS = {
 	notifyNewMail: "raven:notify-new-mail",
 	open: "raven:open",
+	mailAppStatus: "raven:mail-app-status",
+	mailAppClaim: "raven:mail-app-claim",
 } as const;
 
 export type NewMail = { uid: string; from: string; subject: string };
+
+/**
+ * Whether Raven opens email links. On Windows only the user can pick it, in
+ * Windows Settings (`viaSettings`), so claiming there opens that page.
+ */
+export type MailAppStatus = { isDefault: boolean; viaSettings: boolean };
 
 export const MAX_ITEMS = 50;
 export const MAX_TEXT = 200;

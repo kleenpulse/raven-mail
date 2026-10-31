@@ -81,6 +81,8 @@ export async function stage(root: string): Promise<Stage> {
 	await bundleMain(root, app, {
 		name: "raven",
 		productName: "Raven",
+		// The Linux .desktop file (named after linux.executableName). Electron needs it to claim links there.
+		desktopName: "raven.desktop",
 		version: pkg.version,
 		description: "Raven: mail, briefed.",
 		author: { name: "Raven", email: "kleenpulse@users.noreply.github.com" },

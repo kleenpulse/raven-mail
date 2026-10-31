@@ -8,9 +8,18 @@ export type DesktopNewMail = { uid: string; from: string; subject: string };
 export type RavenDesktop = {
 	/** Asks for a system notification; the desktop app checks and caps the items. */
 	notifyNewMail(items: DesktopNewMail[]): void;
-	/** Paths in this app the desktop app wants shown (a notification was clicked). Returns an unsubscribe. */
+	/** Paths in this app the desktop app wants shown (a notification or a link was clicked). Returns an unsubscribe. */
 	onOpen(callback: (path: string) => void): () => void;
+	/** Whether Raven opens email links, and a way to ask for it. */
+	mailApp: {
+		status(): Promise<DesktopMailAppStatus>;
+		/** Makes Raven the email app, or on Windows opens the Settings page where the user picks it. */
+		claim(): Promise<DesktopMailAppStatus>;
+	};
 };
+
+/** `viaSettings`: the system's own settings decide (Windows), not Raven. */
+export type DesktopMailAppStatus = { isDefault: boolean; viaSettings: boolean };
 
 declare global {
 	interface Window {

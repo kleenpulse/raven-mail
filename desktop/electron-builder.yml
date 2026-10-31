@@ -40,6 +40,16 @@ electronFuses:
   loadBrowserProcessSpecificV8Snapshot: false
   grantFileProtocolExtraPrivileges: false
 
+# Declares the links Raven opens (macOS CFBundleURLTypes, Linux .desktop
+# MimeType). Declaring mailto doesn't make Raven the default: only "Use Raven
+# for email links" asks for that. The NSIS target ignores this list; main.ts
+# registers raven:// at start instead.
+protocols:
+  - name: Raven link
+    schemes: [raven]
+  - name: Email link
+    schemes: [mailto]
+
 win:
   target:
     - target: nsis

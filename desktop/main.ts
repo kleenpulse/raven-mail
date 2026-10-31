@@ -1,12 +1,15 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell, type IpcMainEvent, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
+import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { existsSync, renameSync } from "node:fs";
 import { join } from "node:path";
+import { promisify } from "node:util";
 import { latestBackup } from "./backups";
-import { CHANNELS, newMailNotice, openPath, parseNewMail, pathForNewMail, trustedSender } from "./bridge";
+import { CHANNELS, newMailNotice, openPath, parseNewMail, pathForNewMail, trustedSender, type MailAppStatus } from "./bridge";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
+import { linkArg, linkPath, RAVEN_SCHEME, userChoiceProgId, WINDOWS_MAILTO_CHOICE, windowsMailRegistration, type WindowsMailApp } from "./links";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
 import { electronSealer } from "./sealer";
@@ -27,7 +30,9 @@ import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } fr
 
 type Mode = "dev" | "preview" | "packaged";
 
-const mode: Mode = app.isPackaged ? "packaged" : process.env.RAVEN_DESKTOP_MODE === "preview" ? "preview" : "dev";
+// A link that starts an unpackaged build has no env from the dev script, so its registered command names the mode.
+const unpackagedMode = process.env.RAVEN_DESKTOP_MODE ?? app.commandLine.getSwitchValue("raven-mode");
+const mode: Mode = app.isPackaged ? "packaged" : unpackagedMode === "preview" ? "preview" : "dev";
 const USER_DATA: Record<Mode, string> = { dev: "Raven Dev", preview: "Raven Preview", packaged: "Raven" };
 const APP_ID = "io.github.kleenpulse.raven";
 const START_PATH = "/overview";
@@ -67,8 +72,12 @@ function boot(): void {
 	let sessionEnding = false;
 	let settings: DesktopSettings = loadSettings(userData);
 	let tray: RavenTray | null = null;
+	// A link's path that came before the server was up (it started Raven, say); the newest wins.
+	let pendingLink: string | null = null;
 
 	log.info(`starting (${mode}, Electron ${process.versions.electron})`);
+	registerRavenLinks();
+	openLink(linkArg(process.argv));
 
 	const lifecycle = (): Lifecycle => ({ keepRunning: settings.keepRunning, quitting: quitting !== "no" || sessionEnding, platform: process.platform });
 
@@ -86,7 +95,25 @@ function boot(): void {
 		});
 	});
 
-	app.on("second-instance", () => showWindow());
+	ipcMain.handle(CHANNELS.mailAppStatus, (event) => {
+		if (!fromMainWindow(event)) throw new Error("not allowed");
+		return mailAppStatus();
+	});
+	ipcMain.handle(CHANNELS.mailAppClaim, (event) => {
+		if (!fromMainWindow(event)) throw new Error("not allowed");
+		return claimMailApp();
+	});
+
+	// Windows and Linux start a second copy with the link; it hands its arguments here and quits.
+	app.on("second-instance", (_event, argv) => {
+		showWindow();
+		openLink(linkArg(argv));
+	});
+	// macOS sends links as an event, even the one that starts the app, so it's registered before ready.
+	app.on("open-url", (event, url) => {
+		event.preventDefault();
+		openLink(url);
+	});
 	app.on("web-contents-created", (_event, contents) => harden(contents));
 	app.on("window-all-closed", () => {
 		// macOS apps stay open without windows; the server keeps running.
@@ -116,7 +143,7 @@ function boot(): void {
 		.catch((err: unknown) => fail(err));
 
 	async function start(): Promise<void> {
-		Menu.setApplicationMenu(buildMenu(settings.keepRunning, setKeepRunning));
+		Menu.setApplicationMenu(buildMenu(settings.keepRunning, menuActions));
 		if (hasTray(process.platform)) {
 			tray = createTray({ open: showWindow, keepRunning: () => settings.keepRunning, setKeepRunning, quit: () => app.quit() });
 		}
@@ -125,8 +152,111 @@ function boot(): void {
 		secrets = await loadOrAskSecrets();
 		server = await startServerOrRecover();
 		attach(server);
-		await mainWindow?.loadURL(`${server.origin}${START_PATH}`);
+		const first = pendingLink ?? START_PATH;
+		pendingLink = null;
+		await mainWindow?.loadURL(`${server.origin}${first}`);
 	}
+
+	/** Shows a link's page now, or once the server is up. */
+	function openLink(link: string | undefined): void {
+		if (link === undefined) return;
+		const path = linkPath(link);
+		if (!path) return log.info("ignored a link Raven doesn't open");
+		if (!appOrigin) {
+			pendingLink = path;
+			return;
+		}
+		showWindow();
+		openInApp(path);
+	}
+
+	/**
+	 * How the system starts this build for a link. Unpackaged builds run
+	 * Electron with the app's folder, and name their mode before the link:
+	 * Electron refuses to start if anything follows a link on the command line.
+	 */
+	function launchCommand(): { exe: string; args: string[] } {
+		return { exe: process.execPath, args: app.isPackaged ? [] : [app.getAppPath(), `--raven-mode=${mode}`] };
+	}
+
+	function setDefaultFor(scheme: string): boolean {
+		const { exe, args } = launchCommand();
+		return app.isPackaged ? app.setAsDefaultProtocolClient(scheme) : app.setAsDefaultProtocolClient(scheme, exe, args);
+	}
+
+	/**
+	 * raven:// is only ever Raven's, so it's claimed at every start (the NSIS
+	 * installer doesn't register it). Not in dev mode: a link can't start
+	 * `next dev`, and dev runs often enough to keep taking it from an installed Raven.
+	 */
+	function registerRavenLinks(): void {
+		if (mode === "dev") return;
+		if (!setDefaultFor(RAVEN_SCHEME)) log.info("couldn't register raven:// links");
+	}
+
+	function windowsMailApp(): WindowsMailApp {
+		const name = USER_DATA[mode];
+		const key = name.replace(/\s+/g, "");
+		return { name, key, progId: `${key}.mailto`, ...launchCommand() };
+	}
+
+	async function mailAppStatus(): Promise<MailAppStatus> {
+		if (process.platform !== "win32") {
+			const { exe, args } = launchCommand();
+			const isDefault = app.isPackaged ? app.isDefaultProtocolClient("mailto") : app.isDefaultProtocolClient("mailto", exe, args);
+			return { isDefault, viaSettings: false };
+		}
+		try {
+			const { stdout } = await run("reg", ["query", WINDOWS_MAILTO_CHOICE, "/v", "ProgId"], { windowsHide: true });
+			return { isDefault: userChoiceProgId(stdout) === windowsMailApp().progId, viaSettings: true };
+		} catch {
+			// No choice saved yet: Windows uses its own default.
+			return { isDefault: false, viaSettings: true };
+		}
+	}
+
+	/**
+	 * Only when the user asks. macOS and Linux let Raven become the email app;
+	 * Windows only lets the user pick it, so Raven lists itself and opens that page.
+	 */
+	async function claimMailApp(): Promise<MailAppStatus> {
+		if (process.platform !== "win32") {
+			if (!setDefaultFor("mailto")) log.info("couldn't become the app for email links");
+			return mailAppStatus();
+		}
+		const target = windowsMailApp();
+		try {
+			for (const args of windowsMailRegistration(target)) await run("reg", args, { windowsHide: true });
+		} catch (err) {
+			log.info(`couldn't list Raven as an email app: ${err instanceof Error ? err.message : String(err)}`);
+			return mailAppStatus();
+		}
+		await shell.openExternal(`ms-settings:defaultapps?registeredAppUser=${encodeURIComponent(target.name)}`);
+		return mailAppStatus();
+	}
+
+	/** The menu item: on Windows it opens Settings, elsewhere it says how it went. */
+	async function useForEmailLinks(): Promise<void> {
+		const before = await mailAppStatus();
+		if (before.isDefault) {
+			await dialog.showMessageBox({ type: "info", title: "Raven", message: "Raven already opens your email links.", buttons: ["OK"] });
+			return;
+		}
+		const after = await claimMailApp();
+		if (after.viaSettings) return;
+		await dialog.showMessageBox({
+			type: after.isDefault ? "info" : "warning",
+			title: "Raven",
+			message: after.isDefault ? "Raven now opens your email links." : "Raven couldn't become the app for email links.",
+			...(after.isDefault ? {} : { detail: "You can choose it in your system's settings for default apps." }),
+			buttons: ["OK"],
+		});
+	}
+
+	const menuActions: MenuActions = {
+		setKeepRunning: (on) => setKeepRunning(on),
+		useForEmailLinks: () => void useForEmailLinks().catch((err: unknown) => log.info(`email links: ${String(err)}`)),
+	};
 
 	/** Starts the server; `restoreFrom` names a database backup to fill the (empty) data folder from. */
 	async function startServer(restoreFrom?: string): Promise<ServerHandle> {
@@ -306,7 +436,7 @@ function boot(): void {
 
 	function setKeepRunning(on: boolean): void {
 		updateSettings({ keepRunning: on });
-		Menu.setApplicationMenu(buildMenu(on, setKeepRunning));
+		Menu.setApplicationMenu(buildMenu(on, menuActions));
 		tray?.refresh();
 		// A hidden window still checks for mail at full pace (and keeps `visibilityState` "visible").
 		if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.setBackgroundThrottling(!on);
@@ -355,7 +485,7 @@ function boot(): void {
 	}
 
 	/** Only the main window's own page, in its top frame, on the app's origin. */
-	function fromMainWindow(event: IpcMainEvent): boolean {
+	function fromMainWindow(event: Pick<IpcMainEvent, "sender" | "senderFrame">): boolean {
 		if (!mainWindow || mainWindow.isDestroyed() || event.sender !== mainWindow.webContents) return false;
 		const frame = event.senderFrame;
 		return trustedSender(frame ? { origin: frame.origin, isTop: frame.parent === null } : null, appOrigin);
@@ -539,19 +669,23 @@ async function closeWindows(): Promise<boolean> {
 	return BrowserWindow.getAllWindows().length === 0;
 }
 
-function buildMenu(keepRunning: boolean, setKeepRunning: (on: boolean) => void): Menu {
+type MenuActions = { setKeepRunning: (on: boolean) => void; useForEmailLinks: () => void };
+
+function buildMenu(keepRunning: boolean, actions: MenuActions): Menu {
 	const keepRunningItem: MenuItemConstructorOptions = {
 		label: KEEP_RUNNING_LABEL,
 		type: "checkbox",
 		checked: keepRunning,
-		click: (item) => setKeepRunning(item.checked),
+		click: (item) => actions.setKeepRunning(item.checked),
 	};
+	const emailLinksItem: MenuItemConstructorOptions = { label: "Use Raven for email links…", click: () => actions.useForEmailLinks() };
 	const appMenu: MenuItemConstructorOptions = {
 		label: app.name,
 		submenu: [
 			{ role: "about" },
 			{ type: "separator" },
 			keepRunningItem,
+			emailLinksItem,
 			{ type: "separator" },
 			{ role: "services" },
 			{ type: "separator" },
@@ -564,7 +698,7 @@ function buildMenu(keepRunning: boolean, setKeepRunning: (on: boolean) => void):
 	};
 	const fileMenu: MenuItemConstructorOptions = {
 		label: "File",
-		submenu: [keepRunningItem, { type: "separator" }, { role: "quit", label: "Quit Raven" }],
+		submenu: [keepRunningItem, emailLinksItem, { type: "separator" }, { role: "quit", label: "Quit Raven" }],
 	};
 	const view: MenuItemConstructorOptions[] = [
 		{ role: "reload" },
@@ -584,6 +718,8 @@ function buildMenu(keepRunning: boolean, setKeepRunning: (on: boolean) => void):
 		{ role: "windowMenu" },
 	]);
 }
+
+const run = promisify(execFile);
 
 // Not geolocation: Electron's location service needs a Google API key, so it
 // only ever fails, and a denial at least tells the weather card to stop asking.
