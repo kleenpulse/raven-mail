@@ -100,7 +100,8 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 			defaultId: 0,
 			cancelId: 1,
 		});
-		if (response === 0) hooks.restartToUpdate();
+		// A newer version may have started downloading while the dialog was open, deleting this installer.
+		if (response === 0 && ready() === version) hooks.restartToUpdate();
 	}
 
 	function check(): void {
