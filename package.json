@@ -84,7 +84,7 @@
     "@types/react-dom": "^19",
     "@types/sanitize-html": "^2.16.1",
     "drizzle-kit": "^0.31.11",
-    "eslint": "^9",
+    "eslint": "^10",
     "eslint-config-next": "16.4.0",
     "fast-xml-parser": "^5.11.1",
     "neon": "^8.3.5",
