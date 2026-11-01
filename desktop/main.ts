@@ -9,7 +9,7 @@ import { CHANNELS, newMailNotice, openPath, parseNewMail, pathForNewMail, truste
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
-import { linkArg, linkPath, RAVEN_SCHEME, userChoiceProgId, WINDOWS_MAILTO_CHOICE, windowsMailRegistration, type WindowsMailApp } from "./links";
+import { linkArg, linkPath, RAVEN_SCHEME, userChoiceProgId, WINDOWS_MAILTO_CHOICE, windowsMailIds, windowsMailRegistration, type WindowsMailApp } from "./links";
 import { createLog } from "./log";
 import { classifyUrl } from "./policy";
 import { electronSealer } from "./sealer";
@@ -36,7 +36,10 @@ type Mode = "dev" | "preview" | "packaged";
 const unpackagedMode = process.env.RAVEN_DESKTOP_MODE ?? app.commandLine.getSwitchValue("raven-mode");
 const mode: Mode = app.isPackaged ? "packaged" : unpackagedMode === "preview" ? "preview" : "dev";
 const USER_DATA: Record<Mode, string> = { dev: "Raven Dev", preview: "Raven Preview", packaged: "Raven" };
-const APP_ID = "io.github.kleenpulse.raven";
+// The installer's appId. Dev and preview get their own: Windows draws the taskbar
+// icon from a Start menu shortcut with the same ID, and Electron adds one for
+// electron.exe the first time it shows a notification.
+const APP_ID: Record<Mode, string> = { dev: "io.github.kleenpulse.raven.dev", preview: "io.github.kleenpulse.raven.preview", packaged: "io.github.kleenpulse.raven" };
 const START_PATH = "/overview";
 
 // Set before the single-instance lock: the lock lives in userData.
@@ -57,7 +60,7 @@ if (app.isPackaged && (app.commandLine.hasSwitch("remote-debugging-port") || app
 
 function boot(): void {
 	app.enableSandbox();
-	if (process.platform === "win32") app.setAppUserModelId(APP_ID);
+	if (process.platform === "win32") app.setAppUserModelId(APP_ID[mode]);
 
 	const userData = app.getPath("userData");
 	const logs = join(userData, "logs");
@@ -221,9 +224,7 @@ function boot(): void {
 	}
 
 	function windowsMailApp(): WindowsMailApp {
-		const name = USER_DATA[mode];
-		const key = name.replace(/\s+/g, "");
-		return { name, key, progId: `${key}.mailto`, ...launchCommand() };
+		return { ...windowsMailIds(USER_DATA[mode]), ...launchCommand() };
 	}
 
 	async function mailAppStatus(): Promise<MailAppStatus> {

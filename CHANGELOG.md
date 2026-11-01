@@ -11,6 +11,12 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- The "What's new" card no longer runs off the top and bottom of a
+  small window. Its list of changes scrolls, and the title and buttons
+  stay on screen.
+
 ## [0.10.0] - 2026-11-01
 
 ### Added

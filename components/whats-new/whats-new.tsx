@@ -94,16 +94,22 @@ export function WhatsNew({ releases, children }: { releases: ChangelogRelease[];
 			{children}
 
 			<Dialog open={cardOpen && !tourActive} onOpenChange={(next) => !next && dismiss()}>
-				<DialogContent initialFocus={gotIt} className="rounded-[24px] p-5 sm:max-w-md">
+				{/* Long entries in a short window scroll the list; the title and buttons stay in view. */}
+				<DialogContent
+					initialFocus={gotIt}
+					className="max-h-[calc(100svh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[24px] p-5 sm:max-w-md"
+				>
 					<DialogHeader>
 						<DialogTitle>What&apos;s new</DialogTitle>
 						<DialogDescription>Raven v{APP_VERSION}</DialogDescription>
 					</DialogHeader>
-					{cardEntries.length > 0 ? (
-						<EntryList entries={cardEntries} />
-					) : (
-						<p className="text-[13px] text-ink-2">Updated to v{APP_VERSION}.</p>
-					)}
+					<div className="-mx-5 min-h-0 overflow-y-auto overscroll-contain px-5">
+						{cardEntries.length > 0 ? (
+							<EntryList entries={cardEntries} />
+						) : (
+							<p className="text-[13px] text-ink-2">Updated to v{APP_VERSION}.</p>
+						)}
+					</div>
 					<DialogFooter className={FOOTER}>
 						<Button
 							variant="ghost"

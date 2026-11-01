@@ -29,6 +29,7 @@
     "desktop:dev": "bun desktop/scripts/dev.ts",
     "desktop:preview": "bun desktop/scripts/dev.ts --preview",
     "desktop:build": "bun desktop/scripts/build.ts",
+    "desktop:forget-links": "bun desktop/scripts/forget-links.ts",
     "desktop:typecheck": "tsc -p desktop --noEmit"
   },
   "dependencies": {

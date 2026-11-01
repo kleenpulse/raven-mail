@@ -6,7 +6,7 @@ This is how a new version of Raven desktop gets to people, and how to turn on co
 
 1. Check that `## [Unreleased]` in `CHANGELOG.md` says what changed.
 2. Run `bun run bump patch` (or `minor`, `major`). It moves the Unreleased notes under the new version, updates `package.json`, commits and makes the tag `vX.Y.Z`. It doesn't push.
-3. Push the commit and the tag: `git push origin main vX.Y.Z`.
+3. Push the commit and the tag together: `git push --atomic origin main vX.Y.Z`. With `--atomic`, either both land or neither does.
 4. The tag starts the **Desktop** workflow. It builds on Windows, macOS and Linux, signs when the keys are set (see below), and checks every build. When all three pass, the `draft release` job makes a **draft** release for the tag. Its notes are the version's CHANGELOG section, and it has every file and one `SHA256SUMS.txt`.
 5. Open the draft on GitHub (Releases). Check the files are there and edit the notes if you want.
 6. Click **Publish release**. Leave **Set as the latest release** ticked: the updater only looks at the latest release.
@@ -45,7 +45,7 @@ The installer only starts once Raven has closed its windows and stopped its serv
 
 Downloads wait in `%LOCALAPPDATA%\raven-updater` on Windows (`~/Library/Caches/raven-updater` on macOS, `~/.cache/raven-updater` on Linux).
 
-**Today's latest release is v0.2.0.** It came before the desktop app and has no `latest*.yml`, so until the first release made by this workflow is published, a check finds nothing. Background checks only log it in `main.log`, and "Check for updates…" says "There's no update for Raven yet." Builds made before this change don't check for updates at all. Their users need to install one new build by hand.
+**v0.10.0 is the first release with update files.** Builds from before the updater (v0.9.0 and earlier) don't check for updates at all. Their users need to install one new build by hand.
 
 **Unsigned Windows builds** don't check who signed an update (there's no signature to check). They trust GitHub's HTTPS and the sha512 in `latest.yml`, both from the same release. Signed builds also check the publisher name (see below).
 
