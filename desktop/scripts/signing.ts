@@ -137,6 +137,23 @@ export function signingPlan({ platform, env, entitlements, fileExists }: Signing
 	return { mode: "linux-unsigned", signed: false, notarize: false, args: [], env: clean };
 }
 
+/**
+ * What's wrong with a macOS app's signature for this mode, given what
+ * `codesign --display --verbose=2` prints (build.ts runs it). The seal can be
+ * valid and still be the wrong one: electron-builder matches the ad-hoc
+ * identity "-" against keychain certificate names (RELEASING.md), and a
+ * Developer ID build must carry that certificate, not a different one.
+ */
+export function macSignatureProblem(mode: SigningMode, display: string): string | undefined {
+	if (mode === "mac-ad-hoc" && !/^Signature=adhoc$/m.test(display)) {
+		return "the build asked for an ad-hoc signature, but codesign doesn't show Signature=adhoc (did a keychain certificate match \"-\"?)";
+	}
+	if (mode === "mac-developer-id" && !/^Authority=Developer ID Application: /m.test(display)) {
+		return "the build asked for a Developer ID signature, but codesign shows no \"Developer ID Application\" authority";
+	}
+	return undefined;
+}
+
 export const MODE_LABEL: Record<SigningMode, string> = {
 	"mac-developer-id": "signed with a Developer ID",
 	"mac-ad-hoc": "ad hoc (no Developer ID keys)",

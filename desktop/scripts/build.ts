@@ -14,7 +14,7 @@ import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { MODE_LABEL, SIGNING_ENV, signingPlan, type SigningPlan } from "./signing";
+import { MODE_LABEL, macSignatureProblem, SIGNING_ENV, signingPlan, type SigningPlan } from "./signing";
 import { buildAndStage } from "./stage";
 import { verifyServerDir } from "./verify";
 
@@ -105,28 +105,32 @@ writeFileSync(join(out, "SHA256SUMS.txt"), `${sums.join("\n")}\n`);
 console.log(sums.join("\n"));
 
 /**
- * macOS: the bundle's seal holds (ad hoc too), and Gatekeeper accepts a
- * notarized app. Windows: signed builds carry a valid Authenticode signature
- * on the app and the installer.
+ * macOS: the bundle's seal holds (ad hoc too), it's the kind of signature
+ * the mode asked for, and Gatekeeper accepts a notarized app. Windows:
+ * signed builds carry a valid Authenticode signature on the app and the
+ * installer.
  */
 function verifySignatures(plan: SigningPlan, built: { app: string }[], files: string[]): void {
-	const check = (what: string, cmd: string, args: string[], extraEnv: Record<string, string> = {}): string => {
+	const check = (what: string, cmd: string, args: string[], extraEnv: Record<string, string> = {}): { stdout: string; stderr: string } => {
 		const run = spawnSync(cmd, args, { encoding: "utf8", env: { ...process.env, ...extraEnv } });
 		if (run.status !== 0) throw new Error(`${what} failed: ${(run.stderr || run.stdout || run.error?.message || "").trim().slice(0, 600)}`);
-		return run.stdout.trim();
+		return { stdout: run.stdout.trim(), stderr: run.stderr.trim() };
 	};
 	if (process.platform === "darwin") {
 		for (const { app } of built.filter(({ app }) => app.endsWith(".app"))) {
 			check(`codesign --verify on ${app}`, "codesign", ["--verify", "--deep", "--strict", "--verbose=2", app]);
+			// codesign prints the signature's details on stderr.
+			const problem = macSignatureProblem(plan.mode, check(`codesign --display on ${app}`, "codesign", ["--display", "--verbose=2", app]).stderr);
+			if (problem) throw new Error(`${app}: ${problem}`);
 			if (plan.notarize) check(`spctl on ${app}`, "spctl", ["--assess", "--type", "execute", "--verbose=2", app]);
-			console.log(`  ${app}: signature verified${plan.notarize ? ", accepted by Gatekeeper" : ""}`);
+			console.log(`  ${app}: signature verified (${plan.signed ? "Developer ID" : "ad hoc"})${plan.notarize ? ", accepted by Gatekeeper" : ""}`);
 		}
 	}
 	if (process.platform === "win32" && plan.signed) {
 		const paths = [...built.map(({ app }) => app), ...files.filter((f) => f.endsWith(".exe")).map((f) => join(out, f))];
 		for (const path of paths) {
 			// The path goes in through the environment, so nothing in it is read as PowerShell.
-			const status = check(`Get-AuthenticodeSignature on ${path}`, "powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:RAVEN_SIGNED_FILE).Status"], { RAVEN_SIGNED_FILE: path });
+			const status = check(`Get-AuthenticodeSignature on ${path}`, "powershell.exe", ["-NoProfile", "-NonInteractive", "-Command", "(Get-AuthenticodeSignature -LiteralPath $env:RAVEN_SIGNED_FILE).Status"], { RAVEN_SIGNED_FILE: path }).stdout;
 			if (status !== "Valid") throw new Error(`${path} isn't validly signed: ${status}`);
 			console.log(`  ${path}: Authenticode signature valid`);
 		}
