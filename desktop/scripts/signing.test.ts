@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { signingPlan, type SigningInput } from "./signing";
+import { MODE_LABEL, signingPlan, type SigningInput, type SigningMode } from "./signing";
 
 const ENTITLEMENTS = "/repo/desktop/build/entitlements.hardened.plist";
 const plan = (platform: NodeJS.Platform, env: Record<string, string | undefined>, exists = true) =>
@@ -65,11 +65,6 @@ describe("macOS", () => {
 		expect(() => plan("darwin", { ...MAC_KEYS, ...NOTARY }, false)).toThrow("APPLE_API_KEY must be the path");
 	});
 
-	test("a Developer ID never signs a pull request build", () => {
-		expect(plan("darwin", { ...MAC_KEYS, CSC_FOR_PULL_REQUEST: "true" }).env.CSC_FOR_PULL_REQUEST).toBeUndefined();
-		expect(plan("win32", { CSC_FOR_PULL_REQUEST: "true" }).env.CSC_FOR_PULL_REQUEST).toBeUndefined();
-	});
-
 	test("Windows and Apple ID notary values never reach the build", () => {
 		const env = plan("darwin", { ...MAC_KEYS, WIN_CSC_LINK: "x", APPLE_ID: "a", APPLE_APP_SPECIFIC_PASSWORD: "b", ...AZURE }).env;
 		for (const name of ["WIN_CSC_LINK", "APPLE_ID", "APPLE_APP_SPECIFIC_PASSWORD", ...Object.keys(AZURE)]) expect(env[name]).toBeUndefined();
@@ -111,6 +106,24 @@ describe("Windows", () => {
 			expect(plan("win32", env).env.CSC_KEY_PASSWORD).toBeUndefined();
 		}
 	});
+});
+
+test("only the ad-hoc build may sign a pull request", () => {
+	const cases: [NodeJS.Platform, Record<string, string>, SigningMode][] = [
+		["darwin", MAC_KEYS, "mac-developer-id"],
+		["darwin", { ...MAC_KEYS, ...NOTARY }, "mac-developer-id"],
+		["win32", AZURE, "win-azure"],
+		["win32", { WIN_CSC_LINK: "base64-pfx", WIN_CSC_KEY_PASSWORD: "pw" }, "win-certificate"],
+		["win32", {}, "win-unsigned"],
+		["linux", {}, "linux-unsigned"],
+	];
+	// A new mode has to be added here.
+	expect(new Set<string>(cases.map(([, , mode]) => mode))).toEqual(new Set(Object.keys(MODE_LABEL).filter((mode) => mode !== "mac-ad-hoc")));
+	for (const [platform, env, mode] of cases) {
+		const result = plan(platform, { ...env, CSC_FOR_PULL_REQUEST: "true" });
+		expect(result.mode).toBe(mode);
+		expect(result.env.CSC_FOR_PULL_REQUEST).toBeUndefined();
+	}
 });
 
 test("no build gets a token it could publish with", () => {
