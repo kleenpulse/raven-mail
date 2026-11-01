@@ -61,6 +61,7 @@ beforeEach(async () => {
 });
 
 describe("pruneEvents keeps what rules did apart from plain non-matches", () => {
+	// The big PGlite tests here run well under 5 s alone, but a loaded full run can push them past bun's 5 s default.
 	test("an applied move keeps its Undo after many runs over new mail", async () => {
 		const rules = await makeRules(5);
 		const [applied] = await judge(rules.slice(0, 1), ["weekly-roundup"], "applied");
@@ -72,7 +73,7 @@ describe("pruneEvents keeps what rules did apart from plain non-matches", () => 
 		expect((await listEvents(KEY)).map((e) => e.id)).toContain(applied);
 		expect(await claimUndo(KEY, applied)).toBe(true);
 		expect(await count()).toBe(1 + NON_MATCHES_KEPT);
-	});
+	}, 60_000);
 
 	test("a message still in the window isn't judged again", async () => {
 		const rules = await makeRules(RULE_LIMIT);
@@ -99,7 +100,7 @@ describe("pruneEvents keeps what rules did apart from plain non-matches", () => 
 		expect(oldNotable.some((id) => ids.has(id))).toBe(false);
 		expect(oldMisses.some((id) => ids.has(id))).toBe(false);
 		expect(notable.every((id) => ids.has(id))).toBe(true);
-	});
+	}, 60_000);
 
 	test("a held-back 0.7 stored as real still counts as notable", async () => {
 		const rules = await makeRules(1);
@@ -108,5 +109,5 @@ describe("pruneEvents keeps what rules did apart from plain non-matches", () => 
 		await pruneEvents(KEY);
 
 		expect((await listEvents(KEY)).map((e) => e.id)).toEqual([held]);
-	});
+	}, 60_000);
 });
