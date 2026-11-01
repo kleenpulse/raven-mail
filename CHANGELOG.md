@@ -11,6 +11,12 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Choosing your city for the weather now works when you add the
+  country or state after the city, like "Kaduna Nigeria" or
+  "New York, USA". Before, these found nothing.
+
 ## [0.10.1] - 2026-11-01
 
 ### Fixed

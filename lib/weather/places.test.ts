@@ -54,6 +54,48 @@ describe("searchPlaces", () => {
 		expect(await searchPlaces("Paris", 0)).toEqual([{ label: "Paris, France", lat: 48.85, lon: 2.35 }]);
 	});
 
+	/** Answers by the `name` asked for; unknown names find nothing. */
+	const answerByName = (byName: Record<string, unknown[]>) => {
+		const fn = mock<(url: string) => Promise<Response>>(async (url) => {
+			const name = new URL(url).searchParams.get("name") ?? "";
+			return new Response(JSON.stringify(byName[name] ? { results: byName[name] } : {}));
+		});
+		globalThis.fetch = fn as unknown as typeof fetch;
+		return fn;
+	};
+
+	const kaduna = [
+		{ name: "Kaduna", admin1: "Kaduna State", country: "Nigeria", country_code: "NG", latitude: 10.52641, longitude: 7.43879 },
+		{ name: "Kaduna", admin1: "Punjab", country: "Pakistan", country_code: "PK", latitude: 30.1, longitude: 71.2 },
+	];
+
+	test("a city followed by its country is read as name plus qualifier", async () => {
+		const fn = answerByName({ Kaduna: kaduna, kaduna });
+		expect(await searchPlaces("kaduna nigeria", 0)).toEqual([{ label: "Kaduna, Kaduna State, Nigeria", lat: 10.53, lon: 7.44 }]);
+		const names = fn.mock.calls.map(([url]) => new URL(url).searchParams.get("name"));
+		expect(names).toEqual(["kaduna nigeria", "kaduna"]);
+		expect(new URL(fn.mock.calls[1]![0]).searchParams.get("count")).toBe("50");
+	});
+
+	test("qualifiers can be a state, a country code or a common nickname, with or without a comma", async () => {
+		const newYork = [{ name: "New York", admin1: "New York", country: "United States", country_code: "US", latitude: 40.71, longitude: -74.01 }];
+		answerByName({ "new york": newYork, kaduna });
+		expect(await searchPlaces("new york, usa", 0)).toHaveLength(1);
+		expect(await searchPlaces("new york us", 0)).toHaveLength(1);
+		expect(await searchPlaces("new york united states", 0)).toHaveLength(1);
+		expect(await searchPlaces("kaduna kaduna state", 0)).toEqual([{ label: "Kaduna, Kaduna State, Nigeria", lat: 10.53, lon: 7.44 }]);
+		expect(await searchPlaces("kaduna france", 0)).toEqual([]);
+	});
+
+	test("a failed fallback lookup with nothing found is null", async () => {
+		let calls = 0;
+		globalThis.fetch = mock(async () => {
+			if (calls++ === 0) return new Response("{}");
+			throw new TypeError("offline");
+		}) as unknown as typeof fetch;
+		expect(await searchPlaces("kaduna nigeria", 0)).toBeNull();
+	});
+
 	test("a failed lookup is null and isn't cached", async () => {
 		const fn = answer({ error: true }, 500);
 		expect(await searchPlaces("Rome", 0)).toBeNull();
