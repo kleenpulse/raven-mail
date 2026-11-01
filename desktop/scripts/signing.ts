@@ -71,6 +71,7 @@ export function signingPlan({ platform, env, entitlements, fileExists }: Signing
 	const given = (name: string) => (env[name] ?? "").trim() !== "";
 	const clean: Record<string, string | undefined> = { ...env };
 	for (const name of SIGNING_ENV) delete clean[name];
+	delete clean.CSC_FOR_PULL_REQUEST;
 	const pass = (names: string[]) => {
 		for (const name of names) if (given(name)) clean[name] = env[name];
 	};
@@ -78,6 +79,10 @@ export function signingPlan({ platform, env, entitlements, fileExists }: Signing
 
 	if (platform === "darwin") {
 		if (!given("CSC_LINK")) {
+			// electron-builder skips all signing on pull requests (GITHUB_BASE_REF), ad hoc too,
+			// so a PR would build an app a tag never ships. Its worry is keys reaching fork PRs,
+			// and an ad-hoc build has none.
+			clean.CSC_FOR_PULL_REQUEST = "true";
 			return { mode: "mac-ad-hoc", signed: false, notarize: false, args: ["-c.mac.identity=-"], env: clean };
 		}
 		pass(["CSC_LINK", "CSC_KEY_PASSWORD"]);

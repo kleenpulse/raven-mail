@@ -24,6 +24,10 @@ describe("with no keys, builds as before", () => {
 		expect(result.env.PATH).toBe("/bin");
 	});
 
+	test("macOS signs ad hoc on pull requests too, where electron-builder would skip it", () => {
+		expect(plan("darwin", { GITHUB_BASE_REF: "main" }).env.CSC_FOR_PULL_REQUEST).toBe("true");
+	});
+
 	test("Windows stays unsigned, and its updater won't expect a signature", () => {
 		expect(plan("win32", {})).toMatchObject({ mode: "win-unsigned", signed: false, args: ["-c.win.verifyUpdateCodeSignature=false"] });
 	});
@@ -59,6 +63,11 @@ describe("macOS", () => {
 
 	test("the API key must be a file", () => {
 		expect(() => plan("darwin", { ...MAC_KEYS, ...NOTARY }, false)).toThrow("APPLE_API_KEY must be the path");
+	});
+
+	test("a Developer ID never signs a pull request build", () => {
+		expect(plan("darwin", { ...MAC_KEYS, CSC_FOR_PULL_REQUEST: "true" }).env.CSC_FOR_PULL_REQUEST).toBeUndefined();
+		expect(plan("win32", { CSC_FOR_PULL_REQUEST: "true" }).env.CSC_FOR_PULL_REQUEST).toBeUndefined();
 	});
 
 	test("Windows and Apple ID notary values never reach the build", () => {
