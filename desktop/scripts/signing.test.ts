@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { MODE_LABEL, signingPlan, type SigningInput, type SigningMode } from "./signing";
+import { MODE_LABEL, macSignatureProblem, signingPlan, type SigningInput, type SigningMode } from "./signing";
 
 const ENTITLEMENTS = "/repo/desktop/build/entitlements.hardened.plist";
 const plan = (platform: NodeJS.Platform, env: Record<string, string | undefined>, exists = true) =>
@@ -124,6 +124,56 @@ test("only the ad-hoc build may sign a pull request", () => {
 		expect(result.mode).toBe(mode);
 		expect(result.env.CSC_FOR_PULL_REQUEST).toBeUndefined();
 	}
+});
+
+describe("the macOS signature matches the mode", () => {
+	const head = ["Executable=/out/mac-arm64/Raven.app/Contents/MacOS/Raven", "Identifier=io.github.kleenpulse.raven", "Format=app bundle with Mach-O thin (arm64)"];
+	const tail = ["Info.plist entries=30", "Sealed Resources version=2 rules=13 files=412", "Internal requirements count=1 size=180"];
+	const display = (...lines: string[]) => [...head, ...lines, ...tail].join("\n");
+	const AD_HOC = display("CodeDirectory v=20400 size=5321 flags=0x2(adhoc) hashes=155+7 location=embedded", "Signature=adhoc", "TeamIdentifier=not set");
+	const DEVELOPER_ID = display(
+		"CodeDirectory v=20500 size=5385 flags=0x10000(runtime) hashes=155+7 location=embedded",
+		"Signature size=9046",
+		"Authority=Developer ID Application: Raven Contributors (ABCDE12345)",
+		"Authority=Developer ID Certification Authority",
+		"Authority=Apple Root CA",
+		"Timestamp=1 Nov 2026 at 12:00:00",
+		"TeamIdentifier=ABCDE12345",
+	);
+	// A keychain certificate with a "-" in its name, picked instead of the ad-hoc identity.
+	const KEYCHAIN_MATCH = display(
+		"CodeDirectory v=20400 size=5385 flags=0x0(none) hashes=155+7 location=embedded",
+		"Signature size=4790",
+		"Authority=Apple Development: Sam Lee-Park (FGHIJ67890)",
+		"Authority=Apple Worldwide Developer Relations Certification Authority",
+		"Authority=Apple Root CA",
+		"TeamIdentifier=KLMNO12345",
+	);
+
+	test("an ad-hoc build must show Signature=adhoc", () => {
+		expect(macSignatureProblem("mac-ad-hoc", AD_HOC)).toBeUndefined();
+		expect(macSignatureProblem("mac-ad-hoc", KEYCHAIN_MATCH)).toContain("Signature=adhoc");
+		expect(macSignatureProblem("mac-ad-hoc", DEVELOPER_ID)).toContain("Signature=adhoc");
+		expect(macSignatureProblem("mac-ad-hoc", "")).toContain("Signature=adhoc");
+	});
+
+	test("the flag in CodeDirectory alone isn't enough", () => {
+		expect(macSignatureProblem("mac-ad-hoc", display("CodeDirectory v=20400 size=5321 flags=0x2(adhoc) hashes=155+7 location=embedded"))).toBeDefined();
+	});
+
+	test("a Developer ID build must carry a Developer ID Application authority", () => {
+		expect(macSignatureProblem("mac-developer-id", DEVELOPER_ID)).toBeUndefined();
+		expect(macSignatureProblem("mac-developer-id", AD_HOC)).toContain("Developer ID Application");
+		expect(macSignatureProblem("mac-developer-id", KEYCHAIN_MATCH)).toContain("Developer ID Application");
+	});
+
+	test("Signature=adhoc has to be a whole line, not part of another value", () => {
+		expect(macSignatureProblem("mac-ad-hoc", display("Identifier=Signature=adhoc"))).toBeDefined();
+	});
+
+	test("other modes aren't macOS builds and aren't checked here", () => {
+		for (const mode of ["win-azure", "win-certificate", "win-unsigned", "linux-unsigned"] as const) expect(macSignatureProblem(mode, "")).toBeUndefined();
+	});
 });
 
 test("no build gets a token it could publish with", () => {
