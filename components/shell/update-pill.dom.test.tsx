@@ -53,11 +53,12 @@ describe("UpdatePill", () => {
 		render(<UpdatePill />);
 		await settle();
 		await desktop.push({ kind: "downloading", version: "0.11.0", percent: 42 });
-		expect(screen.getByRole("status").getAttribute("aria-label")).toBe("Downloading Raven 0.11.0, 42%");
+		const bar = screen.getByRole("progressbar", { name: "Downloading Raven 0.11.0" });
+		expect(bar.getAttribute("aria-valuenow")).toBe("42");
 		expect(screen.getByText("Updating 42%")).toBeTruthy();
 
 		await desktop.push({ kind: "ready", version: "0.11.0" });
-		expect(screen.queryByRole("status")).toBeNull();
+		expect(screen.queryByRole("progressbar")).toBeNull();
 		fireEvent.click(screen.getByRole("button", { name: "Restart to update to Raven 0.11.0" }));
 		expect(desktop.actions).toEqual(["restart"]);
 	});

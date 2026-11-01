@@ -71,9 +71,13 @@ export function UpdatePill({ className }: { className?: string }) {
 
 	if (state.kind === "downloading") {
 		return (
+			// A progressbar, not a live region: screen readers read the value when asked instead of at every percent.
 			<div
-				role="status"
-				aria-label={`Downloading Raven ${state.version}, ${state.percent}%`}
+				role="progressbar"
+				aria-label={`Downloading Raven ${state.version}`}
+				aria-valuemin={0}
+				aria-valuemax={100}
+				aria-valuenow={state.percent}
 				className={cn(PILL, "bg-card-nested text-ink-2 ring-border dark:ring-glass-border", className)}
 			>
 				<ProgressRing percent={state.percent} />

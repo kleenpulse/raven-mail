@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 /*
  * The tray icon on Windows and Linux. Clicking it shows the window; its menu
- * opens Raven, offers a ready update, turns "keep running" on or off, checks for updates, and quits. Linux desktops
+ * opens Raven, offers an update to act on, turns "keep running" on or off, checks for updates, and quits. Linux desktops
  * without AppIndicator show no icon; opening Raven again shows the window.
  */
 

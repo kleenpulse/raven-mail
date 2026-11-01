@@ -35,7 +35,7 @@ The app checks the latest published release 30 seconds after it starts, every 6 
 
 | Build | What happens |
 | --- | --- |
-| Windows (`.exe`) | Downloads in the background. A pill at the top of the mail and overview pages shows how far along it is, then says **Restart to update**. If Raven is hidden in the tray, you get a notification, and the tray menu gets the same item. If you don't restart, it installs when you next quit Raven. |
+| Windows (`.exe`) | Downloads in the background. A pill at the top of the mail and overview pages shows how far along it is, then says **Restart to update**. If Raven is hidden in the tray, you get a notification. The tray menu also gets a **Restart to update** item. If you don't restart, it installs when you next quit Raven. |
 | Linux AppImage | The same. The new AppImage replaces the old file. |
 | macOS, signed | The same, through Squirrel.Mac (it needs the `.zip`). |
 | macOS, not signed | The pill says a new version is out and opens its release page. Squirrel.Mac only installs updates signed with the same Developer ID, so you install the new `.dmg` yourself. |

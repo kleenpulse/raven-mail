@@ -36,8 +36,9 @@ describe("nextUpdateState", () => {
 		const ready: UpdateState = { kind: "ready", version: "0.11.0" };
 		expect(nextUpdateState(ready, { type: "available", version: "0.11.0" }, true)).toBe(ready);
 		expect(nextUpdateState(ready, { type: "error" }, true)).toBe(ready);
-		// A newer release downloads over it.
-		expect(nextUpdateState(ready, { type: "available", version: "0.11.1" }, true)).toEqual({ kind: "downloading", version: "0.11.1", percent: 0 });
+		// A newer release downloads behind it, and only takes over once it's down.
+		expect(nextUpdateState(ready, { type: "available", version: "0.11.1" }, true)).toBe(ready);
+		expect(nextUpdateState(ready, { type: "downloaded", version: "0.11.1" }, true)).toEqual({ kind: "ready", version: "0.11.1" });
 	});
 
 	test("a failed download hides the pill", () => {

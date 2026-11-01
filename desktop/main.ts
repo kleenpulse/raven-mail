@@ -551,7 +551,8 @@ function boot(): void {
 		if (state.kind !== "downloading" || state.percent === 0) tray?.refresh();
 		const win = mainWindow;
 		const shown = Boolean(win && !win.isDestroyed() && win.isVisible() && !win.isMinimized());
-		if (win && !win.isDestroyed() && !win.webContents.isLoading()) win.webContents.send(CHANNELS.updateState, state);
+		// Sent even while something loads (an email frame counts): a page that misses it asks for the state when it mounts.
+		if (win && !win.isDestroyed()) win.webContents.send(CHANNELS.updateState, state);
 		const notice = updateNotice(state);
 		if (!notice || !announce || shown) return;
 		notify(notice.title, notice.body, () => updater.act(state.kind === "ready" ? "restart" : "open-release"));

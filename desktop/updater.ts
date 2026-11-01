@@ -75,7 +75,7 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 		hooks.onState(state, announce);
 	}
 
-	// Without a listener, an "error" event would throw. Failed checks are only logged.
+	// Without a listener, an "error" event would throw. Failed checks are logged, and a failed download hides the pill.
 	autoUpdater.on("error", (err: Error) => {
 		log.info(`update failed: ${err.message.split("\n")[0]}`);
 		emit({ type: "error" });
@@ -135,7 +135,7 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 			return;
 		}
 		if (mode === "auto") {
-			// "update-downloaded" asks to restart once it's down.
+			// The pill offers to restart once "update-downloaded" fires.
 			await dialog.showMessageBox({ type: "info", title: "Raven", message: `Raven ${found.version} is downloading.`, detail: "Raven tells you when it's ready.", buttons: ["OK"] });
 			return;
 		}
