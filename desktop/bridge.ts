@@ -11,9 +11,30 @@ export const CHANNELS = {
 	open: "raven:open",
 	mailAppStatus: "raven:mail-app-status",
 	mailAppClaim: "raven:mail-app-claim",
+	updateState: "raven:update-state",
+	updateStateGet: "raven:update-state-get",
+	updateAct: "raven:update-act",
 } as const;
 
 export type NewMail = { uid: string; from: string; subject: string };
+
+/**
+ * Where an update stands, for the page's pill. `available` is for builds that
+ * can't install updates themselves (unsigned macOS, the .deb): they link to
+ * the release page instead.
+ */
+export type UpdateState =
+	| { kind: "none" }
+	| { kind: "downloading"; version: string; percent: number }
+	| { kind: "ready"; version: string }
+	| { kind: "available"; version: string };
+
+/** What the page's pill can ask for. */
+export type UpdateAction = "restart" | "open-release";
+
+export function parseUpdateAction(payload: unknown): UpdateAction | null {
+	return payload === "restart" || payload === "open-release" ? payload : null;
+}
 
 /**
  * Whether Raven opens email links. On Windows only the user can pick it, in

@@ -16,10 +16,25 @@ export type RavenDesktop = {
 		/** Makes Raven the email app, or on Windows opens the Settings page where the user picks it. */
 		claim(): Promise<DesktopMailAppStatus>;
 	};
+	/** Where an app update stands, for the pill in the top bar. */
+	update: {
+		state(): Promise<DesktopUpdateState>;
+		/** Every change, pushed by the desktop app. Returns an unsubscribe. */
+		onState(callback: (state: DesktopUpdateState) => void): () => void;
+		/** "restart" once ready; "open-release" where the app can't install updates itself. */
+		act(action: "restart" | "open-release"): void;
+	};
 };
 
 /** `viaSettings`: the system's own settings decide (Windows), not Raven. */
 export type DesktopMailAppStatus = { isDefault: boolean; viaSettings: boolean };
+
+/** Mirrors desktop/bridge.ts `UpdateState`. */
+export type DesktopUpdateState =
+	| { kind: "none" }
+	| { kind: "downloading"; version: string; percent: number }
+	| { kind: "ready"; version: string }
+	| { kind: "available"; version: string };
 
 declare global {
 	interface Window {

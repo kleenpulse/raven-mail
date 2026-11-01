@@ -5,7 +5,7 @@ import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { latestBackup } from "./backups";
-import { CHANNELS, newMailNotice, openPath, parseNewMail, pathForNewMail, trustedSender, type MailAppStatus } from "./bridge";
+import { CHANNELS, newMailNotice, openPath, parseNewMail, parseUpdateAction, pathForNewMail, trustedSender, type MailAppStatus, type UpdateState } from "./bridge";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
@@ -20,6 +20,7 @@ import { loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { TOKEN_HEADER } from "./shared";
 import { CHECK_FOR_UPDATES_LABEL, createTray, KEEP_RUNNING_LABEL, type RavenTray } from "./tray";
 import { parseBuildInfo, updateMode } from "./update-policy";
+import { updateMenuItem, updateNotice } from "./update-state";
 import { createUpdater } from "./updater";
 import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } from "./window-state";
 
@@ -83,7 +84,7 @@ function boot(): void {
 	let restartForUpdate = false;
 	const updater = createUpdater(updateMode({ packaged: app.isPackaged, platform: process.platform, signed: buildInfo().signed, appImage: Boolean(process.env.APPIMAGE) }), {
 		log,
-		notify,
+		onState: showUpdateState,
 		restartToUpdate: () => {
 			restartForUpdate = true;
 			app.quit();
@@ -108,6 +109,17 @@ function boot(): void {
 			showWindow();
 			openInApp(pathForNewMail(items));
 		});
+	});
+
+	ipcMain.handle(CHANNELS.updateStateGet, (event) => {
+		if (!fromMainWindow(event)) throw new Error("not allowed");
+		return updater.state();
+	});
+	ipcMain.on(CHANNELS.updateAct, (event, payload: unknown) => {
+		if (!fromMainWindow(event)) return;
+		const action = parseUpdateAction(payload);
+		if (!action) return log.info("dropped a malformed update action from the page");
+		updater.act(action);
 	});
 
 	ipcMain.handle(CHANNELS.mailAppStatus, (event) => {
@@ -164,7 +176,17 @@ function boot(): void {
 	async function start(): Promise<void> {
 		Menu.setApplicationMenu(buildMenu(settings.keepRunning, menuActions));
 		if (hasTray(process.platform)) {
-			tray = createTray({ open: showWindow, keepRunning: () => settings.keepRunning, setKeepRunning, checkForUpdates: menuActions.checkForUpdates, quit: () => app.quit() });
+			tray = createTray({
+				open: showWindow,
+				keepRunning: () => settings.keepRunning,
+				setKeepRunning,
+				checkForUpdates: menuActions.checkForUpdates,
+				update: () => {
+					const item = updateMenuItem(updater.state());
+					return item && { label: item.label, click: () => updater.act(item.action) };
+				},
+				quit: () => app.quit(),
+			});
 		}
 		hardenSession(session.defaultSession);
 		createWindow();
@@ -518,6 +540,21 @@ function boot(): void {
 		});
 		notice.on("close", () => notices.delete(notice));
 		notice.show();
+	}
+
+	/**
+	 * The page shows the pill. While the window is hidden or minimised it
+	 * can't be seen, so a ready or available update also gets a notification.
+	 */
+	function showUpdateState(state: UpdateState, announce: boolean): void {
+		// Progress moves the pill, not the tray's item.
+		if (state.kind !== "downloading" || state.percent === 0) tray?.refresh();
+		const win = mainWindow;
+		const shown = Boolean(win && !win.isDestroyed() && win.isVisible() && !win.isMinimized());
+		if (win && !win.isDestroyed() && !win.webContents.isLoading()) win.webContents.send(CHANNELS.updateState, state);
+		const notice = updateNotice(state);
+		if (!notice || !announce || shown) return;
+		notify(notice.title, notice.body, () => updater.act(state.kind === "ready" ? "restart" : "open-release"));
 	}
 
 	/** Only the main window's own page, in its top frame, on the app's origin. */
