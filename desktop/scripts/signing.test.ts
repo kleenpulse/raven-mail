@@ -169,6 +169,14 @@ describe("the macOS signature matches the mode", () => {
 
 	test("Signature=adhoc has to be a whole line, not part of another value", () => {
 		expect(macSignatureProblem("mac-ad-hoc", display("Identifier=Signature=adhoc"))).toBeDefined();
+		expect(macSignatureProblem("mac-ad-hoc", display("Signature=adhocX"))).toBeDefined();
+	});
+
+	test("Developer ID authorities other than Application don't count", () => {
+		const chainOnly = display("Signature size=9046", "Authority=Developer ID Certification Authority", "Authority=Apple Root CA");
+		const installer = display("Signature size=9046", "Authority=Developer ID Installer: Raven Contributors (ABCDE12345)", "Authority=Developer ID Certification Authority");
+		expect(macSignatureProblem("mac-developer-id", chainOnly)).toContain("Developer ID Application");
+		expect(macSignatureProblem("mac-developer-id", installer)).toContain("Developer ID Application");
 	});
 
 	test("other modes aren't macOS builds and aren't checked here", () => {

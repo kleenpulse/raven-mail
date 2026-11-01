@@ -74,7 +74,7 @@ Getting them:
 3. In Keychain Access, select the certificate together with its private key, export both as a `.p12` and set a password. Then `base64 -i Certificates.p12 | pbcopy` copies the value for `CSC_LINK`.
 4. In App Store Connect, go to Users and Access → Integrations → App Store Connect API → Team Keys, and make a key with the **Developer** role. Download the `.p8` (Apple lets you download it only once) and copy its whole text into `APPLE_API_KEY`.
 
-With `CSC_LINK` set, the build signs with the hardened runtime and `build/entitlements.hardened.plist` (JIT, which V8 needs). With all three `APPLE_API_*` secrets too, it notarizes, and the build checks the app with `codesign --verify` and `spctl`. The build also checks that the app is signed with your Developer ID Application certificate, and stops if it isn't. A partial set stops the build and names what's missing. On CI the key file is written to the runner's temp folder and deleted at the end of the job.
+With `CSC_LINK` set, the build signs with the hardened runtime and `build/entitlements.hardened.plist` (JIT, which V8 needs). With all three `APPLE_API_*` secrets too, it notarizes, and the build checks the app with `codesign --verify` and `spctl`. The build also checks that the app is signed with a Developer ID Application certificate, and stops if it isn't. A partial set stops the build and names what's missing. On CI the key file is written to the runner's temp folder and deleted at the end of the job.
 
 If a signed app won't start, look at library validation first: the entitlements keep it on, because Raven loads no native code from anyone else.
 
