@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.10.1] - 2026-11-01
+
 ### Fixed
 
 - The "What's new" card no longer runs off the top and bottom of a
