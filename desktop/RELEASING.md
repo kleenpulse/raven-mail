@@ -78,6 +78,8 @@ With `CSC_LINK` set, the build signs with the hardened runtime and `build/entitl
 
 If a signed app won't start, look at library validation first: the entitlements keep it on, because Raven loads no native code from anyone else.
 
+**On a Mac with certificates.** With no keys, the build asks for an ad-hoc signature with the identity `-`. But electron-builder first looks through the Mac's keychains, and it matches `-` anywhere in a name. So if a signing certificate there has a hyphen in its name, the build signs with that certificate instead, with no hardened runtime and no notarizing. GitHub's macOS runners have no certificates, so CI always makes a real ad-hoc build. This only matters on a self-hosted runner or your own Mac. There, set `CSC_LINK` to sign properly, or run `codesign -dv` on the app to see what signed it.
+
 ### Windows: Azure Trusted Signing, or a certificate
 
 Use one of the two. Setting both stops the build.
