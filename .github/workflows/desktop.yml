@@ -172,9 +172,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
+        shell: bash
         run: |
-          # A re-run must not add a second draft next to the first.
-          if gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .id" | grep -q .; then
+          # A re-run must not add a second draft next to the first. The lookup
+          # runs on its own line so a failed `gh api` stops the step: inside an
+          # `if`, a failing command only reads as "no release yet".
+          existing=$(gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .id")
+          if [ -n "$existing" ]; then
             echo "A release for $TAG already exists (it may be a draft). Delete it, then re-run this job."
             exit 1
           fi
