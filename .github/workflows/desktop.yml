@@ -1,9 +1,11 @@
 name: Desktop
 
 # Builds the desktop installers. Installers for users come only from here,
-# never from a developer machine. No release is published yet: the
-# installers are uploaded as workflow artifacts. Pull requests that touch
-# the desktop app or what it packages build them too, as a check.
+# never from a developer machine. Pull requests that touch the desktop app
+# or what it packages build them too, as a check, and never get signing
+# keys. A v* tag also signs (when the keys are set as secrets, see
+# desktop/RELEASING.md) and puts everything in a DRAFT GitHub release. A
+# person publishes it; nothing here does.
 on:
   workflow_dispatch:
   push:
@@ -38,9 +40,10 @@ jobs:
             os: windows-latest
             targets: --win nsis --x64
           # Both arches build here: the server folder has no native code.
+          # The zip is what the updater installs from.
           - name: macos
             os: macos-latest
-            targets: --mac dmg --arm64 --x64
+            targets: --mac dmg zip --arm64 --x64
           - name: linux
             os: ubuntu-latest
             targets: --linux AppImage deb --x64
@@ -68,11 +71,44 @@ jobs:
 
       - run: bun run desktop:typecheck
 
+      # The notarization key is a file. It lives only in this job's temp
+      # folder and is deleted at the end, even when the build fails.
+      - name: Write the Apple API key
+        if: matrix.name == 'macos' && github.event_name != 'pull_request'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY }}
+        run: |
+          if [ -n "$APPLE_API_KEY_P8" ]; then
+            umask 077
+            printf '%s\n' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/apple-api-key.p8"
+          fi
+
+      # Keys reach this step only on tags and manual runs, never on pull
+      # requests, and each OS gets only its own. Unset secrets are empty,
+      # and build.ts then builds unsigned, exactly as before.
       - name: Build installers
         run: bun desktop/scripts/build.ts ${{ matrix.targets }}
         env:
           SESSION_SECRET: ci-only-not-a-real-secret-0123456789abcdef
           NEXT_TELEMETRY_DISABLED: "1"
+          CSC_LINK: ${{ matrix.name == 'macos' && github.event_name != 'pull_request' && secrets.CSC_LINK || '' }}
+          CSC_KEY_PASSWORD: ${{ matrix.name == 'macos' && github.event_name != 'pull_request' && secrets.CSC_KEY_PASSWORD || '' }}
+          APPLE_API_KEY: ${{ matrix.name == 'macos' && github.event_name != 'pull_request' && secrets.APPLE_API_KEY != '' && format('{0}/apple-api-key.p8', runner.temp) || '' }}
+          APPLE_API_KEY_ID: ${{ matrix.name == 'macos' && github.event_name != 'pull_request' && secrets.APPLE_API_KEY_ID || '' }}
+          APPLE_API_ISSUER: ${{ matrix.name == 'macos' && github.event_name != 'pull_request' && secrets.APPLE_API_ISSUER || '' }}
+          AZURE_TENANT_ID: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.AZURE_TENANT_ID || '' }}
+          AZURE_CLIENT_ID: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.AZURE_CLIENT_ID || '' }}
+          AZURE_CLIENT_SECRET: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.AZURE_CLIENT_SECRET || '' }}
+          RAVEN_AZURE_ENDPOINT: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.RAVEN_AZURE_ENDPOINT || '' }}
+          RAVEN_AZURE_ACCOUNT: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.RAVEN_AZURE_ACCOUNT || '' }}
+          RAVEN_AZURE_CERT_PROFILE: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.RAVEN_AZURE_CERT_PROFILE || '' }}
+          RAVEN_AZURE_PUBLISHER_NAME: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.RAVEN_AZURE_PUBLISHER_NAME || '' }}
+          WIN_CSC_LINK: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.WIN_CSC_LINK || '' }}
+          WIN_CSC_KEY_PASSWORD: ${{ matrix.name == 'windows' && github.event_name != 'pull_request' && secrets.WIN_CSC_KEY_PASSWORD || '' }}
+
+      - name: Delete the Apple API key
+        if: always() && matrix.name == 'macos'
+        run: rm -f "$RUNNER_TEMP/apple-api-key.p8"
 
       - name: Smoke-test the server
         run: bun desktop/scripts/smoke.ts
@@ -84,9 +120,62 @@ jobs:
           # desktop/.out is a dot folder, which upload-artifact skips by default.
           include-hidden-files: true
           retention-days: 14
+          # The updater needs latest*.yml and the blockmaps (partial downloads),
+          # and on macOS it installs from the zip.
           path: |
             desktop/.out/*.exe
             desktop/.out/*.dmg
+            desktop/.out/*.zip
             desktop/.out/*.AppImage
             desktop/.out/*.deb
+            desktop/.out/*.blockmap
+            desktop/.out/latest*.yml
             desktop/.out/SHA256SUMS.txt
+
+  # Only for v* tags, once all three builds passed. It makes a DRAFT release
+  # and never publishes it: until a person does, the updater can't see it.
+  release:
+    name: draft release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with:
+          bun-version: 1.4.0
+
+      - name: Payload check
+        run: bun scripts/check-payload.ts
+
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: raven-*
+          path: artifacts
+
+      - name: Check every file against its build's checksums
+        run: |
+          for dir in artifacts/raven-*/; do
+            (cd "$dir" && sha256sum --check --strict SHA256SUMS.txt)
+          done
+
+      - name: Gather the files and the notes
+        run: bun desktop/scripts/release.ts "$GITHUB_REF_NAME" artifacts release
+
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          # A re-run must not add a second draft next to the first.
+          if gh api "repos/$GITHUB_REPOSITORY/releases" --paginate --jq ".[] | select(.tag_name == \"$TAG\") | .id" | grep -q .; then
+            echo "A release for $TAG already exists (it may be a draft). Delete it, then re-run this job."
+            exit 1
+          fi
+          gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag --title "Raven ${TAG#v}" --notes-file release/notes.md release/files/*

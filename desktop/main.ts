@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, Notification, screen, session, shell, type IpcMainEvent, type MenuItemConstructorOptions, type Session, type WebContents } from "electron";
 import { execFile } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { existsSync, renameSync } from "node:fs";
+import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { latestBackup } from "./backups";
@@ -18,7 +18,9 @@ import { freePort, isPortFree, savePort, savedPort } from "./ports";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { loadSettings, saveSettings, type DesktopSettings } from "./settings";
 import { TOKEN_HEADER } from "./shared";
-import { createTray, KEEP_RUNNING_LABEL, type RavenTray } from "./tray";
+import { CHECK_FOR_UPDATES_LABEL, createTray, KEEP_RUNNING_LABEL, type RavenTray } from "./tray";
+import { parseBuildInfo, updateMode } from "./update-policy";
+import { createUpdater } from "./updater";
 import { loadWindowState, MIN_SIZE, placeWindow, saveWindowState, type Rect } from "./window-state";
 
 /*
@@ -74,8 +76,18 @@ function boot(): void {
 	let tray: RavenTray | null = null;
 	// A link's path that came before the server was up (it started Raven, say); the newest wins.
 	let pendingLink: string | null = null;
+	// "Restart now" on a downloaded update: the installer starts Raven again once it's done.
+	let restartForUpdate = false;
+	const updater = createUpdater(updateMode({ packaged: app.isPackaged, platform: process.platform, signed: buildInfo().signed, appImage: Boolean(process.env.APPIMAGE) }), {
+		log,
+		notify,
+		restartToUpdate: () => {
+			restartForUpdate = true;
+			app.quit();
+		},
+	});
 
-	log.info(`starting (${mode}, Electron ${process.versions.electron})`);
+	log.info(`starting (${mode}, Electron ${process.versions.electron}, updates ${updater.mode})`);
 	registerRavenLinks();
 	openLink(linkArg(process.argv));
 
@@ -129,11 +141,15 @@ function boot(): void {
 		void shutdown().then((ok) => {
 			if (!ok) {
 				quitting = "no";
+				restartForUpdate = false;
 				return;
 			}
 			quitting = "done";
 			tray?.destroy();
-			app.exit(0);
+			// Only now, with the server stopped, can an installer replace the app.
+			const wait = updater.installOnQuit(restartForUpdate);
+			if (wait > 0) setTimeout(() => app.exit(0), wait);
+			else app.exit(0);
 		});
 	});
 
@@ -145,7 +161,7 @@ function boot(): void {
 	async function start(): Promise<void> {
 		Menu.setApplicationMenu(buildMenu(settings.keepRunning, menuActions));
 		if (hasTray(process.platform)) {
-			tray = createTray({ open: showWindow, keepRunning: () => settings.keepRunning, setKeepRunning, quit: () => app.quit() });
+			tray = createTray({ open: showWindow, keepRunning: () => settings.keepRunning, setKeepRunning, checkForUpdates: menuActions.checkForUpdates, quit: () => app.quit() });
 		}
 		hardenSession(session.defaultSession);
 		createWindow();
@@ -155,6 +171,16 @@ function boot(): void {
 		const first = pendingLink ?? START_PATH;
 		pendingLink = null;
 		await mainWindow?.loadURL(`${server.origin}${first}`);
+		updater.start();
+	}
+
+	/** ravenBuild from the app's package.json (scripts/build.ts writes it); dev and preview have none. */
+	function buildInfo(): { signed: boolean } {
+		try {
+			return parseBuildInfo(readFileSync(join(app.getAppPath(), "package.json"), "utf8"));
+		} catch {
+			return parseBuildInfo(null);
+		}
 	}
 
 	/** Shows a link's page now, or once the server is up. */
@@ -261,6 +287,7 @@ function boot(): void {
 	const menuActions: MenuActions = {
 		setKeepRunning: (on) => setKeepRunning(on),
 		useForEmailLinks: () => void useForEmailLinks().catch((err: unknown) => log.info(`email links: ${String(err)}`)),
+		...(updater.mode === "off" ? {} : { checkForUpdates: () => updater.checkNow() }),
 	};
 
 	/** Starts the server; `restoreFrom` names a database backup to fill the (empty) data folder from. */
@@ -430,8 +457,11 @@ function boot(): void {
 
 	/** Brings the window back from the tray, the Dock or a minimise (or makes it again on macOS). */
 	function showWindow(): void {
+		// Shut down and waiting for the updater to quit Raven: the server is gone.
+		if (quitting === "done") return;
 		if (!mainWindow || mainWindow.isDestroyed()) {
-			if (appOrigin) createWindow();
+			// While quitting, the server is about to stop: a new window would sit on it.
+			if (appOrigin && quitting === "no") createWindow();
 			return;
 		}
 		if (mainWindow.isMinimized()) mainWindow.restore();
@@ -674,7 +704,7 @@ async function closeWindows(): Promise<boolean> {
 	return BrowserWindow.getAllWindows().length === 0;
 }
 
-type MenuActions = { setKeepRunning: (on: boolean) => void; useForEmailLinks: () => void };
+type MenuActions = { setKeepRunning: (on: boolean) => void; useForEmailLinks: () => void; checkForUpdates?: () => void };
 
 function buildMenu(keepRunning: boolean, actions: MenuActions): Menu {
 	const keepRunningItem: MenuItemConstructorOptions = {
@@ -684,10 +714,13 @@ function buildMenu(keepRunning: boolean, actions: MenuActions): Menu {
 		click: (item) => actions.setKeepRunning(item.checked),
 	};
 	const emailLinksItem: MenuItemConstructorOptions = { label: "Use Raven for email links…", click: () => actions.useForEmailLinks() };
+	const { checkForUpdates } = actions;
+	const updatesItems: MenuItemConstructorOptions[] = checkForUpdates ? [{ label: CHECK_FOR_UPDATES_LABEL, click: () => checkForUpdates() }] : [];
 	const appMenu: MenuItemConstructorOptions = {
 		label: app.name,
 		submenu: [
 			{ role: "about" },
+			...updatesItems,
 			{ type: "separator" },
 			keepRunningItem,
 			emailLinksItem,
@@ -703,7 +736,7 @@ function buildMenu(keepRunning: boolean, actions: MenuActions): Menu {
 	};
 	const fileMenu: MenuItemConstructorOptions = {
 		label: "File",
-		submenu: [keepRunningItem, emailLinksItem, { type: "separator" }, { role: "quit", label: "Quit Raven" }],
+		submenu: [keepRunningItem, emailLinksItem, ...updatesItems, { type: "separator" }, { role: "quit", label: "Quit Raven" }],
 	};
 	const view: MenuItemConstructorOptions[] = [
 		{ role: "reload" },
