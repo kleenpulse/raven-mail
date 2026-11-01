@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { signingPlan, type SigningInput, type SigningMode } from "./signing";
+import { MODE_LABEL, signingPlan, type SigningInput, type SigningMode } from "./signing";
 
 const ENTITLEMENTS = "/repo/desktop/build/entitlements.hardened.plist";
 const plan = (platform: NodeJS.Platform, env: Record<string, string | undefined>, exists = true) =>
@@ -117,6 +117,8 @@ test("only the ad-hoc build may sign a pull request", () => {
 		["win32", {}, "win-unsigned"],
 		["linux", {}, "linux-unsigned"],
 	];
+	// A new mode has to be added here.
+	expect(new Set<string>(cases.map(([, , mode]) => mode))).toEqual(new Set(Object.keys(MODE_LABEL).filter((mode) => mode !== "mac-ad-hoc")));
 	for (const [platform, env, mode] of cases) {
 		const result = plan(platform, { ...env, CSC_FOR_PULL_REQUEST: "true" });
 		expect(result.mode).toBe(mode);
