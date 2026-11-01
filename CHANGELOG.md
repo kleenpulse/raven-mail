@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.10.0] - 2026-11-01
+
 ### Added
 
 - Raven now has a desktop app for Windows, macOS and Linux. It's the
