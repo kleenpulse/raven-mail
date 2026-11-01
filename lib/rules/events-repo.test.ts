@@ -61,6 +61,7 @@ beforeEach(async () => {
 });
 
 describe("pruneEvents keeps what rules did apart from plain non-matches", () => {
+	// 25 runs on PGlite take about 1.5 s alone, but can pass bun's 5 s default in a loaded full run.
 	test("an applied move keeps its Undo after many runs over new mail", async () => {
 		const rules = await makeRules(5);
 		const [applied] = await judge(rules.slice(0, 1), ["weekly-roundup"], "applied");
@@ -72,7 +73,7 @@ describe("pruneEvents keeps what rules did apart from plain non-matches", () => 
 		expect((await listEvents(KEY)).map((e) => e.id)).toContain(applied);
 		expect(await claimUndo(KEY, applied)).toBe(true);
 		expect(await count()).toBe(1 + NON_MATCHES_KEPT);
-	});
+	}, 60_000);
 
 	test("a message still in the window isn't judged again", async () => {
 		const rules = await makeRules(RULE_LIMIT);
