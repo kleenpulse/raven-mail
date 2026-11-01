@@ -460,7 +460,8 @@ function boot(): void {
 		// Shut down and waiting for the updater to quit Raven: the server is gone.
 		if (quitting === "done") return;
 		if (!mainWindow || mainWindow.isDestroyed()) {
-			if (appOrigin) createWindow();
+			// While quitting, the server is about to stop: a new window would sit on it.
+			if (appOrigin && quitting === "no") createWindow();
 			return;
 		}
 		if (mainWindow.isMinimized()) mainWindow.restore();
