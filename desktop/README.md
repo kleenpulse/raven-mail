@@ -10,9 +10,12 @@ This folder holds the desktop app for Windows, macOS and Linux. It's built with 
 | `bun run desktop:dev` | Opens Raven in Electron on `next dev`, with hot reload and "Continue in dev mode". Stop your own `next dev` first: Next.js allows only one per project. |
 | `bun run desktop:preview` | Builds the production server, stages it, and opens it in Electron. No installer. |
 | `bun run desktop:build` | Same as preview, then makes the installer for this OS. Installers for users are only built on CI (`.github/workflows/desktop.yml`). It signs when the keys are in the environment ([RELEASING.md](RELEASING.md)). |
+| `bun run desktop:forget-links` | Windows only. Removes what preview runs left behind: "Raven Preview" in the email app picker, `raven://` when preview holds it, and the Start menu shortcut Electron made for `electron.exe`. An installed Raven keeps its own. |
 | `bun run desktop:typecheck` | Type-checks this folder. |
 
 Set `RAVEN_DEBUG_PORT=9222` to open the Chrome DevTools Protocol on that port (dev and preview only).
+
+On Windows, dev and preview use their own app ID (`io.github.kleenpulse.raven.dev`, `.preview`). Windows takes the taskbar icon from a Start menu shortcut with the window's app ID, and Electron makes one for `electron.exe` the first time it shows a notification. With one shared ID, an installed Raven showed Electron's icon.
 
 ## How it fits together
 

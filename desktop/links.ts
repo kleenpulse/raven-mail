@@ -52,6 +52,12 @@ export type WindowsMailApp = {
 	args: readonly string[];
 };
 
+/** A build's Default apps names, from its user data folder name ("Raven Preview" → RavenPreview, RavenPreview.mailto). */
+export function windowsMailIds(name: string): Pick<WindowsMailApp, "name" | "key" | "progId"> {
+	const key = name.replace(/\s+/g, "");
+	return { name, key, progId: `${key}.mailto` };
+}
+
 const quote = (value: string) => `"${value}"`;
 
 /**
@@ -75,6 +81,30 @@ export function windowsMailRegistration(target: WindowsMailApp): string[][] {
 		["add", `${capabilities}\\URLAssociations`, "/v", "mailto", "/d", target.progId, "/f"],
 		["add", "HKCU\\Software\\RegisteredApplications", "/v", target.name, "/d", `Software\\${target.key}\\Capabilities`, "/f"],
 	];
+}
+
+/**
+ * `reg.exe` argument lists that undo `windowsMailRegistration`, for
+ * `desktop:forget-links`. The listing goes first, so the app picker never
+ * points at a missing key. Installed Raven's keys are the uninstaller's job.
+ */
+export function windowsMailUnregistration(target: Pick<WindowsMailApp, "name" | "key" | "progId">): string[][] {
+	return [
+		["delete", "HKCU\\Software\\RegisteredApplications", "/v", target.name, "/f"],
+		["delete", `HKCU\\Software\\${target.key}`, "/f"],
+		["delete", `HKCU\\Software\\Classes\\${target.progId}`, "/f"],
+	];
+}
+
+/** The raven:// handler Electron's `setAsDefaultProtocolClient` writes on Windows. */
+export const WINDOWS_RAVEN_CLASS = "HKCU\\Software\\Classes\\raven";
+
+/**
+ * Whether `reg query <WINDOWS_RAVEN_CLASS>\shell\open\command /ve` output is
+ * a dev or preview build's claim. Only unpackaged builds pass `--raven-mode`.
+ */
+export function unpackagedRavenClaim(output: string): boolean {
+	return /REG_SZ\s.*\s"?--raven-mode=/i.test(output);
 }
 
 /** Where Windows keeps the user's pick for email links. */

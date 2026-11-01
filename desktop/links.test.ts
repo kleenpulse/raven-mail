@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { linkArg, linkPath, MAX_LINK, userChoiceProgId, windowsMailRegistration } from "./links";
+import { linkArg, linkPath, MAX_LINK, unpackagedRavenClaim, userChoiceProgId, windowsMailIds, windowsMailRegistration, windowsMailUnregistration } from "./links";
 
 describe("linkPath", () => {
 	test.each([
@@ -121,6 +121,57 @@ describe("windowsMailRegistration", () => {
 			'"D:\\repo\\desktop\\node_modules\\electron\\dist\\electron.exe",0',
 			"/f",
 		]);
+	});
+});
+
+describe("windowsMailIds", () => {
+	test("names come from the user data folder", () => {
+		expect(windowsMailIds("Raven")).toEqual({ name: "Raven", key: "Raven", progId: "Raven.mailto" });
+		expect(windowsMailIds("Raven Preview")).toEqual({ name: "Raven Preview", key: "RavenPreview", progId: "RavenPreview.mailto" });
+	});
+});
+
+describe("windowsMailUnregistration", () => {
+	const preview = windowsMailIds("Raven Preview");
+	const added = windowsMailRegistration({ ...preview, exe: "electron.exe", args: [] });
+	const deleted = windowsMailUnregistration(preview);
+
+	test("removes the listing first, then the keys it points at", () => {
+		expect(deleted).toEqual([
+			["delete", "HKCU\\Software\\RegisteredApplications", "/v", "Raven Preview", "/f"],
+			["delete", "HKCU\\Software\\RavenPreview", "/f"],
+			["delete", "HKCU\\Software\\Classes\\RavenPreview.mailto", "/f"],
+		]);
+	});
+
+	test("covers every key registration writes", () => {
+		for (const [, key, flag, name] of added) {
+			const covered = deleted.some(([, target, how, value]) =>
+				how === "/v" ? flag === "/v" && target === key && value === name : key === target || key!.startsWith(`${target}\\`),
+			);
+			expect({ key, covered }).toEqual({ key, covered: true });
+		}
+	});
+});
+
+describe("unpackagedRavenClaim", () => {
+	const query = (command: string) => `\r\nHKEY_CURRENT_USER\\Software\\Classes\\raven\\shell\\open\\command\r\n    (Default)    REG_SZ    ${command}\r\n\r\n`;
+
+	test("a preview or dev build's claim, as Electron writes it", () => {
+		expect(unpackagedRavenClaim(query('"D:\\repo\\desktop\\node_modules\\electron\\dist\\electron.exe" "D:\\repo\\desktop\\.stage\\app" --raven-mode=preview "%1"'))).toBe(true);
+		expect(unpackagedRavenClaim(query('"D:\\repo\\electron.exe" "D:\\repo\\app" "--raven-mode=dev" "%1"'))).toBe(true);
+	});
+
+	test("an installed Raven's claim stays", () => {
+		expect(unpackagedRavenClaim(query('"C:\\Users\\sam\\AppData\\Local\\Programs\\raven\\Raven.exe" "%1"'))).toBe(false);
+	});
+
+	test("a path that only contains the word stays", () => {
+		expect(unpackagedRavenClaim(query('"C:\\x--raven-mode=preview\\Raven.exe" "%1"'))).toBe(false);
+	});
+
+	test("no key", () => {
+		expect(unpackagedRavenClaim("ERROR: The system was unable to find the specified registry key or value.")).toBe(false);
 	});
 });
 
