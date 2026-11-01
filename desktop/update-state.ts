@@ -20,9 +20,9 @@ export type UpdateEvent =
 export function nextUpdateState(state: UpdateState, event: UpdateEvent, selfInstall: boolean): UpdateState {
 	switch (event.type) {
 		case "available":
-			// A downloaded update stays ready, even while a newer one downloads (that one may fail;
-			// "downloaded" moves the pill on when it lands). electron-updater re-checks every 6 hours.
-			if (state.kind === "ready") return state;
+			// A re-check of the ready version keeps it ready. A newer version replaces it: electron-updater
+			// deletes the ready installer when the newer download starts, so restarting would install nothing.
+			if (state.kind === "ready" && state.version === event.version) return state;
 			if (!selfInstall) return state.kind === "available" && state.version === event.version ? state : { kind: "available", version: event.version };
 			return state.kind === "downloading" && state.version === event.version ? state : { kind: "downloading", version: event.version, percent: 0 };
 		case "progress": {

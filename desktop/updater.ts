@@ -53,8 +53,9 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 	const { log } = hooks;
 	if (mode === "off") return { mode, start() {}, checkNow() {}, state: () => NO_UPDATE, act() {}, installOnQuit: () => 0 };
 
-	let ready: string | null = null;
+	// One truth for the pill, the menu and quitting: electron-updater deletes a ready installer once a newer one starts downloading.
 	let state = NO_UPDATE;
+	const ready = (): string | null => (state.kind === "ready" ? state.version : null);
 	let checkingByHand = false;
 	let firstCheck: ReturnType<typeof setTimeout> | undefined;
 	let everyFewHours: ReturnType<typeof setInterval> | undefined;
@@ -83,10 +84,7 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 	// In auto mode the download starts by itself; the pill shows its progress, then "Restart to update".
 	autoUpdater.on("update-available", (info: UpdateInfo) => emit({ type: "available", version: info.version }, !checkingByHand));
 	autoUpdater.on("download-progress", (progress: { percent: number }) => emit({ type: "progress", percent: progress.percent }));
-	autoUpdater.on("update-downloaded", (info: UpdateInfo) => {
-		ready = info.version;
-		emit({ type: "downloaded", version: info.version });
-	});
+	autoUpdater.on("update-downloaded", (info: UpdateInfo) => emit({ type: "downloaded", version: info.version }));
 
 	function openReleasePage(version: unknown): void {
 		void shell.openExternal(releasePage(version));
@@ -112,7 +110,8 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 	}
 
 	async function checkNow(): Promise<void> {
-		if (ready) return askToRestart(ready);
+		const version = ready();
+		if (version) return askToRestart(version);
 		let found: UpdateInfo | null = null;
 		try {
 			checkingByHand = true;
@@ -169,8 +168,9 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 		installOnQuit(restart) {
 			clearTimeout(firstCheck);
 			clearInterval(everyFewHours);
-			if (!ready || mode !== "auto") return 0;
-			log.info(`installing Raven ${ready}${restart ? " and restarting" : ""}`);
+			const version = ready();
+			if (!version || mode !== "auto") return 0;
+			log.info(`installing Raven ${version}${restart ? " and restarting" : ""}`);
 			if (process.platform === "darwin") {
 				// Squirrel installs what it staged when Raven exits; quitAndInstall also starts it again
 				// and quits Raven itself, once its own copy of the update is ready. The wait is a fallback.

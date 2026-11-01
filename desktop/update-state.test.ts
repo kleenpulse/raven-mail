@@ -36,9 +36,11 @@ describe("nextUpdateState", () => {
 		const ready: UpdateState = { kind: "ready", version: "0.11.0" };
 		expect(nextUpdateState(ready, { type: "available", version: "0.11.0" }, true)).toBe(ready);
 		expect(nextUpdateState(ready, { type: "error" }, true)).toBe(ready);
-		// A newer release downloads behind it, and only takes over once it's down.
-		expect(nextUpdateState(ready, { type: "available", version: "0.11.1" }, true)).toBe(ready);
-		expect(nextUpdateState(ready, { type: "downloaded", version: "0.11.1" }, true)).toEqual({ kind: "ready", version: "0.11.1" });
+		// A newer release replaces it: electron-updater deletes the ready installer when that download starts.
+		const newer = nextUpdateState(ready, { type: "available", version: "0.11.1" }, true);
+		expect(newer).toEqual({ kind: "downloading", version: "0.11.1", percent: 0 });
+		expect(nextUpdateState(newer, { type: "error" }, true)).toBe(NO_UPDATE);
+		expect(nextUpdateState(newer, { type: "downloaded", version: "0.11.1" }, true)).toEqual({ kind: "ready", version: "0.11.1" });
 	});
 
 	test("a failed download hides the pill", () => {
