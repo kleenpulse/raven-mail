@@ -13,6 +13,13 @@ as you work — it ships inside the app.
 
 ### Added
 
+- Raven now has a desktop app for Windows, macOS and Linux. It's the
+  same Raven, running on your own computer. Your integrations, rules,
+  blocked senders and reminders are kept in a small database inside
+  the app, so there's nothing to set up. These first builds aren't
+  signed yet, so your computer will warn you the first time you open
+  Raven. The README shows what to click. It tells you when a new
+  version is out.
 - On desktop, Raven now checks for new versions by itself, when it
   starts and every 6 hours. You can also pick "Check for updates…" in
   the File menu (the Raven menu on a Mac) or in the tray menu. On
@@ -38,13 +45,6 @@ as you work — it ships inside the app.
   go through a small page on raven-mail.vercel.app that hands the
   link to Raven. If you don't have the desktop app, that page shows
   where to get it.
-- Raven now has a desktop app for Windows, macOS and Linux. It's the
-  same Raven, running on your own computer. Your integrations, rules,
-  blocked senders and reminders are kept in a small database inside
-  the app, so there's nothing to set up. These first builds aren't
-  signed yet, so your computer will warn you the first time you open
-  Raven. The README shows what to click. It tells you when a new
-  version is out.
 - On desktop, Raven now opens where you left it, at the same size,
   and maximized if it was. If that screen isn't plugged in anymore,
   it opens on your main screen.
