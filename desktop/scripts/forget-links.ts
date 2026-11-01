@@ -9,7 +9,7 @@
 import { spawnSync } from "node:child_process";
 import { rmSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { unpackagedRavenClaim, userChoiceProgId, WINDOWS_MAILTO_CHOICE, WINDOWS_RAVEN_CLASS, windowsMailIds, windowsMailUnregistration } from "../links";
+import { repoElectronShortcut, unpackagedRavenClaim, userChoiceProgId, WINDOWS_MAILTO_CHOICE, WINDOWS_RAVEN_CLASS, windowsMailIds, windowsMailUnregistration } from "../links";
 
 if (process.platform !== "win32") {
 	console.log("This only cleans up Windows. Nothing to do here.");
@@ -45,6 +45,7 @@ if (choice === preview.progId) {
 const raven = reg(["query", `${WINDOWS_RAVEN_CLASS}\\shell\\open\\command`, "/ve"]);
 if (unpackagedRavenClaim(raven.stdout)) {
 	remove(["delete", WINDOWS_RAVEN_CLASS, "/f"], `${WINDOWS_RAVEN_CLASS} (a preview build's raven:// links)`);
+	console.log("An installed Raven takes raven:// links back the next time it starts.");
 } else if (raven.ok) {
 	console.log("raven:// links belong to an installed Raven. Kept.");
 }
@@ -60,9 +61,13 @@ const shortcuts = spawnSync("powershell", ["-NoProfile", "-NonInteractive", "-Co
 	windowsHide: true,
 	env: { ...process.env, RAVEN_PROGRAMS: programs },
 });
+if (shortcuts.status !== 0) {
+	failed = true;
+	console.error(`couldn't list Start menu shortcuts: ${(shortcuts.stderr ?? shortcuts.error?.message ?? "").trim()}`);
+}
 for (const line of (shortcuts.stdout ?? "").split(/\r?\n/)) {
 	const [path, target] = line.split("|");
-	if (!path || target?.toLowerCase() !== electron.toLowerCase()) continue;
+	if (!path || !repoElectronShortcut(target, electron)) continue;
 	try {
 		rmSync(path);
 		console.log(`removed ${path}`);

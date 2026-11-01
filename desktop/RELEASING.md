@@ -45,7 +45,7 @@ The installer only starts once Raven has closed its windows and stopped its serv
 
 Downloads wait in `%LOCALAPPDATA%\raven-updater` on Windows (`~/Library/Caches/raven-updater` on macOS, `~/.cache/raven-updater` on Linux).
 
-**v0.10.0 is the first release with update files.** Builds made before it don't check for updates at all. Their users need to install one new build by hand.
+**v0.10.0 is the first release with update files.** Builds from before the updater (v0.9.0 and earlier) don't check for updates at all. Their users need to install one new build by hand.
 
 **Unsigned Windows builds** don't check who signed an update (there's no signature to check). They trust GitHub's HTTPS and the sha512 in `latest.yml`, both from the same release. Signed builds also check the publisher name (see below).
 

@@ -107,6 +107,11 @@ export function unpackagedRavenClaim(output: string): boolean {
 	return /REG_SZ\s.*\s"?--raven-mode=/i.test(output);
 }
 
+/** Whether a Start menu shortcut's target is this repo's electron.exe (Windows paths ignore case). */
+export function repoElectronShortcut(target: string | undefined, electron: string): boolean {
+	return target !== undefined && target !== "" && target.toLowerCase() === electron.toLowerCase();
+}
+
 /** Where Windows keeps the user's pick for email links. */
 export const WINDOWS_MAILTO_CHOICE = "HKCU\\Software\\Microsoft\\Windows\\Shell\\Associations\\UrlAssociations\\mailto\\UserChoice";
 

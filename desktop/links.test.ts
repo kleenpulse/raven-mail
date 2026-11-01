@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { linkArg, linkPath, MAX_LINK, unpackagedRavenClaim, userChoiceProgId, windowsMailIds, windowsMailRegistration, windowsMailUnregistration } from "./links";
+import { linkArg, linkPath, MAX_LINK, repoElectronShortcut, unpackagedRavenClaim, userChoiceProgId, windowsMailIds, windowsMailRegistration, windowsMailUnregistration } from "./links";
 
 describe("linkPath", () => {
 	test.each([
@@ -172,6 +172,22 @@ describe("unpackagedRavenClaim", () => {
 
 	test("no key", () => {
 		expect(unpackagedRavenClaim("ERROR: The system was unable to find the specified registry key or value.")).toBe(false);
+	});
+});
+
+describe("repoElectronShortcut", () => {
+	const electron = "D:\\repo\\desktop\\node_modules\\electron\\dist\\electron.exe";
+
+	test("this repo's electron.exe, in any case", () => {
+		expect(repoElectronShortcut(electron, electron)).toBe(true);
+		expect(repoElectronShortcut("d:\\REPO\\desktop\\node_modules\\electron\\dist\\Electron.exe", electron)).toBe(true);
+	});
+
+	test("an installed Raven, another repo's Electron, or no target stays", () => {
+		expect(repoElectronShortcut("C:\\Users\\sam\\AppData\\Local\\Programs\\raven\\Raven.exe", electron)).toBe(false);
+		expect(repoElectronShortcut("D:\\other\\node_modules\\electron\\dist\\electron.exe", electron)).toBe(false);
+		expect(repoElectronShortcut("", electron)).toBe(false);
+		expect(repoElectronShortcut(undefined, electron)).toBe(false);
 	});
 });
 
