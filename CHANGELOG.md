@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.11.0] - 2026-11-02
+
 ### Changed
 
 - On desktop, new versions now show up in a small button at the top
