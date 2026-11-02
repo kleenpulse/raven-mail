@@ -18,6 +18,7 @@ import { FollowUpsCard } from "@/components/overview/follow-ups-card";
 import { OrbitCard } from "@/components/overview/orbit-card";
 import { OverviewSearch } from "@/components/overview/overview-search";
 import { SponsorButton } from "@/components/shell/sponsor-button";
+import { UpdatePill } from "@/components/shell/update-pill";
 import { useAccount } from "@/components/providers/account-provider";
 import { useAsk, type AskOptions } from "@/components/jev/use-ask";
 import { useOverview } from "@/hooks/use-overview";
@@ -97,6 +98,7 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 								<p className="text-xs text-ink-2">{account.provider}</p>
 							</div>
 						</div>
+						<UpdatePill />
 						<SponsorButton />
 					</div>
 				</header>

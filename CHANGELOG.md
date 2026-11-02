@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- On desktop, new versions now show up in a small button at the top
+  of the mail and overview pages, not in a pop-up. It shows the
+  download, then "Restart to update". When Raven is hidden in the
+  tray, you get a notification instead.
+
 ### Fixed
 
 - Choosing your city for the weather now works when you add the

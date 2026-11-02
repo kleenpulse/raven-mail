@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
-import { CHANNELS, type MailAppStatus, type NewMail } from "./bridge";
+import { CHANNELS, type MailAppStatus, type NewMail, type UpdateAction, type UpdateState } from "./bridge";
 
 /*
  * Runs sandboxed in the main window's top frame before the page. It has no
@@ -21,5 +21,16 @@ contextBridge.exposeInMainWorld("ravenDesktop", {
 	mailApp: {
 		status: (): Promise<MailAppStatus> => ipcRenderer.invoke(CHANNELS.mailAppStatus),
 		claim: (): Promise<MailAppStatus> => ipcRenderer.invoke(CHANNELS.mailAppClaim),
+	},
+	update: {
+		state: (): Promise<UpdateState> => ipcRenderer.invoke(CHANNELS.updateStateGet),
+		onState(callback: (state: UpdateState) => void): () => void {
+			const listener = (_event: IpcRendererEvent, state: UpdateState) => callback(state);
+			ipcRenderer.on(CHANNELS.updateState, listener);
+			return () => void ipcRenderer.removeListener(CHANNELS.updateState, listener);
+		},
+		act(action: UpdateAction): void {
+			ipcRenderer.send(CHANNELS.updateAct, action);
+		},
 	},
 });

@@ -3,7 +3,7 @@ import { join } from "node:path";
 
 /*
  * The tray icon on Windows and Linux. Clicking it shows the window; its menu
- * opens Raven, turns "keep running" on or off, checks for updates, and quits. Linux desktops
+ * opens Raven, offers an update to act on, turns "keep running" on or off, checks for updates, and quits. Linux desktops
  * without AppIndicator show no icon; opening Raven again shows the window.
  */
 
@@ -13,6 +13,8 @@ export type TrayActions = {
 	setKeepRunning(on: boolean): void;
 	/** Only in builds that update (not dev or preview). */
 	checkForUpdates?: () => void;
+	/** "Restart to update" or the release page, when there's an update to act on. */
+	update?: () => { label: string; click: () => void } | null;
 	quit(): void;
 };
 
@@ -24,9 +26,11 @@ export function createTray(actions: TrayActions): RavenTray {
 	const tray = new Tray(icon);
 	tray.setToolTip("Raven");
 	const refresh = () => {
+		const update = actions.update?.() ?? null;
 		tray.setContextMenu(
 			Menu.buildFromTemplate([
 				{ label: "Open Raven", click: actions.open },
+				...(update ? [{ label: update.label, click: update.click }] : []),
 				{ type: "separator" },
 				{ label: KEEP_RUNNING_LABEL, type: "checkbox", checked: actions.keepRunning(), click: (item) => actions.setKeepRunning(item.checked) },
 				...(actions.checkForUpdates ? [{ label: CHECK_FOR_UPDATES_LABEL, click: actions.checkForUpdates }] : []),

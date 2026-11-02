@@ -8,6 +8,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { allowSingleKey } from "@/lib/keyboard";
 import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 import { SponsorButton } from "@/components/shell/sponsor-button";
+import { UpdatePill } from "@/components/shell/update-pill";
 
 /** Mail-only toolbar: folder drawer + folder search. Account/theme live in the rail. */
 export function Topbar({
@@ -75,7 +76,10 @@ export function Topbar({
 				)}
 			</div>
 
-			<SponsorButton className="ml-auto" />
+			<div className="ml-auto flex shrink-0 items-center gap-2">
+				<UpdatePill />
+				<SponsorButton />
+			</div>
 		</header>
 	);
 }
