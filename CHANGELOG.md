@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Choosing your city for the weather now also works with a state
+  code after the city, like "Austin TX", "Vancouver BC" or
+  "Sydney NSW". And when it has to search again, it waits about 8
+  seconds at most, not 16.
+
 ## [0.11.0] - 2026-11-02
 
 ### Changed
