@@ -6,10 +6,12 @@ import { AnimatePresence, motion } from "motion/react";
 import { create } from "zustand";
 import { X } from "lucide-react";
 import { SenderAvatar } from "@/components/mail/mail-row";
+import { useDeepTriageMap } from "@/hooks/use-deep-triage";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useNewMail } from "@/hooks/use-new-mail";
 import { usePref } from "@/lib/prefs/store";
 import { newMailForDesktop, ravenDesktop } from "@/lib/desktop/bridge";
+import { ofKinds } from "@/lib/mail/split-inbox";
 import { useComposeStore } from "@/lib/store/compose";
 import type { NotifyBannerPosition } from "@/lib/prefs/schema";
 import type { MailSummary } from "@/lib/mail/types";
@@ -53,12 +55,16 @@ export function NewMailBanner() {
 	const router = useRouter();
 	const position = usePref("notify.bannerPosition");
 	const systemNotify = usePref("notify.system");
+	const kinds = usePref("notify.kinds");
+	const deep = useDeepTriageMap();
 	const desktop = useMediaQuery("(min-width: 48rem)");
 	const compose = useComposeStore((s) => (!s.open ? "closed" : s.minimized ? "pill" : s.maximized ? "max" : "window"));
 	const [held, setHeld] = React.useState<MailSummary[]>([]);
 	const [paused, setPaused] = React.useState(false);
 
-	useNewMail((arrivals) => {
+	useNewMail((all) => {
+		const arrivals = ofKinds(all, kinds, deep);
+		if (!arrivals.length) return;
 		setHeld((prev) => {
 			const seen = new Set(arrivals.map((m) => m.uid));
 			return [...arrivals, ...prev.filter((m) => !seen.has(m.uid))].slice(0, MAX_HELD);
