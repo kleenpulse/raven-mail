@@ -13,27 +13,34 @@ const ATTRS: ReadonlyArray<readonly [PrefKey, string, Readonly<Record<string, st
 	["appearance.reduceTransparency", "data-transparency", { true: "reduce" }],
 ];
 
-export const PREF_ATTR_NAMES = ATTRS.map(([, attr]) => attr);
+/** Every visual pref, or just `only` (pages outside the app take a subset). */
+function attrsFor(only?: readonly PrefKey[]) {
+	return only ? ATTRS.filter(([key]) => only.includes(key)) : ATTRS;
+}
 
-export function prefsToAttrs(overrides: Overrides): Record<string, string | null> {
+export function prefAttrNames(only?: readonly PrefKey[]): string[] {
+	return attrsFor(only).map(([, attr]) => attr);
+}
+
+export function prefsToAttrs(overrides: Overrides, only?: readonly PrefKey[]): Record<string, string | null> {
 	const out: Record<string, string | null> = {};
-	for (const [key, attr, values] of ATTRS) {
+	for (const [key, attr, values] of attrsFor(only)) {
 		const raw = String(overrides[key]);
 		out[attr] = Object.hasOwn(values, raw) ? values[raw]! : null;
 	}
 	return out;
 }
 
-export function applyPrefAttrs(root: HTMLElement, overrides: Overrides) {
-	for (const [attr, value] of Object.entries(prefsToAttrs(overrides))) {
+export function applyPrefAttrs(root: HTMLElement, overrides: Overrides, only?: readonly PrefKey[]) {
+	for (const [attr, value] of Object.entries(prefsToAttrs(overrides, only))) {
 		if (value === null) root.removeAttribute(attr);
 		else root.setAttribute(attr, value);
 	}
 }
 
 /** Runs during HTML parsing, before first paint. Only whitelisted values ever reach the DOM. */
-export function headScript(): string {
-	return `(function(){try{var o=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_STORAGE_KEY)})||"null");o=o&&o.state&&o.state.overrides||{};var r=document.documentElement;${JSON.stringify(ATTRS)}.forEach(function(a){var v=String(o[a[0]]);if(Object.prototype.hasOwnProperty.call(a[2],v))r.setAttribute(a[1],a[2][v])})}catch(e){}})()`;
+export function headScript(only?: readonly PrefKey[]): string {
+	return `(function(){try{var o=JSON.parse(localStorage.getItem(${JSON.stringify(PREFS_STORAGE_KEY)})||"null");o=o&&o.state&&o.state.overrides||{};var r=document.documentElement;${JSON.stringify(attrsFor(only))}.forEach(function(a){var v=String(o[a[0]]);if(Object.prototype.hasOwnProperty.call(a[2],v))r.setAttribute(a[1],a[2][v])})}catch(e){}})()`;
 }
 
 /**

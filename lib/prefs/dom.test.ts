@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
-import { headScript, prefsToAttrs } from "@/lib/prefs/dom";
+import { headScript, prefAttrNames, prefsToAttrs } from "@/lib/prefs/dom";
+import type { PrefKey } from "@/lib/prefs/schema";
 import { PREFS_STORAGE_KEY } from "@/lib/prefs/store";
 
 describe("prefsToAttrs", () => {
@@ -32,7 +33,7 @@ describe("prefsToAttrs", () => {
 });
 
 /** Runs the pre-paint script against stand-ins for localStorage and <html>. */
-function runScript(stored: string | null) {
+function runScript(stored: string | null, only?: readonly PrefKey[]) {
 	const attrs: Record<string, string> = {};
 	const localStorage = { getItem: (key: string) => (key === PREFS_STORAGE_KEY ? stored : null) };
 	const document = {
@@ -42,7 +43,7 @@ function runScript(stored: string | null) {
 			},
 		},
 	};
-	new Function("localStorage", "document", headScript())(localStorage, document);
+	new Function("localStorage", "document", headScript(only))(localStorage, document);
 	return attrs;
 }
 
@@ -69,5 +70,23 @@ describe("headScript", () => {
 			state: { overrides: { "appearance.uiSize": "constructor", "appearance.density": "\"><script>" } },
 		});
 		expect(runScript(stored)).toEqual({});
+	});
+});
+
+describe("only", () => {
+	const stored = JSON.stringify({
+		state: { overrides: { "appearance.uiSize": "larger", "appearance.motion": "reduce" } },
+	});
+
+	test("the landing's subset sets Reduce Motion and never zoom", () => {
+		expect(runScript(stored, ["appearance.motion"])).toEqual({ "data-motion": "reduce" });
+		expect(prefsToAttrs({ "appearance.uiSize": "larger", "appearance.motion": "reduce" }, ["appearance.motion"])).toEqual({
+			"data-motion": "reduce",
+		});
+	});
+
+	test("cleanup only touches the subset's attributes", () => {
+		expect(prefAttrNames(["appearance.motion"])).toEqual(["data-motion"]);
+		expect(prefAttrNames()).toEqual(["data-ui-size", "data-density", "data-motion", "data-transparency"]);
 	});
 });
