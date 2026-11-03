@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.12.0] - 2026-11-03
+
 ### Added
 
 - You can now choose which kinds of mail you hear about when they
