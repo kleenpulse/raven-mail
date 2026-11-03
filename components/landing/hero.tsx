@@ -8,6 +8,9 @@ import { NightSky } from "@/components/landing/night-sky";
 import { TiltIn } from "@/components/landing/tilt-in";
 import type { Overview } from "@/lib/insights/types";
 
+/** Two lines; the letters are aria-hidden, so the h1's aria-label joins them. */
+const TITLE = ["Your inbox,", "briefed."] as const;
+
 export function Hero({
 	senders,
 	categories,
@@ -42,11 +45,12 @@ export function Hero({
 
 				<h1
 					id="hero-title"
+					aria-label={`${TITLE[0]} ${TITLE[1]}`}
 					className="mt-8 font-display text-[clamp(3.25rem,10vw,7.75rem)] leading-[0.94] tracking-[-0.045em]"
 				>
-					<LettersPull text="Your inbox," /> <br />
+					<LettersPull text={TITLE[0]} /> <br />
 					<LettersPull
-						text="briefed."
+						text={TITLE[1]}
 						startDelay={0.36}
 						className="text-signal [text-shadow:0_0_48px_rgb(230_194_122/0.35)]"
 					/>

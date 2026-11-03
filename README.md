@@ -72,7 +72,7 @@ Open http://localhost:3000 and sign in. In development, **Continue in dev mode**
 
 ### Going public
 
-Set `APP_URL` to the deployment's public origin; canonical, Open Graph and sitemap URLs use it. Every deployment is `noindex` by default, because self-hosted copies all serve the same landing page and a personal `/login` shouldn't be searchable. Set `SEO_INDEX=true` only on the deployment that should show up in search.
+Set `APP_URL` to the deployment's public origin; canonical, Open Graph and sitemap URLs use it. Every deployment is `noindex` by default, because self-hosted copies all serve the same landing page and a personal `/login` shouldn't be searchable. Set `SEO_INDEX=true` only on the deployment that should show up in search. To verify it in Google Search Console, pick the "HTML tag" method and set `GOOGLE_SITE_VERIFICATION` to the tag's `content` value.
 
 ### Providers
 

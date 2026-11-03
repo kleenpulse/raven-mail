@@ -582,6 +582,18 @@ html[data-transparency="reduce"]:not(.dark) {
 	animation-delay: calc(var(--i, 0) * 55ms + 60ms);
 }
 
+/* LettersPull: each letter rises and sharpens; inline vars set rise, blur and stagger. */
+@utility letter-pull {
+	animation: letter-pull 0.5s cubic-bezier(0.22, 0.61, 0.36, 1) backwards;
+}
+@keyframes letter-pull {
+	from {
+		opacity: 0;
+		filter: blur(var(--pull-blur, 8px));
+		transform: translateY(var(--pull-y, 10px));
+	}
+}
+
 /* SVG draw-on: pair with pathLength="1". */
 @utility draw-on {
 	stroke-dasharray: 1;
@@ -725,6 +737,15 @@ html[data-motion="reduce"] :is(*, *::before, *::after) {
 	transition-duration: 1ms !important;
 	transition-delay: 0ms !important;
 	scroll-behavior: auto !important;
+}
+/* The clamp keeps animation-delay, and a staggered letter would sit hidden through it. */
+@media (prefers-reduced-motion: reduce) {
+	.letter-pull {
+		animation: none !important;
+	}
+}
+html[data-motion="reduce"] .letter-pull {
+	animation: none !important;
 }
 
 /* Interface Size: most type is fixed px, so the app frame zooms. Not <body>:
