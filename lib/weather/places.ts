@@ -24,6 +24,91 @@ const COUNTRY_ALIASES: Record<string, string> = {
 	wales: "gb",
 	uae: "ae",
 };
+/**
+ * Postal codes people type for a state or province ("austin tx"), per country
+ * code, mapped to Open-Meteo's admin1 name. Per country because codes repeat:
+ * WA is Washington in the US and Western Australia in Australia.
+ */
+const REGION_CODES: Record<string, Record<string, string>> = {
+	us: {
+		al: "alabama",
+		ak: "alaska",
+		az: "arizona",
+		ar: "arkansas",
+		ca: "california",
+		co: "colorado",
+		ct: "connecticut",
+		de: "delaware",
+		dc: "district of columbia",
+		fl: "florida",
+		ga: "georgia",
+		hi: "hawaii",
+		id: "idaho",
+		il: "illinois",
+		in: "indiana",
+		ia: "iowa",
+		ks: "kansas",
+		ky: "kentucky",
+		la: "louisiana",
+		me: "maine",
+		md: "maryland",
+		ma: "massachusetts",
+		mi: "michigan",
+		mn: "minnesota",
+		ms: "mississippi",
+		mo: "missouri",
+		mt: "montana",
+		ne: "nebraska",
+		nv: "nevada",
+		nh: "new hampshire",
+		nj: "new jersey",
+		nm: "new mexico",
+		ny: "new york",
+		nc: "north carolina",
+		nd: "north dakota",
+		oh: "ohio",
+		ok: "oklahoma",
+		or: "oregon",
+		pa: "pennsylvania",
+		ri: "rhode island",
+		sc: "south carolina",
+		sd: "south dakota",
+		tn: "tennessee",
+		tx: "texas",
+		ut: "utah",
+		vt: "vermont",
+		va: "virginia",
+		wa: "washington",
+		wv: "west virginia",
+		wi: "wisconsin",
+		wy: "wyoming",
+	},
+	ca: {
+		ab: "alberta",
+		bc: "british columbia",
+		mb: "manitoba",
+		nb: "new brunswick",
+		nl: "newfoundland and labrador",
+		ns: "nova scotia",
+		nt: "northwest territories",
+		nu: "nunavut",
+		on: "ontario",
+		pe: "prince edward island",
+		qc: "quebec",
+		sk: "saskatchewan",
+		yt: "yukon",
+	},
+	au: {
+		act: "australian capital territory",
+		nsw: "new south wales",
+		nt: "northern territory",
+		qld: "queensland",
+		sa: "south australia",
+		tas: "tasmania",
+		vic: "victoria",
+		wa: "western australia",
+	},
+};
 
 const cache = new Map<string, { at: number; places: WeatherPlace[] }>();
 
@@ -68,12 +153,14 @@ function splits(query: string): { name: string; qualifier: string[] }[] {
 	return out;
 }
 
-/** Whether every qualifier word names this result's country, region or country code. */
+/** Whether every qualifier word names this result's country, region, country code or state code. */
 function matches(result: GeoResult, qualifier: string[]) {
 	const known = new Set([result.country, result.admin1, result.admin2, result.admin3].flatMap((part) => words(text(part) ?? "")));
 	const code = text(result.country_code)?.toLowerCase();
 	if (code) known.add(code);
-	return qualifier.every((word) => known.has(word) || known.has(COUNTRY_ALIASES[word] ?? ""));
+	const region = words(text(result.admin1) ?? "").join(" ");
+	const regionCodes = code ? REGION_CODES[code] : undefined;
+	return qualifier.every((word) => known.has(word) || known.has(COUNTRY_ALIASES[word] ?? "") || regionCodes?.[word] === region);
 }
 
 async function geocode(name: string, count: number): Promise<GeoResult[] | null> {
@@ -112,17 +199,15 @@ export async function searchPlaces(query: string, now = Date.now()): Promise<Wea
 
 	let results = await geocode(typed, COUNT);
 	if (!results) return null;
-	let failed = false;
-	for (const { name, qualifier } of results.length ? [] : splits(typed)) {
-		const found = await geocode(name, WIDE_COUNT);
-		if (!found) {
-			failed = true;
-			continue;
-		}
-		results = found.filter((result) => matches(result, qualifier));
-		if (results.length) break;
+	if (!results.length) {
+		// All readings at once: a slow geocoder then costs one timeout here, not
+		// one per reading. The longest name that matches still wins.
+		const readings = splits(typed);
+		const found = await Promise.all(readings.map(({ name }) => geocode(name, WIDE_COUNT)));
+		const match = readings.map(({ qualifier }, i) => found[i]?.filter((result) => matches(result, qualifier)) ?? []).find((list) => list.length);
+		if (!match && found.includes(null)) return null;
+		results = match ?? [];
 	}
-	if (!results.length && failed) return null;
 
 	const seen = new Set<string>();
 	const places = results
