@@ -42,6 +42,7 @@ export function Hero({
 
 				<h1
 					id="hero-title"
+					aria-label="Your inbox, briefed."
 					className="mt-8 font-display text-[clamp(3.25rem,10vw,7.75rem)] leading-[0.94] tracking-[-0.045em]"
 				>
 					<LettersPull text="Your inbox," /> <br />

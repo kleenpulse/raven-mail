@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- The big headline on the home page now shows up right away. It
+  still fades in letter by letter, but it no longer stays blank
+  until the page's scripts load, which could take many seconds on
+  a slow phone. Search engines and screen readers now read it
+  once, not twice. With Reduce Motion on, it shows at once.
+
 ## [0.12.0] - 2026-11-03
 
 ### Added

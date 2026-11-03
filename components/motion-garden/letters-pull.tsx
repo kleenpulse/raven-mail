@@ -1,10 +1,13 @@
-"use client";
-
 // Adapted from Motion Garden — letters-pull. Spans (not divs) so it can live in a
-// heading, letters grouped per word so lines wrap between words, and one
-// screen-reader copy instead of a letter-by-letter read-out.
+// heading, letters grouped per word so lines wrap between words.
+//
+// A CSS animation, not motion: the letters paint with the server HTML instead of
+// waiting for hydration (the hero heading is the landing's LCP element), and the
+// text appears once in the DOM, so crawlers read the heading as written.
+// The letters are aria-hidden so screen readers don't spell them out: give the
+// parent the accessible name, e.g. `<h1 aria-label="…">`.
 
-import { motion, type Variants } from "motion/react";
+import type { CSSProperties } from "react";
 import { cn } from "@/lib/utils";
 
 type LettersPullProps = {
@@ -34,43 +37,34 @@ export function LettersPull({
 	blur = 8,
 	reducedMotion = false,
 }: LettersPullProps) {
-	const variants: Variants = {
-		initial: { y: yValue, opacity: 0, filter: `blur(${blur}px)` },
-		animate: (i: number) => ({
-			y: 0,
-			opacity: 1,
-			filter: "blur(0px)",
-			transition: { delay: startDelay + i * delay, duration, ease: [0.22, 0.61, 0.36, 1] as const },
-		}),
-	};
-
 	const words = text.split(" ");
 	const offsets = words.map((_, w) => words.slice(0, w).reduce((n, word) => n + word.length, 0));
 
 	return (
-		<span className={cn("inline", className)}>
-			<span className="sr-only">{text}</span>
-			<span aria-hidden>
-				{words.map((word, w) => (
-					<span key={w}>
-						<span className="inline-block whitespace-nowrap">
-							{Array.from(word).map((letter, l) => (
-								<motion.span
-									key={l}
-									className="inline-block"
-									variants={variants}
-									initial={reducedMotion ? false : "initial"}
-									animate="animate"
-									custom={offsets[w]! + l}
-								>
-									{letter}
-								</motion.span>
-							))}
-						</span>
-						{w < words.length - 1 && " "}
+		<span aria-hidden className={cn("inline", className)}>
+			{words.map((word, w) => (
+				<span key={w}>
+					<span className="inline-block whitespace-nowrap">
+						{Array.from(word).map((letter, l) => (
+							<span
+								key={l}
+								className={cn("inline-block", !reducedMotion && "letter-pull")}
+								style={
+									{
+										"--pull-y": `${yValue}px`,
+										"--pull-blur": `${blur}px`,
+										animationDuration: `${duration}s`,
+										animationDelay: `${startDelay + (offsets[w]! + l) * delay}s`,
+									} as CSSProperties
+								}
+							>
+								{letter}
+							</span>
+						))}
 					</span>
-				))}
-			</span>
+					{w < words.length - 1 && " "}
+				</span>
+			))}
 		</span>
 	);
 }
