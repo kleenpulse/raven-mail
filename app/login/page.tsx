@@ -12,6 +12,8 @@ export const metadata: Metadata = {
 	title: "Sign in",
 	description:
 		"Connect Gmail, Outlook, iCloud or any IMAP mailbox to raven. Your password is sealed in an encrypted cookie on your device, never in a database.",
+	// A sign-in form is no search result, even on the indexed official deployment.
+	robots: { index: false, follow: true },
 };
 
 const key = "bg-sheet ring-1 ring-border dark:bg-card-nested dark:ring-glass-border";
