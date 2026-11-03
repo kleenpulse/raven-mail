@@ -6,9 +6,8 @@ import { useAccount } from "@/components/providers/account-provider";
 import { useDeepTriageMap } from "@/hooks/use-deep-triage";
 import { useBlockedSender } from "@/hooks/use-blocks";
 import { usePref } from "@/lib/prefs/store";
-import { heuristicTriage } from "@/lib/triage/heuristic";
 import { groupThreads, singleRows, type ThreadRow } from "@/lib/mail/thread";
-import { SPLIT_TABS, splitRows, tabOf, type SplitResult, type SplitTab } from "@/lib/mail/split-inbox";
+import { SPLIT_TABS, categoryOf as categoryOfMessage, splitRows, tabOf, type SplitResult, type SplitTab } from "@/lib/mail/split-inbox";
 import type { MailSummary, TriageCategory } from "@/lib/mail/types";
 
 const tabParser = parseAsStringLiteral(SPLIT_TABS).withDefault("important").withOptions({ clearOnDefault: true });
@@ -34,15 +33,8 @@ export function useMailRows(
 	const tab: SplitTab =
 		rawTab === "all" || rawTab === "important" || (shown as readonly string[]).includes(rawTab) ? rawTab : "important";
 
-	// Deep triage (when it ran) wins over the free heuristic, as on each row.
 	const categoryOf = React.useCallback(
-		(row: ThreadRow): TriageCategory => {
-			const m = row.latest;
-			return (
-				deep.get(`${m.folder}:${m.uid}`)?.category ??
-				heuristicTriage({ subject: m.subject, snippet: m.preview, from: m.from.address }).category
-			);
-		},
+		(row: ThreadRow): TriageCategory => categoryOfMessage(row.latest, deep),
 		[deep],
 	);
 

@@ -237,6 +237,15 @@ export const SETTINGS: SettingEntry[] = [
 		stack: true,
 	},
 	{
+		id: "notify-kinds",
+		section: "notifications",
+		card: "New mail",
+		label: "Tell Me About",
+		description: "Pick which kinds of new mail get the pop-up, and the notification in the desktop app. They're the same kinds as the Inbox tabs. Turning a tab off doesn't change this.",
+		keywords: "filter which mail kinds categories important updates newsletters receipts promotions social mute quiet",
+		prefs: ["notify.kinds"],
+	},
+	{
 		id: "banner-position",
 		section: "notifications",
 		card: "New mail",

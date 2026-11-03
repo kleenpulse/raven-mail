@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- You can now choose which kinds of mail you hear about when they
+  arrive. In Settings, under Notifications, pick from Important,
+  Updates, Newsletters, Receipts, Promotions and Social. Only those
+  get the pop-up, and the notification in the desktop app. All of
+  them are on at first, so nothing changes until you turn some off.
+
 ### Fixed
 
 - Choosing your city for the weather now also works with a state

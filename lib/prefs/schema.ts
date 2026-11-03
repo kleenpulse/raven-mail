@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { SIGNATURE_MAX } from "@/lib/mail/signature";
-import { OPTIONAL_TABS } from "@/lib/mail/split-inbox";
+import { HOME_TABS, OPTIONAL_TABS } from "@/lib/mail/split-inbox";
 
 /**
  * Every tunable in one flat map. Keys are a stable contract: never reuse one
@@ -38,6 +38,8 @@ export const PREF_SCHEMAS = {
 	"notify.bannerPosition": z.enum(["top-left", "top-right", "bottom-left", "bottom-right"]),
 	/** Desktop app: a system notification for new mail while Raven isn't the focused window. */
 	"notify.system": z.boolean(),
+	/** Kinds of new mail that get the pop-up and the desktop notification, in no particular order. */
+	"notify.kinds": z.array(z.enum(HOME_TABS)).max(HOME_TABS.length),
 	/** Spoken tour narration on this device. The accent itself follows the account (lib/tour). */
 	"tour.narration": z.boolean(),
 } as const;
@@ -70,6 +72,7 @@ export const DEFAULTS: Prefs = {
 	"keyboard.singleKey": true,
 	"notify.bannerPosition": "bottom-right",
 	"notify.system": true,
+	"notify.kinds": [...HOME_TABS],
 	"tour.narration": true,
 };
 

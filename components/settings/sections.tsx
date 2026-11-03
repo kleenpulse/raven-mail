@@ -23,7 +23,7 @@ import {
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Textarea } from "@/components/ui/textarea";
 import { SIGNATURE_MAX } from "@/lib/mail/signature";
-import { OPTIONAL_TABS, TAB_LABEL } from "@/lib/mail/split-inbox";
+import { HOME_TABS, OPTIONAL_TABS, TAB_LABEL, type HomeTab } from "@/lib/mail/split-inbox";
 import { useAccount } from "@/components/providers/account-provider";
 import { useAskName } from "@/components/jev/ask-name";
 import { centerOf, revealTheme, type ThemeChoice } from "@/components/shell/theme-toggle";
@@ -165,36 +165,53 @@ function UndoRow() {
 	);
 }
 
+/** Kinds of mail as toggle chips. `onChange` gets the new pick, in tab order. */
+function KindChips<T extends HomeTab>({
+	kinds,
+	picked,
+	onChange,
+	labelId,
+	disabled = false,
+}: {
+	kinds: readonly T[];
+	picked: readonly T[];
+	onChange: (next: T[]) => void;
+	labelId: string;
+	disabled?: boolean;
+}) {
+	return (
+		<div role="group" aria-labelledby={labelId} className={cn("flex flex-wrap gap-1.5", disabled && "opacity-50")}>
+			{kinds.map((kind) => {
+				const pressed = picked.includes(kind);
+				return (
+					<button
+						key={kind}
+						type="button"
+						aria-pressed={pressed}
+						disabled={disabled}
+						onClick={() => onChange(pressed ? picked.filter((k) => k !== kind) : kinds.filter((k) => k === kind || picked.includes(k)))}
+						className={cn(
+							"h-8 rounded-pill px-3.5 text-[13px] ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
+							pressed
+								? "bg-inverse text-inverse-foreground ring-transparent dark:bg-signal-soft dark:text-signal"
+								: "text-ink-2 ring-border hover:text-foreground dark:ring-glass-border",
+						)}
+					>
+						{TAB_LABEL[kind]}
+					</button>
+				);
+			})}
+		</div>
+	);
+}
+
 function SplitTabsRow() {
 	const shown = usePref("mail.splitTabs");
 	const on = usePref("mail.splitInbox");
 	return (
 		<SettingRow id="split-tabs" layout="stack">
 			{(labelId) => (
-				<div role="group" aria-labelledby={labelId} className={cn("flex flex-wrap gap-1.5", !on && "opacity-50")}>
-					{OPTIONAL_TABS.map((tab) => {
-						const pressed = shown.includes(tab);
-						return (
-							<button
-								key={tab}
-								type="button"
-								aria-pressed={pressed}
-								disabled={!on}
-								onClick={() =>
-									setPref("mail.splitTabs", pressed ? shown.filter((t) => t !== tab) : OPTIONAL_TABS.filter((t) => t === tab || shown.includes(t)))
-								}
-								className={cn(
-									"h-8 rounded-pill px-3.5 text-[13px] ring-1 outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed",
-									pressed
-										? "bg-inverse text-inverse-foreground ring-transparent dark:bg-signal-soft dark:text-signal"
-										: "text-ink-2 ring-border hover:text-foreground dark:ring-glass-border",
-								)}
-							>
-								{TAB_LABEL[tab]}
-							</button>
-						);
-					})}
-				</div>
+				<KindChips kinds={OPTIONAL_TABS} picked={shown} onChange={(next) => setPref("mail.splitTabs", next)} labelId={labelId} disabled={!on} />
 			)}
 		</SettingRow>
 	);
@@ -315,6 +332,15 @@ const CORNERS: { value: NotifyBannerPosition; label: string; place: string }[] =
 	{ value: "bottom-left", label: "Bottom left", place: "items-end justify-start" },
 	{ value: "bottom-right", label: "Bottom right", place: "items-end justify-end" },
 ];
+
+function NotifyKindsRow() {
+	const kinds = usePref("notify.kinds");
+	return (
+		<SettingRow id="notify-kinds" layout="stack">
+			{(labelId) => <KindChips kinds={HOME_TABS} picked={kinds} onChange={(next) => setPref("notify.kinds", next)} labelId={labelId} />}
+		</SettingRow>
+	);
+}
 
 /** A little screen: pick the corner, and the banner springs over to it. */
 function BannerPositionRow() {
@@ -825,6 +851,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	"rules-activity": RuleActivityRow,
 	"mail-layout": MailLayoutRow,
 	"email-links": EmailLinksRow,
+	"notify-kinds": NotifyKindsRow,
 	"banner-position": BannerPositionRow,
 	"system-notifications": () => <PrefSwitchRow id="system-notifications" pref="notify.system" />,
 	"focus-refetch": () => <PrefSwitchRow id="focus-refetch" pref="sync.focusRefetch" />,
