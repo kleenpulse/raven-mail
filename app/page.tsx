@@ -14,7 +14,7 @@ import { Workflow } from "@/components/landing/workflow";
 import { PrefsDom } from "@/components/providers/prefs-dom";
 import { landingDemo } from "@/lib/landing/demo";
 import type { PrefKey } from "@/lib/prefs/schema";
-import { OPEN_GRAPH, SITE_NAME, SITE_URL } from "@/lib/site";
+import { GOOGLE_SITE_VERIFICATION, OPEN_GRAPH, SITE_NAME, SITE_URL } from "@/lib/site";
 
 // Static for everyone; hourly rebuilds keep the demo mailbox's "7h ago"s honest.
 export const revalidate = 3600;
@@ -33,6 +33,7 @@ export const metadata: Metadata = {
 	description: DESCRIPTION,
 	// Here, not in the root layout: a layout's canonical would be inherited by /login.
 	alternates: { canonical: "/" },
+	verification: GOOGLE_SITE_VERIFICATION ? { google: GOOGLE_SITE_VERIFICATION } : undefined,
 	openGraph: {
 		...OPEN_GRAPH,
 		url: "/",

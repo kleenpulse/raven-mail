@@ -8,6 +8,9 @@ export const SITE_NAME = "raven";
  */
 export const SEO_INDEX = process.env.SEO_INDEX === "true";
 
+/** Search Console's HTML-tag token. Per deployment, so forks don't carry ours. */
+export const GOOGLE_SITE_VERIFICATION = process.env.GOOGLE_SITE_VERIFICATION?.trim() || undefined;
+
 /** Public origin for canonical, Open Graph and sitemap URLs. */
 export const SITE_URL = siteUrl();
 
