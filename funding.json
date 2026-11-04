@@ -1,0 +1,68 @@
+{
+	"$schema": "https://fundingjson.org/schema/v1.1.0.json",
+	"version": "v1.1.0",
+	"entity": {
+		"type": "individual",
+		"role": "maintainer",
+		"name": "Isaac Gideon",
+		"email": "skyeparagon@gmail.com",
+		"description": "I'm Isaac Gideon, a software developer from Nigeria. I build and maintain Raven on my own, from the web app to the desktop app and its releases.",
+		"webpageUrl": {
+			"url": "https://github.com/kleenpulse"
+		}
+	},
+	"projects": [
+		{
+			"guid": "raven-mail",
+			"name": "Raven",
+			"description": "Raven is a self-hosted mail client for Gmail, Outlook, Yahoo, iCloud, Fastmail, Proton (through Bridge) and any IMAP/SMTP mailbox. It runs in the browser or as a desktop app.\n\nIt doesn't keep a password database. Your mail login lives only in an encrypted cookie in your own browser. Remote images and trackers stay blocked until you click, and emails open in a sandboxed frame with no scripts.\n\nThe Overview page shows who is waiting on your reply and who owes you one. Ask Jev lets you search your inbox with a plain question, and every answer shows the emails it came from. Raven never writes text with AI. Without an API key it uses Kage, a small built-in engine that works offline.\n\nRaven is AGPL-3.0 and has been public since October 2026. Live demo: https://raven-mail.vercel.app",
+			"webpageUrl": {
+				"url": "https://github.com/kleenpulse/raven-mail"
+			},
+			"repositoryUrl": {
+				"url": "https://github.com/kleenpulse/raven-mail",
+				"wellKnown": "https://github.com/kleenpulse/raven-mail/blob/main/.well-known/funding-manifest-urls"
+			},
+			"licenses": ["spdx:AGPL-3.0-or-later"],
+			"tags": ["email", "email-client", "privacy", "self-hosted", "imap", "productivity", "desktop-app", "web-app", "typescript"]
+		}
+	],
+	"funding": {
+		"channels": [
+			{
+				"guid": "github-sponsors",
+				"type": "payment-provider",
+				"address": "https://github.com/sponsors/kleenpulse",
+				"description": "Monthly or one-time support with a card, through GitHub Sponsors."
+			},
+			{
+				"guid": "bank",
+				"type": "bank",
+				"address": "",
+				"description": "Bank transfer for grants and larger gifts. Email me and I'll send the details."
+			}
+		],
+		"plans": [
+			{
+				"guid": "sponsors-monthly",
+				"status": "active",
+				"name": "Monthly support",
+				"description": "Support of any size through GitHub Sponsors. It helps pay for hosting and keeps releases coming.",
+				"amount": 0,
+				"currency": "USD",
+				"frequency": "monthly",
+				"channels": ["github-sponsors"]
+			},
+			{
+				"guid": "maintenance-yearly",
+				"status": "active",
+				"name": "One year of maintenance",
+				"description": "One year of part-time work on Raven: bug and security fixes, mail provider compatibility, and regular releases of the web and desktop apps.",
+				"amount": 10000,
+				"currency": "USD",
+				"frequency": "yearly",
+				"channels": ["bank"]
+			}
+		]
+	}
+}
