@@ -10,7 +10,7 @@ export const metadata: Metadata = { title: "Open in Raven", robots: { index: fal
  */
 export default function OpenPage() {
 	return (
-		<main className="relative isolate flex min-h-dvh flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-background px-6 text-center">
+		<main className="relative isolate flex min-h-(--app-h) flex-1 flex-col items-center justify-center gap-6 overflow-hidden bg-background px-6 text-center">
 			<Suspense fallback={null}>
 				<OpenInRaven />
 			</Suspense>

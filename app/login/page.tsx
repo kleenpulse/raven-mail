@@ -43,7 +43,7 @@ export default async function LoginPage() {
 	if (session) redirect("/overview");
 
 	return (
-		<main className="relative flex min-h-svh flex-col lg:flex-row">
+		<main className="relative flex min-h-(--app-h) flex-col lg:flex-row">
 			<ForgetCachedMail />
 			<section
 				aria-labelledby="login-headline"

@@ -4,6 +4,7 @@ import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ThemeProvider } from "@/components/providers/theme-provider";
 import { QueryProvider } from "@/components/providers/query-provider";
 import { MotionProvider } from "@/components/providers/motion-provider";
+import { TitleBar } from "@/components/shell/title-bar";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { OPEN_GRAPH, SEO_INDEX, SITE_URL } from "@/lib/site";
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
 					enableSystem
 					disableTransitionOnChange
 				>
+					<TitleBar />
 					<NuqsAdapter>
 						<QueryProvider>
 							<MotionProvider>

@@ -1,7 +1,29 @@
 import { describe, expect, test } from "bun:test";
-import { MAX_ITEMS, MAX_TEXT, newMailNotice, openPath, parseNewMail, pathForNewMail, trustedSender } from "./bridge";
+import { MAX_ITEMS, MAX_TEXT, newMailNotice, openPath, parseMenuAnchor, parseNewMail, parseTitleBarColors, pathForNewMail, trustedSender } from "./bridge";
 
 const item = (uid: string, from = "Ada", subject = "Hi") => ({ uid, from, subject });
+
+describe("parseTitleBarColors", () => {
+	test("takes two #rrggbb colours, lower-cased", () => {
+		expect(parseTitleBarColors({ color: "#F3F3F1", symbol: "#5b5f61", extra: 1 })).toEqual({ color: "#f3f3f1", symbol: "#5b5f61" });
+	});
+	test("refuses anything else", () => {
+		for (const bad of [null, "x", {}, { color: "#fff", symbol: "#000000" }, { color: "red", symbol: "#000000" }, { color: "#000000" }, { color: "#00000000", symbol: "#000000" }]) {
+			expect(parseTitleBarColors(bad)).toBeNull();
+		}
+	});
+});
+
+describe("parseMenuAnchor", () => {
+	test("rounds a point inside the window", () => {
+		expect(parseMenuAnchor({ x: 4.4, y: 32 })).toEqual({ x: 4, y: 32 });
+	});
+	test("refuses negative, huge, or non-number points", () => {
+		for (const bad of [null, { x: -1, y: 0 }, { x: 0, y: 20_000 }, { x: Number.NaN, y: 0 }, { x: "1", y: 1 }, { x: 1 }]) {
+			expect(parseMenuAnchor(bad)).toBeNull();
+		}
+	});
+});
 
 describe("parseNewMail", () => {
 	test("keeps well-formed items and drops extra fields", () => {

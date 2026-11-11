@@ -360,7 +360,7 @@ export function ComposeDock() {
           "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card text-foreground shadow-lift glass-pane",
           maximized
             ? "inset-2 sm:inset-6 lg:inset-x-[max(1.5rem,calc((100vw-60rem)/2))]"
-            : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(100svh-3rem))] sm:w-120",
+            : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(var(--app-h)-3rem))] sm:w-120",
         )}
       >
         {/* Nebula: a light tint inside the glass so labels stay legible when the dock floats over the white email paper. */}

@@ -399,6 +399,15 @@ html[data-transparency="reduce"]:not(.dark) {
 	body {
 		@apply bg-background text-foreground;
 		height: 100%;
+		/* The desktop title bar sits over this (components/shell/title-bar.tsx). */
+		padding-top: var(--tb);
+	}
+	/* The desktop window's title bar: the height of the window-button overlay,
+	   0 on the web and on macOS. --app-h is the window below it; use it, and
+	   top-(--tb), wherever a page would use 100svh or top-0. */
+	:root {
+		--tb: env(titlebar-area-height, 0px);
+		--app-h: calc(100svh - var(--tb));
 	}
 	.dark body {
 		background:
