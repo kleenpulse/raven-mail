@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.13.0] - 2026-11-11
+
 ### Changed
 
 - In the desktop app on Windows and Linux, the window's title bar now
