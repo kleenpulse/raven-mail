@@ -36,7 +36,7 @@ export function LandingNav() {
 
 	return (
 		<motion.header
-			className="fixed inset-x-0 top-0 z-50 px-3 pt-3 sm:px-5"
+			className="fixed inset-x-0 top-(--tb) z-50 px-3 pt-3 sm:px-5"
 			animate={{ y: tucked ? "-120%" : "0%" }}
 			transition={{ duration: 0.35, ease: [0.23, 1, 0.32, 1] }}
 			onFocusCapture={() => setTucked(false)}

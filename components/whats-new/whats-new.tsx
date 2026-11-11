@@ -97,7 +97,7 @@ export function WhatsNew({ releases, children }: { releases: ChangelogRelease[];
 				{/* Long entries in a short window scroll the list; the title and buttons stay in view. */}
 				<DialogContent
 					initialFocus={gotIt}
-					className="max-h-[calc(100svh-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[24px] p-5 sm:max-w-md"
+					className="max-h-[calc(var(--app-h)-2rem)] grid-rows-[auto_minmax(0,1fr)_auto] rounded-[24px] p-5 sm:max-w-md"
 				>
 					<DialogHeader>
 						<DialogTitle>What&apos;s new</DialogTitle>

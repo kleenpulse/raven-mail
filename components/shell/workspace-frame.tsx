@@ -112,7 +112,7 @@ export function WorkspaceFrame({ children }: { children: React.ReactNode }) {
 
 	// Interface Size zooms this frame; divide it back out so it still fits the viewport.
 	return (
-		<div data-ui-zoom className="relative flex h-[calc(100svh/var(--ui-zoom,1))] w-full overflow-hidden">
+		<div data-ui-zoom className="relative flex h-[calc(var(--app-h)/var(--ui-zoom,1))] w-full overflow-hidden">
 			<NavRail onAsk={openAsk} className="hidden md:flex" />
 			<main className="relative min-w-0 flex-1 overflow-hidden pb-[88px] md:pb-0">{children}</main>
 			<MobileTabBar onAsk={openAsk} />

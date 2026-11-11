@@ -24,6 +24,13 @@ export type RavenDesktop = {
 		/** "restart" once ready; "open-release" where the app can't install updates itself. */
 		act(action: "restart" | "open-release"): void;
 	};
+	/** The page's own title bar (Windows and Linux). Missing in builds before it. */
+	titleBar?: {
+		/** The bar's colours as `#rrggbb`, so the window's buttons match the theme. */
+		colors(colors: { color: string; symbol: string }): void;
+		/** Opens the app menu at this point, in CSS pixels. */
+		menu(anchor: { x: number; y: number }): void;
+	};
 };
 
 /** `viaSettings`: the system's own settings decide (Windows), not Raven. */

@@ -14,7 +14,36 @@ export const CHANNELS = {
 	updateState: "raven:update-state",
 	updateStateGet: "raven:update-state-get",
 	updateAct: "raven:update-act",
+	/** page → main: the title bar's colours, so the window's own buttons match the theme (`TitleBarColors`). */
+	titleBarColors: "raven:title-bar-colors",
+	/** page → main: open the app menu under the title bar's menu button (`MenuAnchor`). */
+	titleBarMenu: "raven:title-bar-menu",
 } as const;
+
+/** The title bar's background and the colour of the window's buttons on it, as `#rrggbb`. */
+export type TitleBarColors = { color: string; symbol: string };
+
+const HEX = /^#[0-9a-f]{6}$/i;
+
+export function parseTitleBarColors(payload: unknown): TitleBarColors | null {
+	if (!payload || typeof payload !== "object") return null;
+	const { color, symbol } = payload as Record<string, unknown>;
+	if (typeof color !== "string" || typeof symbol !== "string" || !HEX.test(color) || !HEX.test(symbol)) return null;
+	return { color: color.toLowerCase(), symbol: symbol.toLowerCase() };
+}
+
+/** Where the app menu opens: the menu button's bottom-left corner, in the page's CSS pixels. */
+export type MenuAnchor = { x: number; y: number };
+
+const MAX_ANCHOR = 16_384;
+
+export function parseMenuAnchor(payload: unknown): MenuAnchor | null {
+	if (!payload || typeof payload !== "object") return null;
+	const { x, y } = payload as Record<string, unknown>;
+	const ok = (n: unknown): n is number => typeof n === "number" && Number.isFinite(n) && n >= 0 && n <= MAX_ANCHOR;
+	if (!ok(x) || !ok(y)) return null;
+	return { x: Math.round(x), y: Math.round(y) };
+}
 
 export type NewMail = { uid: string; from: string; subject: string };
 

@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- In the desktop app on Windows and Linux, the window's title bar now
+  matches Raven's theme: warm paper in light mode, deep teal in dark
+  mode, and the minimise, maximise and close buttons change with it.
+  The menu button at its left opens the File, Edit, View and Window
+  menus.
+
 ### Fixed
 
 - The big headline on the home page now shows up right away. It

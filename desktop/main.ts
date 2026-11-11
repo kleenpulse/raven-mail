@@ -5,7 +5,7 @@ import { existsSync, readFileSync, renameSync } from "node:fs";
 import { join } from "node:path";
 import { promisify } from "node:util";
 import { latestBackup } from "./backups";
-import { CHANNELS, newMailNotice, openPath, parseNewMail, parseUpdateAction, pathForNewMail, trustedSender, type MailAppStatus, type UpdateState } from "./bridge";
+import { CHANNELS, newMailNotice, openPath, parseMenuAnchor, parseNewMail, parseTitleBarColors, parseUpdateAction, pathForNewMail, trustedSender, type MailAppStatus, type TitleBarColors, type UpdateState } from "./bridge";
 import { contentSecurityPolicy, withCsp } from "./csp";
 import { serverEnv } from "./env";
 import { hasTray, onAllWindowsClosed, onWindowClose, showTrayHint, type Lifecycle } from "./lifecycle";
@@ -42,6 +42,12 @@ const USER_DATA: Record<Mode, string> = { dev: "Raven Dev", preview: "Raven Prev
 // electron.exe the first time it shows a notification.
 const APP_ID: Record<Mode, string> = { dev: "io.github.kleenpulse.raven.dev", preview: "io.github.kleenpulse.raven.preview", packaged: "io.github.kleenpulse.raven" };
 const START_PATH = "/overview";
+const SPLASH_BACKGROUND = "#050a0b";
+const SPLASH_TEXT = "#9aa3a5";
+/** The page draws the title bar itself everywhere but macOS. */
+const OWN_TITLE_BAR = process.platform !== "darwin";
+/** Matches the caption buttons Windows 11 draws in a normal title bar. */
+const TITLE_BAR_HEIGHT = 32;
 
 // Set before the single-instance lock: the lock lives in userData.
 app.setName("Raven");
@@ -73,6 +79,8 @@ function boot(): void {
 	let secrets: Secrets | null = null;
 	let appOrigin: string | null = null;
 	let mainWindow: BrowserWindow | null = null;
+	// The page's title bar colours once it has said them (null: the splash's until then).
+	let titleBarColors: TitleBarColors | null = null;
 	let quitting: "no" | "closing" | "done" = "no";
 	// Windows is logging off or shutting down: windows must close, not hide.
 	let sessionEnding = false;
@@ -120,6 +128,25 @@ function boot(): void {
 		const action = parseUpdateAction(payload);
 		if (!action) return log.info("dropped a malformed update action from the page");
 		updater.act(action);
+	});
+
+	ipcMain.on(CHANNELS.titleBarColors, (event, payload: unknown) => {
+		if (!fromMainWindow(event) || !OWN_TITLE_BAR) return;
+		const colors = parseTitleBarColors(payload);
+		const win = mainWindow;
+		if (!colors || !win) return;
+		titleBarColors = colors;
+		win.setTitleBarOverlay(titleBarOverlay());
+		win.setBackgroundColor(colors.color);
+	});
+	ipcMain.on(CHANNELS.titleBarMenu, (event, payload: unknown) => {
+		if (!fromMainWindow(event) || !OWN_TITLE_BAR) return;
+		const anchor = parseMenuAnchor(payload);
+		const win = mainWindow;
+		if (!anchor || !win) return;
+		// The page measures in CSS pixels; the menu opens in the window's DIPs.
+		const zoom = win.webContents.getZoomFactor();
+		Menu.getApplicationMenu()?.popup({ window: win, x: Math.round(anchor.x * zoom), y: Math.round(anchor.y * zoom) });
 	});
 
 	ipcMain.handle(CHANNELS.mailAppStatus, (event) => {
@@ -581,6 +608,15 @@ function boot(): void {
 		else void win.loadURL(`${appOrigin}${safe}`);
 	}
 
+	/** The window's buttons over the page's title bar: the page's colours once it has said them, the splash's until then. */
+	function titleBarOverlay(): { color: string; symbolColor: string; height: number } {
+		return {
+			color: titleBarColors?.color ?? SPLASH_BACKGROUND,
+			symbolColor: titleBarColors?.symbol ?? SPLASH_TEXT,
+			height: TITLE_BAR_HEIGHT,
+		};
+	}
+
 	function createWindow(): BrowserWindow {
 		const place = placeWindow(loadWindowState(userData), screenAreas());
 		const win = new BrowserWindow({
@@ -591,8 +627,12 @@ function boot(): void {
 			minHeight: MIN_SIZE.height,
 			show: false,
 			title: "Raven",
-			backgroundColor: "#050a0b",
+			backgroundColor: titleBarColors?.color ?? SPLASH_BACKGROUND,
 			autoHideMenuBar: process.platform !== "darwin",
+			// Windows and Linux: no system title bar. The page draws its own in the
+			// theme's colours (components/shell/title-bar.tsx), under the window's
+			// own buttons, the way VS Code does. macOS keeps its usual frame.
+			...(OWN_TITLE_BAR ? { titleBarStyle: "hidden" as const, titleBarOverlay: titleBarOverlay() } : {}),
 			webPreferences: {
 				contextIsolation: true,
 				nodeIntegration: false,
@@ -805,5 +845,5 @@ const REG = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "reg.exe")
 const ALLOWED_PERMISSIONS = new Set<string>(["clipboard-sanitized-write", "fullscreen", "fileSystem"]);
 
 const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(
-	`<!doctype html><meta charset="utf-8"><title>Raven</title><style>html,body{height:100%;margin:0;background:#050a0b;color:#9aa3a5;font:14px system-ui,sans-serif;display:grid;place-items:center}</style><p>Starting Raven…</p>`,
+	`<!doctype html><meta charset="utf-8"><title>Raven</title><style>html,body{height:100%;margin:0;background:${SPLASH_BACKGROUND};color:${SPLASH_TEXT};font:14px system-ui,sans-serif;display:grid;place-items:center}</style><p>Starting Raven…</p>`,
 )}`;
