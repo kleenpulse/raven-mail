@@ -10,7 +10,12 @@ import { displayName, formatCount, plural } from "./format";
 import { capitalize, type OrbitVocab } from "./vocab";
 
 const PREVIEW_ROWS = 8;
-/** Phones preview fewer; CSS hides the rest, so server and client render the same rows. */
+/**
+ * A narrow list (a phone, or a narrow card on a board) previews fewer; CSS hides
+ * the rest, so server and client render the same rows. "Narrow" is under 40rem,
+ * the width below which the list is the widget's default view (LIST_BELOW in
+ * orbit.tsx): the list anyone lands on without choosing it is the short one.
+ */
 const PHONE_ROWS = 5;
 
 export function OrbitList({
@@ -45,7 +50,7 @@ export function OrbitList({
 			<CategoryBar categories={byShare} label={`${capitalize(vocab.mass)} by ${vocab.group[0]}, ${period}`} />
 			<ol aria-label={`${capitalize(vocab.node[1])} ranked by ${vocab.mass}, ${period}`} className="flex flex-col gap-1">
 				{shown.map(({ s, v }, idx) => (
-					<li key={s.address} className={cn(!expanded && idx >= PHONE_ROWS && "max-sm:hidden")}>
+					<li key={s.address} className={cn(!expanded && idx >= PHONE_ROWS && "@max-[40rem]:hidden")}>
 						<Row sender={s} rank={idx + 1} value={v} week={week} now={now} vocab={vocab} onOpen={onOpen} />
 					</li>
 				))}
@@ -56,14 +61,14 @@ export function OrbitList({
 					onClick={() => setExpanded((x) => !x)}
 					aria-expanded={expanded}
 					className={cn(
-						ranked.length <= PREVIEW_ROWS && "sm:hidden",
+						ranked.length <= PREVIEW_ROWS && "@[40rem]:hidden",
 						"self-start rounded-pill px-3.5 py-2 text-[13px] text-ink-2 ring-1 ring-border transition-colors hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/60 focus-visible:outline-none dark:ring-glass-border",
 					)}
 				>
 					{expanded ? (
 						<>
-							Show top <span className="sm:hidden">{PHONE_ROWS}</span>
-							<span className="max-sm:hidden">{PREVIEW_ROWS}</span>
+							Show top <span className="@[40rem]:hidden">{PHONE_ROWS}</span>
+							<span className="@max-[40rem]:hidden">{PREVIEW_ROWS}</span>
 						</>
 					) : (
 						`Show all ${ranked.length} ${vocab.node[1]}`

@@ -37,7 +37,8 @@ export function VolumeCard({ overview, i = 0 }: { overview: Overview; i?: number
 
 	return (
 		<Bento i={i} className="flex flex-col gap-2.5 p-2.5">
-			<div className="rounded-[22px] bg-card-nested p-4 dark:ring-1 dark:ring-glass-border">
+			{/* The received panel takes any spare height, and its bars grow into it. */}
+			<div className="flex flex-1 flex-col rounded-[22px] bg-card-nested p-4 dark:ring-1 dark:ring-glass-border">
 				<div className="flex items-center justify-between gap-2">
 					<span className="grid size-9 place-items-center rounded-full ring-1 ring-border dark:ring-glass-border">
 						<ArrowDownLeft className="size-4" />
@@ -66,7 +67,16 @@ export function VolumeCard({ overview, i = 0 }: { overview: Overview; i?: number
 					<CountUp key={`r${span}`} value={received} className="font-display text-kpi-sm" />
 					{weekly && <Delta now={overview.volume.receivedThisWeek} before={overview.volume.receivedLastWeek} />}
 				</div>
-				<Bars values={days.map((d) => d.received)} label={`Received per day: ${days.map((d) => d.received).join(", ")}`} className="mt-3" height={40} />
+				{/* Out of flow: left in it, the chart's own aspect ratio would set the card's height. */}
+				<div className="relative mt-3 min-h-10 flex-1">
+					<Bars
+						values={days.map((d) => d.received)}
+						label={`Received per day: ${days.map((d) => d.received).join(", ")}`}
+						className="absolute inset-0 h-full"
+						height={40}
+						fill
+					/>
+				</div>
 			</div>
 
 			<div className="rounded-[22px] bg-card-nested p-4 dark:ring-1 dark:ring-glass-border">

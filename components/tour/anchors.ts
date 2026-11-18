@@ -5,6 +5,8 @@
 // One id may sit on several elements (rail + mobile tab bar): the engine
 // spotlights the first *visible* match, so each viewport finds its own.
 
+import type { WidgetId } from "@/lib/overview-board/widgets";
+
 export const TOUR_TARGET = {
 	heroAsk: "hero-ask",
 	needsReply: "needs-reply",
@@ -18,6 +20,16 @@ export const TOUR_TARGET = {
 } as const;
 
 export type TourTargetId = (typeof TOUR_TARGET)[keyof typeof TOUR_TARGET];
+
+/**
+ * Anchors that sit on an Overview board card, by the card's id. The board
+ * puts the anchor on the card, and the tour skips the step when the user has
+ * taken that card off the board.
+ */
+export const WIDGET_TOUR_TARGET: Partial<Record<WidgetId, TourTargetId>> = {
+	"needs-reply": TOUR_TARGET.needsReply,
+	orbit: TOUR_TARGET.orbit,
+};
 
 /** Spread onto the anchored element: `<button {...tourAttr(TOUR_TARGET.compose)}>` */
 export function tourAttr(id: TourTargetId): { "data-tour": TourTargetId } {

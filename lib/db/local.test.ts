@@ -10,7 +10,7 @@ import { tourProgress } from "@/lib/db/schema";
 
 const MIGRATIONS = path.resolve(import.meta.dir, "migrations");
 const JOURNAL = JSON.parse(readFileSync(path.join(MIGRATIONS, "meta", "_journal.json"), "utf8")) as { entries: unknown[] };
-const TABLES = ["blocked_senders", "follow_ups", "integration_events", "integrations", "mail_rules", "rule_events", "tour_progress"];
+const TABLES = ["blocked_senders", "follow_ups", "integration_events", "integrations", "mail_rules", "overview_board", "rule_events", "tour_progress"];
 
 let tmp: string;
 
@@ -69,14 +69,14 @@ describe("local database", () => {
 
 		const before = await openLocalDb();
 		expect(await applied(before)).toBe(JOURNAL.entries.length - 1);
-		expect(await tables(before)).not.toContain("rule_events");
+		expect(await tables(before)).not.toContain("overview_board");
 		await before.insert(tourProgress).values(row);
 		await closeLocalDb();
 
 		writeFileSync(journalFile, full);
 		const after = await openLocalDb();
 		expect(await applied(after)).toBe(JOURNAL.entries.length);
-		expect(await tables(after)).toContain("rule_events");
+		expect(await tables(after)).toContain("overview_board");
 		expect(await after.select().from(tourProgress)).toHaveLength(1);
 	}, 60_000);
 

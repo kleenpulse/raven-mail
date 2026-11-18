@@ -39,6 +39,9 @@ function weekOptions(vocab: OrbitVocab): WeekOption[] {
 
 /** Below this container width the ranked list is the default view. */
 const LIST_BELOW = 640;
+/** Room for words beside the view icons, and for the keyboard hint by the legend. By the widget's own width: on a board it can be narrow on a wide screen. */
+const LABELS_FROM = 560;
+const HINT_FROM = 680;
 /** Ignition finishes by then; afterwards remounts skip it (data-intro="off"). */
 const IGNITION_MS = 2000;
 
@@ -302,11 +305,11 @@ export function Orbit({ senders: sendersIn, categories, className, vocab = MAIL_
 						>
 							<ToggleGroupItem value="constellation" aria-label="Constellation" className="h-8 min-w-0 gap-1.5 rounded-pill px-3">
 								<OrbitIcon className="size-3.5" />
-								<span className="hidden sm:inline">Constellation</span>
+								{width >= LABELS_FROM && <span>Constellation</span>}
 							</ToggleGroupItem>
 							<ToggleGroupItem value="list" aria-label="List" className="h-8 min-w-0 gap-1.5 rounded-pill px-3">
 								<ListIcon className="size-3.5" />
-								<span className="hidden sm:inline">List</span>
+								{width >= LABELS_FROM && <span>List</span>}
 							</ToggleGroupItem>
 						</ToggleGroup>
 					</div>
@@ -388,10 +391,12 @@ export function Orbit({ senders: sendersIn, categories, className, vocab = MAIL_
 							{vocab.legend.ring}
 						</li>
 					</ul>
-					<p className="hidden items-center gap-1.5 lg:inline-flex">
-						{vocab.legend.hint} · <Kbd>←</Kbd>
-						<Kbd>→</Kbd> to move · <Kbd>Esc</Kbd> to return
-					</p>
+					{width >= HINT_FROM && (
+						<p className="inline-flex items-center gap-1.5">
+							{vocab.legend.hint} · <Kbd>←</Kbd>
+							<Kbd>→</Kbd> to move · <Kbd>Esc</Kbd> to return
+						</p>
+					)}
 				</div>
 			)}
 

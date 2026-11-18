@@ -30,7 +30,12 @@ export function RhythmSparkCard({ overview, i = 0 }: { overview: Overview; i?: n
 					</span>
 				)}
 			</div>
-			<Sparkline values={values} label={`Emails received per day over 30 days, latest ${values.at(-1) ?? 0}`} />
+			<Sparkline
+				values={values}
+				label={`Emails received per day over 30 days, latest ${values.at(-1) ?? 0}`}
+				className="min-h-16 flex-1"
+				fill
+			/>
 			<div>
 				<p className="font-display text-[17px] leading-tight">Arrival rhythm</p>
 				<p className="text-[12px] text-ink-2">30 days · all mail received</p>

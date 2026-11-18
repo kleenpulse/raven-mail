@@ -111,6 +111,8 @@
 
 	/* Between xl (1280) and 2xl (1536): where the Threads radar fits three columns. */
 	--breakpoint-wide: 87.5rem;
+	/* The Threads radar card's own width (a container query) from which its three panels sit side by side. */
+	--container-radar: 34.5rem;
 
 	--animate-rise-in: rise-in 320ms var(--ease-out-quint) backwards;
 	--animate-bloom: bloom 700ms var(--ease-out-quint) both;
@@ -565,10 +567,6 @@ html[data-transparency="reduce"]:not(.dark) {
 	@media (width >= 64rem) {
 		zoom: 0.78;
 	}
-	/* 1280–1399px: Threads radar's own breakpoints stack it taller here. */
-	@media (width >= 80rem) {
-		zoom: 0.74;
-	}
 	@media (width >= 87.5rem) {
 		zoom: 0.86;
 	}
@@ -755,6 +753,105 @@ html[data-motion="reduce"] :is(*, *::before, *::after) {
 }
 html[data-motion="reduce"] .letter-pull {
 	animation: none !important;
+}
+
+/* Overview board (react-grid-layout sets each tile's top, left and size
+   inline). The library's own stylesheet is not imported: it paints in raw
+   colours. Same rules, in tokens. Tiles only animate while editing, so
+   nothing slides on load or when the window resizes. */
+[data-board] .react-grid-layout {
+	position: relative;
+}
+[data-board][data-editing] .react-grid-item {
+	transition:
+		top 220ms var(--ease-out-quint),
+		left 220ms var(--ease-out-quint),
+		width 220ms var(--ease-out-quint),
+		height 220ms var(--ease-out-quint);
+}
+[data-board] .react-grid-item.resizing,
+[data-board] .react-grid-item.react-draggable-dragging {
+	transition: none;
+	z-index: 3;
+}
+[data-board] .react-grid-item.react-draggable-dragging {
+	cursor: grabbing;
+	border-radius: var(--radius-card);
+	box-shadow: var(--shadow-lift);
+}
+[data-board] .react-grid-item.dropping {
+	visibility: hidden;
+}
+[data-board] .react-grid-item.react-grid-placeholder {
+	z-index: 2;
+	border: 1.5px dashed var(--signal);
+	border-radius: var(--radius-card);
+	background: var(--signal-soft);
+	opacity: 0.7;
+	transition-duration: 100ms;
+	user-select: none;
+}
+/* A mouse drags a card from anywhere on it. Touch drags from the grip only
+   (see board-grid.tsx), so a finger on a card still scrolls the page. */
+@media not (any-pointer: coarse) {
+	[data-board][data-editing] .react-grid-item:not(.react-grid-placeholder) {
+		cursor: grab;
+	}
+}
+[data-board] [data-board-grip],
+[data-board] .react-resizable-handle {
+	touch-action: none;
+}
+[data-board] .react-grid-item > .react-resizable-handle {
+	position: absolute;
+	right: 6px;
+	bottom: 6px;
+	width: 24px;
+	height: 24px;
+	cursor: se-resize;
+}
+[data-board] .react-grid-item > .react-resizable-handle::after {
+	content: "";
+	position: absolute;
+	right: 5px;
+	bottom: 5px;
+	width: 9px;
+	height: 9px;
+	border-right: 2px solid var(--ink-3);
+	border-bottom: 2px solid var(--ink-3);
+	border-bottom-right-radius: 4px;
+}
+[data-board] .react-grid-item > .react-resizable-handle:hover::after {
+	border-color: var(--signal);
+}
+[data-board]:not([data-editing]) .react-resizable-handle {
+	display: none;
+}
+/* While arranging, the cards step back so the outline, grip and corner read first. */
+[data-board] [data-tile-body] {
+	transition: opacity 200ms var(--ease-out-quint);
+}
+[data-board][data-editing] [data-tile-body] {
+	opacity: 0.6;
+}
+/* A card shorter than its content scrolls inside itself. The bar stays out of
+   sight until the card is hovered, and a fade at the foot says there is more. */
+[data-board] [data-tile-body] > * {
+	scrollbar-width: thin;
+	scrollbar-color: transparent transparent;
+}
+[data-board] [data-tile-body] > *:hover {
+	scrollbar-color: var(--ink-3) transparent;
+}
+[data-board] [data-tile-body][data-cut]::after {
+	content: "";
+	position: absolute;
+	inset-inline: 1px;
+	bottom: 1px;
+	height: 36px;
+	border-radius: 0 0 calc(var(--radius-card) - 1px) calc(var(--radius-card) - 1px);
+	background: linear-gradient(to top, var(--card), transparent);
+	pointer-events: none;
 }
 
 /* Interface Size: most type is fixed px, so the app frame zooms. Not <body>:

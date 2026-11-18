@@ -1,3 +1,4 @@
+import type { WidgetId } from "@/lib/overview-board/widgets";
 import { TOUR_TARGET, tourSelector } from "./anchors";
 
 // The step registry. Plain isomorphic module — imported by the client engine
@@ -38,6 +39,8 @@ export type TourStep = {
 	voicePicker?: boolean;
 	/** If set, the anchor poll gives up after this many ms and the step is skipped. */
 	pollTimeoutMs?: number;
+	/** The Overview card this step points at. The user can take it off the board; the step is then skipped at once. */
+	widget?: WidgetId;
 };
 
 export const TOUR_STEPS: TourStep[] = [
@@ -68,6 +71,7 @@ export const TOUR_STEPS: TourStep[] = [
 		tts: true,
 		route: "/overview",
 		selector: tourSelector(TOUR_TARGET.needsReply),
+		widget: "needs-reply",
 		side: "right",
 		mobileSide: "top",
 		pollTimeoutMs: 12_000,
@@ -80,6 +84,7 @@ export const TOUR_STEPS: TourStep[] = [
 		tts: true,
 		route: "/overview",
 		selector: tourSelector(TOUR_TARGET.orbit),
+		widget: "orbit",
 		side: "top",
 		pollTimeoutMs: 12_000,
 	},

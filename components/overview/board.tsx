@@ -16,6 +16,7 @@ import type { DecisionEngine } from "@/lib/jev/client";
 import { ReplyDebtCard } from "@/components/overview/reply-debt-card";
 import { FollowUpsCard } from "@/components/overview/follow-ups-card";
 import { OrbitCard } from "@/components/overview/orbit-card";
+import { BoardGrid } from "@/components/overview/board-grid";
 import { OverviewSearch } from "@/components/overview/overview-search";
 import { SponsorButton } from "@/components/shell/sponsor-button";
 import { UpdatePill } from "@/components/shell/update-pill";
@@ -24,10 +25,12 @@ import { useAsk, type AskOptions } from "@/components/jev/use-ask";
 import { useOverview } from "@/hooks/use-overview";
 import { useIntroGate } from "@/hooks/use-intro-gate";
 import { useNow } from "@/hooks/use-now";
+import { useStreakLog } from "@/hooks/use-streak-log";
 import { smartChips } from "@/lib/jev/ask/chips";
 import { formatRelative, initials } from "@/lib/format";
+import { initBoardState } from "@/lib/overview-board/state";
+import type { WidgetId } from "@/lib/overview-board/widgets";
 import { cn } from "@/lib/utils";
-import { TOUR_TARGET, tourAttr } from "@/components/tour/anchors";
 import { LayoutScroll } from "@/components/ui/layout-scroll";
 
 const FALLBACK_SUGGESTIONS = ["Who’s waiting on my reply?", "What did I miss today?", "Newsletters I never open"];
@@ -42,7 +45,7 @@ function useSyncedLabel(syncedAt: string | undefined): string {
 function BoardSkeleton() {
 	const block = "animate-in fade-in fill-mode-both delay-300 duration-200 rounded-card bg-card";
 	return (
-		<div className="col-span-12 grid grid-cols-12 gap-4" aria-busy="true" aria-label="Loading overview">
+		<div className="grid grid-cols-12 gap-4" aria-busy="true" aria-label="Loading overview">
 			{[4, 4, 2, 2, 3, 6, 3].map((span, idx) => (
 				<div
 					key={idx}
@@ -58,7 +61,16 @@ function BoardSkeleton() {
 	);
 }
 
-export function OverviewBoard({ firstName, engine }: { firstName: string; engine: DecisionEngine | null }) {
+export function OverviewBoard({
+	firstName,
+	engine,
+	owner,
+}: {
+	firstName: string;
+	engine: DecisionEngine | null;
+	/** The signed-in mailbox's opaque id: the saved board is kept per mailbox. */
+	owner: string | null;
+}) {
 	const account = useAccount();
 	const introRef = useIntroGate<HTMLDivElement>();
 	const { data, isPending, isError, error, refetch, isFetching } = useOverview(30);
@@ -68,6 +80,49 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 	const onAsk = React.useCallback((question: string, options?: AskOptions) => void ask(question, options), [ask]);
 	const suggestions = data ? smartChips(data).map((c) => c.label) : FALLBACK_SUGGESTIONS;
 	const todayKey = data?.volume.days.at(-1)?.date;
+
+	// Before paint, so the saved board is in place when the first card draws.
+	React.useLayoutEffect(() => {
+		if (owner) initBoardState(owner);
+	}, [owner]);
+
+	// Here, not in the streak card: the day still counts when that card is off the board.
+	useStreakLog(todayKey, data?.today.needsReplyZero ?? false);
+
+	// One element per card, rebuilt only when what the cards show changes. The grid re-renders
+	// on every drag step and clock tick; with stable elements the cards themselves do not.
+	const tiles = React.useMemo(() => {
+		if (!data || !todayKey) return null;
+		return {
+			"needs-reply": (
+				<NeedsReplyCard
+					data={obligationsOf(data)}
+					onOpen={(mode) =>
+						mode === "needs"
+							? onAsk("Who’s waiting on my reply?", { forcedIntent: "needs_reply" })
+							: onAsk("Who owes me a reply?", { forcedIntent: "awaiting_others" })
+					}
+					i={2}
+				/>
+			),
+			volume: <VolumeCard overview={data} i={3} />,
+			"inbox-weather": <WeatherCard overview={data} i={4} />,
+			streak: <StreakCard todayKey={todayKey} zeroToday={data.today.needsReplyZero} i={5} />,
+			"mail-mix": <MailMixCard overview={data} onAsk={onAsk} i={6} />,
+			"threads-radar": (
+				<ThreadsRadar
+					overview={data}
+					onAsk={onAsk}
+					onReviewHygiene={() => onAsk("Newsletters I never open", { forcedIntent: "newsletters" })}
+					i={7}
+				/>
+			),
+			"daily-brief": <DailyBrief items={data.brief} todayKey={todayKey} engine={engine} i={8} />,
+			"rhythm-spark": <RhythmSparkCard overview={data} i={9} />,
+			orbit: <OrbitCard overview={data} i={10} />,
+			"reply-debt": <ReplyDebtCard overview={data} i={11} />,
+		} satisfies Record<WidgetId, React.ReactNode>;
+	}, [data, todayKey, engine, onAsk]);
 
 	return (
 		<LayoutScroll ref={introRef} className="h-full overflow-y-auto">
@@ -115,11 +170,11 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 			</div>
 
 			<div className="min-h-[70%] rounded-t-frame bg-sheet dark:border-t dark:border-glass-border">
-				<div className="mx-auto grid max-w-[calc(1900px-84px)] grid-cols-12 gap-4 px-5 py-6 md:px-8 md:py-8">
+				<div className="mx-auto flex max-w-[calc(1900px-84px)] flex-col gap-4 px-5 py-6 md:px-8 md:py-8">
 					{isPending && <BoardSkeleton />}
 
 					{isError && (
-						<Bento className="col-span-12 flex flex-col items-start gap-3">
+						<Bento className="flex flex-col items-start gap-3">
 							<BentoTitle>Couldn’t read your mailbox</BentoTitle>
 							<p className="text-[13px] text-ink-2">{error instanceof Error ? error.message : "Unknown error"}</p>
 							<button
@@ -132,63 +187,14 @@ export function OverviewBoard({ firstName, engine }: { firstName: string; engine
 						</Bento>
 					)}
 
-					{data && todayKey && (
+					{tiles && (
 						<>
-							{data.truncated && (
-								<p className="col-span-12 -mb-1 font-mono text-[11px] text-ink-2">
-									Based on the latest 1,500 messages per folder.
-								</p>
+							{data?.truncated && (
+								<p className="-mb-1 font-mono text-[11px] text-ink-2">Based on the latest 1,500 messages per folder.</p>
 							)}
-							<FollowUpsCard className="order-first col-span-12" i={1} />
-							<div
-								{...tourAttr(TOUR_TARGET.needsReply)}
-								className="order-2 col-span-12 md:order-3 md:col-span-6 xl:order-none xl:col-span-4 *:h-full"
-							>
-								<NeedsReplyCard
-									data={obligationsOf(data)}
-									onOpen={(mode) =>
-										mode === "needs"
-											? onAsk("Who’s waiting on my reply?", { forcedIntent: "needs_reply" })
-											: onAsk("Who owes me a reply?", { forcedIntent: "awaiting_others" })
-									}
-									i={2}
-								/>
-							</div>
-							<div className="order-4 col-span-12 md:col-span-6 xl:order-none xl:col-span-4 *:h-full">
-								<VolumeCard overview={data} i={3} />
-							</div>
-							<div className="order-5 col-span-12 sm:col-span-6 md:order-6 md:col-span-3 xl:order-none xl:col-span-2 *:h-full">
-								<WeatherCard overview={data} i={4} />
-							</div>
-							<div className="order-5 col-span-12 sm:col-span-6 md:order-6 md:col-span-3 xl:order-none xl:col-span-2 *:h-full">
-								<StreakCard todayKey={todayKey} zeroToday={data.today.needsReplyZero} i={5} />
-							</div>
-
-							<div className="order-6 col-span-12 md:order-5 md:col-span-6 xl:order-none xl:col-span-3 *:h-full">
-								<MailMixCard overview={data} onAsk={onAsk} i={6} />
-							</div>
-							<div className="order-7 col-span-12 xl:order-none xl:col-span-6 *:h-full">
-								<ThreadsRadar
-									overview={data}
-									onAsk={onAsk}
-									onReviewHygiene={() => onAsk("Newsletters I never open", { forcedIntent: "newsletters" })}
-									i={7}
-								/>
-							</div>
-							<div className="order-1 col-span-12 flex flex-col gap-4 md:col-span-6 xl:order-none xl:col-span-3 [&>section:first-child]:flex-1">
-								<DailyBrief items={data.brief} todayKey={todayKey} engine={engine} i={8} />
-								<RhythmSparkCard overview={data} i={9} />
-							</div>
-
-							<div
-								{...tourAttr(TOUR_TARGET.orbit)}
-								className="order-8 col-span-12 xl:order-none xl:col-span-8 *:h-full"
-							>
-								<OrbitCard overview={data} i={10} />
-							</div>
-							<div className="order-3 col-span-12 md:order-2 md:col-span-6 xl:order-none xl:col-span-4 *:h-full">
-								<ReplyDebtCard overview={data} i={11} />
-							</div>
+							{/* Pinned above the board: it shows nothing when no reminder is set, so it cannot hold a place on the grid. */}
+							<FollowUpsCard i={1} />
+							<BoardGrid tiles={tiles} />
 						</>
 					)}
 				</div>

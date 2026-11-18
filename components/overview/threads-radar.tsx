@@ -74,7 +74,8 @@ export function ThreadsRadar({
 	};
 
 	return (
-		<Bento i={i} className="flex flex-col gap-4">
+		// The panels below follow this card's own width, not the window's: on a board, a card can be any width.
+		<Bento i={i} className="@container flex flex-col gap-4">
 			<div className="flex items-center justify-between gap-3">
 				<BentoTitle>Threads radar</BentoTitle>
 				<button
@@ -103,7 +104,7 @@ export function ThreadsRadar({
 				{chip("Today", todayOnly && lens !== "newsletters", () => setTodayOnly(!todayOnly), lens === "newsletters")}
 			</form>
 
-			<div className="grid flex-1 gap-3 sm:grid-cols-3 xl:grid-cols-2 wide:grid-cols-3">
+			<div className="grid flex-1 gap-3 @md:grid-cols-2 @radar:grid-cols-3">
 				<div className="flex flex-col rounded-[20px] bg-card-nested p-4 dark:ring-1 dark:ring-glass-border">
 					<p className="flex items-baseline gap-1.5">
 						<CountUp value={today?.received ?? 0} className="font-display text-kpi-sm" />
@@ -145,10 +146,10 @@ export function ThreadsRadar({
 					)}
 				</div>
 
-				{/* 1280–1399px: the radar is too narrow for three columns, so this card drops to its own full-width row, laid out horizontally. */}
-				<div className="flex flex-col rounded-[20px] bg-card-nested p-4 xl:col-span-2 xl:max-wide:flex-row xl:max-wide:items-center xl:max-wide:gap-5 wide:col-span-1 dark:ring-1 dark:ring-glass-border">
+				{/* Too narrow for three columns (under 34.5rem): this panel drops to its own full-width row, laid out horizontally. */}
+				<div className="flex flex-col rounded-[20px] bg-card-nested p-4 @md:col-span-2 @md:@max-radar:flex-row @md:@max-radar:items-center @md:@max-radar:gap-5 @radar:col-span-1 dark:ring-1 dark:ring-glass-border">
 					<Sun className="size-8 shrink-0 text-signal" strokeWidth={1.25} aria-hidden />
-					<div className="mt-3 xl:max-wide:mt-0 xl:max-wide:min-w-0 xl:max-wide:flex-1">
+					<div className="mt-3 @md:@max-radar:mt-0 @md:@max-radar:min-w-0 @md:@max-radar:flex-1">
 						<p className="text-[13px] font-medium">Quiet the noise</p>
 						<p className="mt-1 text-[12px] leading-snug text-ink-2">
 							{rare.length
@@ -157,7 +158,7 @@ export function ThreadsRadar({
 						</p>
 					</div>
 					{rare.length > 0 && (
-						<ul className="mt-3 mb-4 space-y-1 xl:max-wide:my-0 xl:max-wide:w-52 xl:max-wide:shrink-0">
+						<ul className="mt-3 mb-4 space-y-1 @md:@max-radar:my-0 @md:@max-radar:w-52 @md:@max-radar:shrink-0">
 							{rare.slice(0, 3).map((n) => (
 								<li key={n.key} className="flex items-baseline justify-between gap-2 text-[12px]">
 									<span className="truncate">{n.name}</span>
@@ -169,7 +170,7 @@ export function ThreadsRadar({
 					<button
 						type="button"
 						onClick={onReviewHygiene}
-						className="mt-auto h-9 shrink-0 rounded-pill bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-[box-shadow] hover:shadow-glow xl:max-wide:mt-0 xl:max-wide:px-6"
+						className="mt-auto h-9 shrink-0 rounded-pill bg-primary px-4 text-[13px] font-medium text-primary-foreground transition-[box-shadow] hover:shadow-glow @md:@max-radar:mt-0 @md:@max-radar:px-6"
 					>
 						Review
 					</button>

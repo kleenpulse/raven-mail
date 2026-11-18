@@ -5,6 +5,7 @@ import {
 	integer,
 	jsonb,
 	pgTable,
+	primaryKey,
 	real,
 	text,
 	timestamp,
@@ -21,6 +22,7 @@ import {
 	type LastError,
 } from "../integrations/types"; // relative: drizzle-kit loads this file outside Next's alias resolution
 import { TOUR_VOICES } from "../tour/types";
+import { BOARD_PARTS, type LayoutData, type WidgetsData } from "../overview-board/types";
 import { RULE_ACTIONS, RULE_ENGINES } from "../rules/types";
 import { BLOCK_KINDS } from "../blocks/types";
 import { FOLLOW_UP_STATUSES } from "../follow-ups/types";
@@ -96,6 +98,25 @@ export const tourProgress = pgTable("tour_progress", {
 	/** Client-stamped change time — the last-write-wins clock, not a server audit time. */
 	updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
 });
+
+/**
+ * The Overview board a user arranged, one row per part: a layout for each
+ * board width (`lg`, `md`, `sm`) and which cards are on (`widgets`). Parts
+ * sync on their own, so a phone moving cards never undoes a card removed on a
+ * computer. Card ids and grid cells only; nothing from mail is stored.
+ */
+export const overviewBoard = pgTable(
+	"overview_board",
+	{
+		accountKey: text("account_key").notNull(),
+		part: text("part", { enum: BOARD_PARTS }).notNull(),
+		/** `{ items }` for a layout, `{ on, known }` for `widgets`. The change time is only in `updated_at`. */
+		data: jsonb("data").$type<LayoutData | WidgetsData>().notNull(),
+		/** Client-stamped change time — the last-write-wins clock, not a server audit time. */
+		updatedAt: timestamp("updated_at", { withTimezone: true }).notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.accountKey, t.part] })],
+);
 
 /*
  * Rules, blocked senders and reminders. What the user typed or what came from
