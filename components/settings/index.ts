@@ -374,6 +374,15 @@ export const SETTINGS: SettingEntry[] = [
 		keywords: "build release",
 	},
 	{
+		id: "updates",
+		section: "about",
+		card: "Raven",
+		label: "Updates",
+		description: "Raven looks for a new version by itself every 6 hours. You can also look now.",
+		keywords: "update upgrade check new version latest download install restart",
+		desktopOnly: true,
+	},
+	{
 		id: "whats-new",
 		section: "about",
 		card: "Raven",

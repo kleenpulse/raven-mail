@@ -14,6 +14,8 @@ export const CHANNELS = {
 	updateState: "raven:update-state",
 	updateStateGet: "raven:update-state-get",
 	updateAct: "raven:update-act",
+	/** page → main: check for an update now and answer the page (`UpdateCheck`), with no dialog. */
+	updateCheck: "raven:update-check",
 	/** page → main: the title bar's colours, so the window's own buttons match the theme (`TitleBarColors`). */
 	titleBarColors: "raven:title-bar-colors",
 	/** page → main: open the app menu under the title bar's menu button (`MenuAnchor`). */
@@ -57,6 +59,12 @@ export type UpdateState =
 	| { kind: "downloading"; version: string; percent: number }
 	| { kind: "ready"; version: string }
 	| { kind: "available"; version: string };
+
+/**
+ * What a check the page asked for found. `found`: a newer version, and the
+ * state says which one and how far along it is. `off`: this build never checks.
+ */
+export type UpdateCheck = "current" | "found" | "failed" | "off";
 
 /** What the page's pill can ask for. */
 export type UpdateAction = "restart" | "open-release";

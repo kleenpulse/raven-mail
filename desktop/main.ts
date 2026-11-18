@@ -123,6 +123,10 @@ function boot(): void {
 		if (!fromMainWindow(event)) throw new Error("not allowed");
 		return updater.state();
 	});
+	ipcMain.handle(CHANNELS.updateCheck, (event) => {
+		if (!fromMainWindow(event)) throw new Error("not allowed");
+		return updater.check();
+	});
 	ipcMain.on(CHANNELS.updateAct, (event, payload: unknown) => {
 		if (!fromMainWindow(event)) return;
 		const action = parseUpdateAction(payload);

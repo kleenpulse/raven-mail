@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from "electron";
-import { CHANNELS, type MailAppStatus, type MenuAnchor, type NewMail, type TitleBarColors, type UpdateAction, type UpdateState } from "./bridge";
+import { CHANNELS, type MailAppStatus, type MenuAnchor, type NewMail, type TitleBarColors, type UpdateAction, type UpdateCheck, type UpdateState } from "./bridge";
 
 /*
  * Runs sandboxed in the main window's top frame before the page. It has no
@@ -29,6 +29,7 @@ contextBridge.exposeInMainWorld("ravenDesktop", {
 			ipcRenderer.on(CHANNELS.updateState, listener);
 			return () => void ipcRenderer.removeListener(CHANNELS.updateState, listener);
 		},
+		check: (): Promise<UpdateCheck> => ipcRenderer.invoke(CHANNELS.updateCheck),
 		act(action: UpdateAction): void {
 			ipcRenderer.send(CHANNELS.updateAct, action);
 		},

@@ -1,4 +1,4 @@
-import type { UpdateAction, UpdateState } from "./bridge";
+import type { UpdateAction, UpdateCheck, UpdateState } from "./bridge";
 
 /*
  * What the updater's events mean for the pill in the page. Pure, so the
@@ -36,6 +36,23 @@ export function nextUpdateState(state: UpdateState, event: UpdateEvent, selfInst
 			// A failed download hides the pill; the next check starts it again. A ready update stays.
 			return state.kind === "downloading" ? NO_UPDATE : state;
 	}
+}
+
+/**
+ * What a check by hand found. `ready`: an update was already downloaded, so
+ * nothing was checked. `no-feed`: the latest release has no update files.
+ */
+export type CheckOutcome =
+	| { kind: "ready"; version: string }
+	| { kind: "found"; version: string }
+	| { kind: "current" }
+	| { kind: "no-feed" }
+	| { kind: "failed" };
+
+/** The page's answer to a check it asked for. The version and the progress reach it with the state. */
+export function checkAnswer(outcome: CheckOutcome): UpdateCheck {
+	if (outcome.kind === "ready" || outcome.kind === "found") return "found";
+	return outcome.kind === "failed" ? "failed" : "current";
 }
 
 /** Whether the page may ask for `action` now: restart only once ready, the release page only when that's the way to update. */

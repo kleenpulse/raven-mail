@@ -21,6 +21,8 @@ export type RavenDesktop = {
 		state(): Promise<DesktopUpdateState>;
 		/** Every change, pushed by the desktop app. Returns an unsubscribe. */
 		onState(callback: (state: DesktopUpdateState) => void): () => void;
+		/** Checks now, for Settings → About. A found update also arrives through `onState`. Missing in builds before it. */
+		check?(): Promise<DesktopUpdateCheck>;
 		/** "restart" once ready; "open-release" where the app can't install updates itself. */
 		act(action: "restart" | "open-release"): void;
 	};
@@ -42,6 +44,9 @@ export type DesktopUpdateState =
 	| { kind: "downloading"; version: string; percent: number }
 	| { kind: "ready"; version: string }
 	| { kind: "available"; version: string };
+
+/** Mirrors desktop/bridge.ts `UpdateCheck`. `off`: this build never checks (dev and preview). */
+export type DesktopUpdateCheck = "current" | "found" | "failed" | "off";
 
 declare global {
 	interface Window {
