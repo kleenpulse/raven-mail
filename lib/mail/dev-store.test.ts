@@ -347,3 +347,36 @@ describe("devSaveDraft", () => {
 		expect(devGetMessage("Drafts", uid).bcc).toEqual([{ address: "hidden@x.com" }]);
 	});
 });
+
+describe("inline images in the dev mailbox", () => {
+	const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).toString("base64");
+
+	test("a cid image goes into the HTML as a data: URL and isn't listed; plain files keep their parts", () => {
+		const { uid } = devSaveDraft(
+			draft({
+				html: '<p><img src="cid:abc@raven.mail" alt="shot.png" width="560"></p>',
+				attachments: [
+					{ filename: "shot.png", contentType: "image/png", contentBase64: png, cid: "abc@raven.mail" },
+					{ filename: "notes.txt", contentType: "text/plain", contentBase64: "aGk=" },
+				],
+			}),
+			me,
+		);
+		const m = devGetMessage("Drafts", uid);
+		expect(m.html).toBe(`<p><img src="data:image/png;base64,${png}" alt="shot.png" width="560"></p>`);
+		expect(m.attachments.map((a) => a.filename)).toEqual(["notes.txt"]);
+		const file = devGetAttachment("Drafts", uid, m.attachments[0]!.part!);
+		expect(Buffer.from(file.bytes).toString()).toBe("hi");
+	});
+
+	test("an image the body doesn't show stays a listed file", () => {
+		const { uid } = devSaveDraft(
+			draft({
+				html: "<p>no image</p>",
+				attachments: [{ filename: "shot.png", contentType: "image/png", contentBase64: png, cid: "abc@raven.mail" }],
+			}),
+			me,
+		);
+		expect(devGetMessage("Drafts", uid).attachments.map((a) => a.filename)).toEqual(["shot.png"]);
+	});
+});

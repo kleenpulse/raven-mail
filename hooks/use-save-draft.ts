@@ -5,7 +5,8 @@ import { toast } from "sonner";
 import { saveDraftAction } from "@/lib/actions/mail";
 import { useComposeStore } from "@/lib/store/compose";
 import { useFolders, useInvalidateMail } from "@/hooks/use-mail";
-import { toOutgoing } from "@/hooks/use-undo-send";
+import { plainSizeError, toOutgoing } from "@/hooks/use-undo-send";
+import { sendProblem } from "@/lib/mail/inline-images";
 import { resolveSpecialFolder } from "@/lib/mail/folders";
 
 /** Saves what compose holds to Drafts, replacing its server copy. Resolves false if it didn't save. */
@@ -18,7 +19,12 @@ export function useSaveDraft() {
 		// Read before the save starts: a change typed while it runs is still unsaved after.
 		const { draft, draftUid, attachments, edits, session } = useComposeStore.getState();
 		try {
-			const res = await saveDraftAction(toOutgoing({ draft, draftUid, attachments }));
+			const outgoing = toOutgoing({ draft, draftUid, attachments });
+			const problem = sendProblem(outgoing.draft);
+			if (problem) throw new Error(problem);
+			const res = await saveDraftAction(outgoing).catch((err: unknown) => {
+				throw plainSizeError(err);
+			});
 			if (!res.ok) throw new Error(res.error);
 			const store = useComposeStore.getState();
 			// Compose moved on to another message meanwhile: this save isn't its copy.

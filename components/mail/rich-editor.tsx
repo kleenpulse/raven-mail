@@ -3,12 +3,20 @@
 import * as React from "react";
 import { EditorContent, Extension, useEditor, useEditorState, type Editor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { Bold, Code, Italic, Link2, List, ListOrdered, Quote, type LucideIcon } from "lucide-react";
+import { Bold, Code, ImagePlus, Italic, Link2, List, ListOrdered, Quote, type LucideIcon } from "lucide-react";
 import { Kbd } from "@/components/ui/kbd";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import { onlySignature } from "@/lib/mail/signature";
 import { docToText, textToHtml } from "@/lib/mail/rich-text";
+import { INLINE_TYPES } from "@/lib/mail/inline-images";
+import { IMAGE_MAX_WIDTH, InlineImage, type ImageSource } from "@/components/mail/inline-image";
+
+/** What compose can ask of the editor from outside it. */
+export type RichEditorApi = {
+	/** Puts images at a point on screen (a drop), or where the cursor is. */
+	insertImages: (images: { cid: string; alt: string; width?: number }[], at?: { x: number; y: number }) => void;
+};
 
 // ⌘/Ctrl+Enter sends (compose listens on the dock); StarterKit would insert a line break.
 const SendKey = Extension.create({
@@ -68,6 +76,9 @@ export function RichEditor({
 	placeholder,
 	mod,
 	onChange,
+	images,
+	apiRef,
+	onPickImages,
 }: {
 	html?: string;
 	text: string;
@@ -76,9 +87,16 @@ export function RichEditor({
 	mod: string;
 	/** `edit: false` when the editor only tidies what it loaded, not a change the user made. */
 	onChange: (next: { html: string; text: string }, how: { edit: boolean }) => void;
+	/** The bytes behind the body's `cid:` images. */
+	images: ImageSource;
+	/** Filled while the editor is up. */
+	apiRef?: React.RefObject<RichEditorApi | null>;
+	/** Images chosen with the toolbar button; compose reads them and calls `insertImages`. */
+	onPickImages?: (files: File[]) => void;
 }) {
 	const [linking, setLinking] = React.useState(false);
 	const [href, setHref] = React.useState("");
+	const imageInput = React.useRef<HTMLInputElement>(null);
 	const report = (editor: Editor, edit = true) =>
 		onChange({ html: editor.getHTML(), text: docToText(editor.getJSON()) }, { edit });
 
@@ -93,6 +111,7 @@ export function RichEditor({
 				link: { openOnClick: false, autolink: true, defaultProtocol: "https", protocols: ["mailto"] },
 			}),
 			SendKey,
+			InlineImage.configure({ source: images }),
 		],
 		content: html || textToHtml(text),
 		// Keeps the space in the "-- " signature line; mail clients look for exactly that.
@@ -132,6 +151,25 @@ export function RichEditor({
 				: null,
 	});
 
+	React.useEffect(() => {
+		if (!apiRef || !editor) return;
+		apiRef.current = {
+			insertImages(list, at) {
+				const nodes = list.map(({ cid, alt, width }) => ({
+					type: "image",
+					attrs: { cid, alt, width: width ? Math.min(width, IMAGE_MAX_WIDTH) : null },
+				}));
+				const pos = at ? editor.view.posAtCoords({ left: at.x, top: at.y })?.pos : undefined;
+				const chain = editor.chain().focus();
+				if (pos === undefined) chain.insertContent(nodes).run();
+				else chain.insertContentAt(pos, nodes).run();
+			},
+		};
+		return () => {
+			apiRef.current = null;
+		};
+	}, [apiRef, editor]);
+
 	function applyLink() {
 		if (!editor) return;
 		const url = normalizeLink(href);
@@ -170,6 +208,10 @@ export function RichEditor({
 						"[&_code]:rounded [&_code]:bg-card-nested [&_code]:px-1 [&_code]:font-mono [&_code]:text-[13px]",
 						"[&_pre]:rounded-lg [&_pre]:bg-card-nested [&_pre]:p-3 [&_pre_code]:bg-transparent [&_pre_code]:p-0",
 						"[&_a]:text-signal-ink [&_a]:underline dark:[&_a]:text-signal",
+						"[&_.inline-image]:inline-block [&_.inline-image]:max-w-full [&_.inline-image]:rounded-md [&_.inline-image]:align-bottom",
+						"[&_.inline-image_img]:h-auto [&_.inline-image_img]:max-w-full [&_.inline-image_img]:rounded-md",
+						"[&_.inline-image.ProseMirror-selectednode]:ring-2 [&_.inline-image.ProseMirror-selectednode]:ring-ring",
+						"[&_.inline-image[data-missing]]:bg-card-nested [&_.inline-image[data-missing]]:px-2.5 [&_.inline-image[data-missing]]:py-1 [&_.inline-image[data-missing]]:text-[12px] [&_.inline-image[data-missing]]:text-ink-2",
 					)}
 				/>
 			</div>
@@ -211,6 +253,34 @@ export function RichEditor({
 					>
 						<Link2 />
 					</Tip>
+					{onPickImages && (
+						<>
+							<Tip
+								label="Insert image"
+								type="button"
+								aria-label="Insert image"
+								render={<button disabled={!editor} />}
+								onMouseDown={(e) => e.preventDefault()}
+								onClick={() => imageInput.current?.click()}
+								className={toolClass(false)}
+							>
+								<ImagePlus />
+							</Tip>
+							<input
+								ref={imageInput}
+								type="file"
+								accept={INLINE_TYPES.join(",")}
+								multiple
+								className="hidden"
+								onChange={(e) => {
+									const files = Array.from(e.target.files ?? []);
+									// Cleared so the same image can be picked again.
+									e.target.value = "";
+									if (files.length) onPickImages(files);
+								}}
+							/>
+						</>
+					)}
 				</TooltipGroup>
 				{linking && (
 					<input

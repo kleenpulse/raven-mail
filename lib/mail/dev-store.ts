@@ -656,14 +656,21 @@ function draftToMessage(
   const uid = String(db.nextUid++);
   const now = new Date().toISOString();
   const text = draft.text;
+  // As reading real mail does: an image the HTML shows by cid: goes into the HTML as a data: URL, and isn't listed.
+  let html = draft.html || `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
+  const files = (draft.attachments ?? []).filter((a) => {
+    if (!a.cid || !/^image\/\w+$/i.test(a.contentType) || !html.includes(`cid:${a.cid}`)) return true;
+    html = html.split(`cid:${a.cid}`).join(`data:${a.contentType};base64,${a.contentBase64}`);
+    return false;
+  });
   const attachments = withParts(
-    (draft.attachments ?? []).map((a) => ({
+    files.map((a) => ({
       filename: a.filename,
       contentType: a.contentType,
       size: Math.floor((a.contentBase64.length * 3) / 4),
     })),
   );
-  (draft.attachments ?? []).forEach((a, i) => {
+  files.forEach((a, i) => {
     db.files.set(`${uid}/${attachments[i]!.part}`, Uint8Array.from(Buffer.from(a.contentBase64, "base64")));
   });
   return {
@@ -683,7 +690,7 @@ function draftToMessage(
     },
     text,
     // What compose's editor wrote; plain-text sends get the same simple HTML as before.
-    html: draft.html || `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+    html,
     attachments,
     messageId: `<dev-${uid}@localhost>`,
     inReplyTo: draft.inReplyTo,

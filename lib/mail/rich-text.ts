@@ -31,6 +31,10 @@ function inline(nodes: DocNode[] = []): string {
   return nodes
     .map((n) => {
       if (n.type === "hardBreak") return "\n";
+      if (n.type === "image") {
+        const alt = typeof n.attrs?.alt === "string" ? n.attrs.alt : "";
+        return alt ? `[image: ${alt}]` : "[image]";
+      }
       const text = n.text ?? inline(n.content);
       const href = n.marks?.find((m) => m.type === "link")?.attrs?.href;
       return typeof href === "string" && href && href !== text ? `${text} <${href}>` : text;

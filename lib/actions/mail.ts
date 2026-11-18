@@ -32,6 +32,8 @@ import { remindSchema } from "@/lib/follow-ups/schema";
 import { dueAtFor, recipientLine } from "@/lib/follow-ups/when";
 import type { SendReminder } from "@/lib/follow-ups/types";
 import { IntegrationError } from "@/lib/integrations/errors";
+import { PAYLOAD_BUDGET } from "@/lib/mail/inline-images";
+import { MAX_FILES } from "@/lib/mail/send-limits";
 
 // Reads live in app/api/mail/* (GET route handlers); these are mutations only.
 
@@ -96,9 +98,18 @@ const draftSchema = z.object({
         filename: z.string().min(1).max(255),
         contentType: z.string().max(255),
         contentBase64: z.string(),
+        // Becomes a Content-ID header: nothing that could start a new header line.
+        cid: z
+          .string()
+          .regex(/^[A-Za-z0-9._-]+@[A-Za-z0-9.-]+$/)
+          .max(128)
+          .optional(),
       }),
     )
-    .max(20)
+    .max(MAX_FILES)
+    .refine((files) => files.reduce((n, a) => n + a.contentBase64.length, 0) <= PAYLOAD_BUDGET, {
+      message: "These files are too big to send together.",
+    })
     .optional(),
 });
 

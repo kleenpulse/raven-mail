@@ -8,7 +8,20 @@ import { getPref } from "@/lib/prefs/store";
 
 export type ComposeMode = "new" | "reply" | "replyAll" | "forward";
 
-export type ComposeAttachment = NonNullable<ComposeDraft["attachments"]>[number] & { size: number };
+export type ComposeAttachment = NonNullable<ComposeDraft["attachments"]>[number] & {
+  size: number;
+  /** An inline image's own width in pixels. */
+  width?: number;
+};
+
+/** Where the editor finds an inline image's bytes, and hears when files arrive. */
+export const composeImages = {
+  get(cid: string): string | undefined {
+    const file = useComposeStore.getState().attachments.find((a) => a.cid === cid);
+    return file && `data:${file.contentType};base64,${file.contentBase64}`;
+  },
+  subscribe: (onChange: () => void): (() => void) => useComposeStore.subscribe(onChange),
+};
 
 type OpenOptions = {
   /** The Drafts copy this compose replaces on save and removes on send or discard. */

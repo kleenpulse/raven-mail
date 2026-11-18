@@ -69,3 +69,11 @@ describe("draftHtml", () => {
     );
   });
 });
+
+describe("docToText with images", () => {
+  const image = (alt?: string): DocNode => ({ type: "image", attrs: { cid: "a@raven.mail", alt } });
+
+  test("an image in the body is named in the text part", () => {
+    expect(docToText(doc(p(t("See "), image("shot.png"), t(" above")), p(image())))).toBe("See [image: shot.png] above\n[image]");
+  });
+});

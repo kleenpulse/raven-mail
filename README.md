@@ -114,6 +114,7 @@ The image runs Node 24 on port 3000 as a non-root user.
 ### Good to know
 
 - **Integrations need Neon.** On the web they store data in Postgres through `@neondatabase/serverless`, which talks over HTTP. Use [Neon](https://neon.tech) (the free tier works), or Neon's local HTTP proxy in front of a plain Postgres. Everything else runs with no database. The desktop app doesn't need any of this: it has its own database built in.
+- **Behind a reverse proxy, raise its upload limit.** Raven sends a message's files in one request of up to 26 MB. nginx stops requests at 1 MB by default, so set `client_max_body_size 26m;` or sends with files will fail.
 - **Point people to your source.** `NEXT_PUBLIC_SOURCE_URL` sets the "Source code" link in Settings → About and the landing footer. If you run a modified copy for other people, AGPL-3.0 asks you to offer them your source, so point it at your fork.
 
 ## Desktop
