@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.15.0] - 2026-11-18
+
 ### Added
 
 - The desktop app has a new Check for updates button. It's in
