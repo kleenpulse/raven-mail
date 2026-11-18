@@ -61,6 +61,7 @@ import { requestTourResume, requestTourRestart } from "@/components/tour/store";
 import { setTourVoice, useTourStateStore } from "@/lib/tour/state";
 import { DEFAULT_TOUR_STATE, TOUR_VOICES, VOICE_LABELS, type TourVoice } from "@/lib/tour/types";
 import { BlockedSendersRow } from "@/components/settings/blocked-senders-row";
+import { UpdatesRow } from "@/components/settings/updates-row";
 import { ravenDesktop, type DesktopMailAppStatus } from "@/lib/desktop/bridge";
 import { NewRuleRow, RuleActivityRow, RulesListRow } from "@/components/settings/rules-rows";
 
@@ -877,6 +878,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	"sign-out": SignOutRow,
 	"jev-key": JevKeyRow,
 	build: BuildRow,
+	updates: UpdatesRow,
 	"whats-new": WhatsNewRow,
 	source: SourceRow,
 	"reset-all": ResetAllRow,

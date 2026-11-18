@@ -1,8 +1,8 @@
 import { dialog, shell } from "electron";
 import { autoUpdater, BaseUpdater, type UpdateInfo } from "electron-updater";
-import type { UpdateAction, UpdateState } from "./bridge";
+import type { UpdateAction, UpdateCheck, UpdateState } from "./bridge";
 import type { Log } from "./log";
-import { NO_UPDATE, nextUpdateState, updateActionAllowed, type UpdateEvent } from "./update-state";
+import { NO_UPDATE, checkAnswer, nextUpdateState, updateActionAllowed, type CheckOutcome, type UpdateEvent } from "./update-state";
 import { CHECK_EVERY_MS, FIRST_CHECK_DELAY_MS, releasePage, type UpdateMode } from "./update-policy";
 
 /*
@@ -31,6 +31,8 @@ export type Updater = {
 	start(): void;
 	/** From the menu: says what it found, even when there's nothing new. */
 	checkNow(): void;
+	/** From Settings: the same check, but the answer goes to the page and no dialog opens. */
+	check(): Promise<UpdateCheck>;
 	/** Where the update stands now, for a page that just loaded. */
 	state(): UpdateState;
 	/** The pill was clicked. Ignored unless the state allows it. */
@@ -51,7 +53,7 @@ const NO_UPDATE_FEED = new Set(["ERR_UPDATER_CHANNEL_FILE_NOT_FOUND"]);
 
 export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 	const { log } = hooks;
-	if (mode === "off") return { mode, start() {}, checkNow() {}, state: () => NO_UPDATE, act() {}, installOnQuit: () => 0 };
+	if (mode === "off") return { mode, start() {}, checkNow() {}, check: async () => "off", state: () => NO_UPDATE, act() {}, installOnQuit: () => 0 };
 
 	// One truth for the pill, the menu and quitting: electron-updater deletes a ready installer once a newer one starts downloading.
 	let state = NO_UPDATE;
@@ -110,26 +112,30 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 		});
 	}
 
-	async function checkNow(): Promise<void> {
+	/** A check someone asked for, from the menu or from Settings. Tells no one: the caller does. */
+	async function look(): Promise<CheckOutcome> {
 		const version = ready();
-		if (version) return askToRestart(version);
-		let found: UpdateInfo | null = null;
+		if (version) return { kind: "ready", version };
 		try {
 			checkingByHand = true;
 			const result = await autoUpdater.checkForUpdates().finally(() => (checkingByHand = false));
-			found = result?.isUpdateAvailable ? result.updateInfo : null;
-			if (!found) {
-				await dialog.showMessageBox({ type: "info", title: "Raven", message: "You have the newest version of Raven.", detail: `Version ${autoUpdater.currentVersion.version}`, buttons: ["OK"] });
-				return;
-			}
+			return result?.isUpdateAvailable ? { kind: "found", version: result.updateInfo.version } : { kind: "current" };
 		} catch (err) {
 			// The latest release has no update files: one made before the desktop app updated itself.
-			const noFeed = NO_UPDATE_FEED.has((err as { code?: unknown }).code as string);
+			return NO_UPDATE_FEED.has((err as { code?: unknown }).code as string) ? { kind: "no-feed" } : { kind: "failed" };
+		}
+	}
+
+	async function checkNow(): Promise<void> {
+		const found = await look();
+		if (found.kind === "ready") return askToRestart(found.version);
+		if (found.kind !== "found") {
+			const failed = found.kind === "failed";
 			await dialog.showMessageBox({
-				type: noFeed ? "info" : "warning",
+				type: failed ? "warning" : "info",
 				title: "Raven",
-				message: noFeed ? "There's no update for Raven yet." : "Raven couldn't check for updates.",
-				detail: noFeed ? `Version ${autoUpdater.currentVersion.version}` : "Check your connection and try again.",
+				message: failed ? "Raven couldn't check for updates." : found.kind === "no-feed" ? "There's no update for Raven yet." : "You have the newest version of Raven.",
+				detail: failed ? "Check your connection and try again." : `Version ${autoUpdater.currentVersion.version}`,
 				buttons: ["OK"],
 			});
 			return;
@@ -160,6 +166,7 @@ export function createUpdater(mode: UpdateMode, hooks: UpdaterHooks): Updater {
 		checkNow() {
 			void checkNow().catch((err: unknown) => log.info(`update check: ${String(err)}`));
 		},
+		check: async () => checkAnswer(await look()),
 		state: () => state,
 		act(action) {
 			if (!updateActionAllowed(state, action)) return log.info(`ignored update action "${action}" (${state.kind})`);

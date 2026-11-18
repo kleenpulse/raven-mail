@@ -1,11 +1,13 @@
 import { describe, expect, test } from "bun:test";
-import type { DesktopUpdateState } from "@/lib/desktop/bridge";
-import { parseUpdateAction, type UpdateState } from "./bridge";
-import { NO_UPDATE, nextUpdateState, updateActionAllowed, updateMenuItem, updateNotice, type UpdateEvent } from "./update-state";
+import type { DesktopUpdateCheck, DesktopUpdateState } from "@/lib/desktop/bridge";
+import { parseUpdateAction, type UpdateCheck, type UpdateState } from "./bridge";
+import { NO_UPDATE, checkAnswer, nextUpdateState, updateActionAllowed, updateMenuItem, updateNotice, type UpdateEvent } from "./update-state";
 
 // The page keeps its own copy of the type (lib/desktop/bridge.ts); these only compile while both match.
 const toPage = (state: UpdateState): DesktopUpdateState => state;
 const fromPage = (state: DesktopUpdateState): UpdateState => state;
+const checkToPage = (check: UpdateCheck): DesktopUpdateCheck => check;
+const checkFromPage = (check: DesktopUpdateCheck): UpdateCheck => check;
 
 const run = (events: UpdateEvent[], selfInstall = true, from: UpdateState = NO_UPDATE) => events.reduce((state, event) => nextUpdateState(state, event, selfInstall), from);
 
@@ -93,5 +95,23 @@ describe("notices and the tray item", () => {
 	});
 });
 
+describe("checkAnswer", () => {
+	test("a new version is found whether it still has to download or is ready", () => {
+		expect(checkAnswer({ kind: "found", version: "0.15.0" })).toBe("found");
+		expect(checkAnswer({ kind: "ready", version: "0.15.0" })).toBe("found");
+	});
+
+	test("nothing newer, or a release with no update files, means current", () => {
+		expect(checkAnswer({ kind: "current" })).toBe("current");
+		expect(checkAnswer({ kind: "no-feed" })).toBe("current");
+	});
+
+	test("a check that failed says so", () => {
+		expect(checkAnswer({ kind: "failed" })).toBe("failed");
+	});
+});
+
 void toPage;
 void fromPage;
+void checkToPage;
+void checkFromPage;

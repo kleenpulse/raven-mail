@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- The desktop app has a new Check for updates button. It's in
+  Settings, under About. Click it and Raven looks for a new version
+  right away, and tells you what it found in the same place. If
+  there is one, you see the download, then a Restart to update
+  button. Raven still looks by itself every 6 hours.
+
 ## [0.14.0] - 2026-11-18
 
 ### Added
