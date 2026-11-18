@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.14.0] - 2026-11-18
+
 ### Added
 
 - You can now paste a screenshot, or any image you copied, into a
