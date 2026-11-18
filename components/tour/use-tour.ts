@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useRef } from "react";
 import type { Driver, DriveStep, PopoverDOM } from "driver.js";
 
+import type { WidgetId } from "@/lib/overview-board/widgets";
 import { getTourState, setTourVoice, useTourState, writeTour } from "@/lib/tour/state";
 import type { TourState } from "@/lib/tour/types";
 
@@ -160,7 +161,20 @@ function firstVisible(selector: string): HTMLElement | null {
 	return null;
 }
 
-function pollUntilVisibleWithTimeout(selector: string, timeoutMs: number): Promise<HTMLElement | null> {
+/**
+ * The step points at a card the user took off the Overview board. Waiting will
+ * not bring it back, so the step is skipped at once. Read from the page, like
+ * every anchor: the board marks itself `data-ready` once the saved board is
+ * drawn, and until then the poll keeps looking. Nothing of the board is
+ * imported here, since this engine loads on every page.
+ */
+export function cardIsOff(widget: WidgetId | undefined): boolean {
+	if (!widget) return false;
+	return document.querySelector("[data-board][data-ready]") !== null && document.querySelector(`[data-widget="${widget}"]`) === null;
+}
+
+/** Resolves with the anchor once it shows, or null on timeout, on abort, or as soon as `giveUp` says there is no point. */
+export function pollUntilVisibleWithTimeout(selector: string, timeoutMs: number, giveUp?: () => boolean): Promise<HTMLElement | null> {
 	return new Promise((resolve) => {
 		let done = false;
 		const timer = setTimeout(() => {
@@ -169,7 +183,7 @@ function pollUntilVisibleWithTimeout(selector: string, timeoutMs: number): Promi
 		}, timeoutMs);
 		const tick = () => {
 			if (done) return;
-			if (waitAbortRef.aborted) {
+			if (waitAbortRef.aborted || giveUp?.()) {
 				clearTimeout(timer);
 				done = true;
 				resolve(null);
@@ -436,7 +450,7 @@ export function useTour() {
 				if (selector) {
 					// Bounded poll — a target that never shows (wrong viewport,
 					// empty mailbox, slow load) skips gracefully.
-					element = await pollUntilVisibleWithTimeout(selector, step.pollTimeoutMs ?? 8000);
+					element = await pollUntilVisibleWithTimeout(selector, step.pollTimeoutMs ?? 8000, () => cardIsOff(step.widget));
 					if (!element) {
 						console.warn(`[tour] step "${step.id}": target ${selector} not visible — skipping`);
 						advancingRef.current = false;

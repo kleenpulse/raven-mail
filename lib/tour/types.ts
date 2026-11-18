@@ -32,12 +32,8 @@ export const DEFAULT_TOUR_STATE: TourState = {
 	updatedAt: null,
 };
 
-/** ISO strings compare lexicographically; null loses to any stamp. */
-export function isNewer(a: string | null, b: string | null): boolean {
-	if (!a) return false;
-	if (!b) return true;
-	return a > b;
-}
+// Relative: the Drizzle schema imports this file, and drizzle-kit loads it outside Next's alias resolution.
+export { isNewer } from "../sync/is-newer";
 
 /** GET /api/tour. `db: false` = no database configured; the device copy is the only copy. */
 export type TourResponse = { ok: true; data: TourState | null; db: boolean };

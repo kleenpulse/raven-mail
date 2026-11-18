@@ -18,6 +18,21 @@ as you work — it ships inside the app.
   right away, and tells you what it found in the same place. If
   there is one, you see the download, then a Restart to update
   button. Raven still looks by itself every 6 hours.
+- You can now arrange the Overview page the way you like. Press
+  Edit board. Drag a card to move it. Drag its bottom-right corner
+  to make it bigger or smaller. The X takes a card off the board,
+  and Add card puts it back. On a phone or tablet, drag a card by
+  the handle at its top right, so your finger can still scroll the
+  page. With a keyboard, Tab to a card's handle, then press the
+  arrow keys to move it, or Shift and the arrow keys to resize it.
+  Raven saves every change by itself, with one board for each
+  mailbox. On the web, your board follows you: sign in on another
+  device and it's there. The desktop app keeps it on that
+  computer. If you're offline, the change stays on your device and
+  Raven sends it when it can. Phone, tablet and computer screens
+  each keep their own arrangement. Reset brings the original board
+  back, and you can undo it. The greeting and the Follow-ups strip
+  stay at the top.
 
 ## [0.14.0] - 2026-11-18
 

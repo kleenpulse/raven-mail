@@ -9,11 +9,14 @@ export function Sparkline({
 	label,
 	className,
 	height = 64,
+	fill = false,
 }: {
 	values: number[];
 	label: string;
 	className?: string;
 	height?: number;
+	/** Grow to the parent's free height (give it a min-height); `height` then only sets the drawing scale. */
+	fill?: boolean;
 }) {
 	const w = 240;
 	const h = height;
@@ -34,7 +37,7 @@ export function Sparkline({
 		.join(" ");
 	const end = pts[pts.length - 1];
 	return (
-		<div className={cn("wipe-in relative w-full", className)} style={{ height }}>
+		<div className={cn("wipe-in relative w-full", className)} style={fill ? undefined : { height }}>
 			<svg
 				viewBox={`0 0 ${w} ${h}`}
 				preserveAspectRatio="none"

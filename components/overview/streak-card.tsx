@@ -4,25 +4,15 @@ import * as React from "react";
 import { Bento, BentoTitle } from "@/components/overview/bento";
 import { DotMatrix, type DotState } from "@/components/viz/dot-matrix";
 import { shiftDateKey } from "@/lib/insights/bins";
-import { useAccount } from "@/components/providers/account-provider";
 import { useMounted } from "@/hooks/use-mounted";
+import { useStreakLog } from "@/hooks/use-streak-log";
 
 const DAYS = 20;
 
-type Log = Record<string, 0 | 1>;
-
-function readLog(key: string): Log {
-	try {
-		return JSON.parse(localStorage.getItem(key) ?? "{}") as Log;
-	} catch {
-		return {};
-	}
-}
-
 /**
- * IMAP keeps no history, so the streak is tracked on this device: a day counts
- * when you opened Raven and owed nobody a reply. One grace day per week keeps a
- * single busy day from wiping the habit (streak research: broken streaks demotivate).
+ * The streak is tracked on this device (see useStreakLog). One grace day per
+ * week keeps a single busy day from wiping the habit (streak research: broken
+ * streaks demotivate).
  */
 export function StreakCard({
 	todayKey,
@@ -33,23 +23,8 @@ export function StreakCard({
 	zeroToday: boolean;
 	i?: number;
 }) {
-	const { email } = useAccount();
-	const storageKey = `raven-streak:v1:${email}`;
 	const mounted = useMounted();
-	// Read once on the client; the dots only render after mount, so SSR's {} never shows.
-	const [stored] = React.useState<Log>(() => (typeof window === "undefined" ? {} : readLog(storageKey)));
-	const log = React.useMemo<Log>(
-		() => ({ ...stored, [todayKey]: stored[todayKey] === 1 || zeroToday ? 1 : 0 }),
-		[stored, todayKey, zeroToday],
-	);
-
-	React.useEffect(() => {
-		try {
-			localStorage.setItem(storageKey, JSON.stringify(log));
-		} catch {
-			/* storage blocked — the streak just won't persist */
-		}
-	}, [storageKey, log]);
+	const log = useStreakLog(todayKey, zeroToday);
 
 	const { dots, streak, tracked } = React.useMemo(() => {
 		const keyAt = (back: number) => shiftDateKey(todayKey, -back);

@@ -36,15 +36,18 @@ export function MailMixCard({
 				<span className="font-display text-kpi-sm tabular">{total ? Math.round((people / total) * 100) : 0}%</span>
 				<span className="text-[13px] text-ink-2">from people</span>
 			</p>
-			<Concentric
-				rings={mix.map((m) => ({ key: m.bucket, label: META[m.bucket].label, value: m.count }))}
-				onSelect={(ring) => {
-					const meta = META[ring.key as MixBucket];
-					onAsk(meta.ask, { forcedIntent: meta.intent });
-				}}
-				label={`Mail by source: ${mix.map((m) => `${META[m.bucket].label} ${m.count}`).join(", ")}`}
-				className="mx-auto my-auto max-w-[240px] py-3"
-			/>
+			{/* Centred in any spare height; in a short card the rings shrink to fit instead of pushing the list out. */}
+			<div className="flex min-h-28 flex-1 items-center justify-center py-3">
+				<Concentric
+					rings={mix.map((m) => ({ key: m.bucket, label: META[m.bucket].label, value: m.count }))}
+					onSelect={(ring) => {
+						const meta = META[ring.key as MixBucket];
+						onAsk(meta.ask, { forcedIntent: meta.intent });
+					}}
+					label={`Mail by source: ${mix.map((m) => `${META[m.bucket].label} ${m.count}`).join(", ")}`}
+					className="max-h-full max-w-[240px]"
+				/>
+			</div>
 			<ul className="space-y-1">
 				{overview.mix.map((m) => (
 					<li key={m.bucket}>
