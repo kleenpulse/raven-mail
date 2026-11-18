@@ -54,6 +54,8 @@ export async function buildRawMessage(
       filename: a.filename,
       contentType: a.contentType,
       content: Buffer.from(a.contentBase64, "base64"),
+      // An image the HTML shows as cid:…; nodemailer then files it beside the HTML (multipart/related).
+      ...(a.cid ? { cid: a.cid } : {}),
     })),
     date: new Date(),
   }).compile();

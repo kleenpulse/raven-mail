@@ -22,14 +22,25 @@ import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { Tip, TooltipGroup } from "@/components/ui/tooltip";
 import { discardDraftAction } from "@/lib/actions/mail";
-import { useComposeStore } from "@/lib/store/compose";
+import { composeImages, useComposeStore, type ComposeAttachment } from "@/lib/store/compose";
 import { useMounted } from "@/hooks/use-mounted";
 import { useSaveDraft } from "@/hooks/use-save-draft";
 import { useContacts, useFolders, useInvalidateMail } from "@/hooks/use-mail";
 import { RecipientField } from "@/components/mail/recipient-field";
 import { RemindMenu } from "@/components/mail/remind-menu";
 import { choiceLabel } from "@/lib/follow-ups/when";
-import { AUTOSAVE_KEY, forgetLocalCopy, useUndoSend } from "@/hooks/use-undo-send";
+import { AUTOSAVE_KEY, forgetLocalCopy, toOutgoing, useUndoSend } from "@/hooks/use-undo-send";
+import {
+  fileAllowanceMb,
+  isInlineType,
+  newCid,
+  pastedName,
+  planFiles,
+  sendProblem,
+  type RejectReason,
+} from "@/lib/mail/inline-images";
+import { MAX_FILES } from "@/lib/mail/send-limits";
+import type { RichEditorApi } from "@/components/mail/rich-editor";
 import { formatBytes, looksLikeAddress, splitAddressList } from "@/lib/format";
 import { modKeyLabel } from "@/lib/utils";
 import { base64ToBytes, bytesToBase64, canPreview } from "@/lib/mail/attachment";
@@ -46,6 +57,23 @@ function downloadAttachment(file: { filename: string; contentBase64: string }) {
   link.download = file.filename;
   link.click();
   setTimeout(() => URL.revokeObjectURL(url), 60_000);
+}
+
+const carriesFiles = (data: DataTransfer) => Array.from(data.types).includes("Files");
+
+/** A file by name, for a toast. A clipboard image is always "image.png", which names nothing. */
+const called = (name: string) => (!name || /^image\.\w+$/i.test(name) ? "That image" : `"${name}"`);
+
+/** An image's own width, or null when the browser can't decode it. */
+async function imageWidth(file: Blob): Promise<number | null> {
+  try {
+    const bitmap = await createImageBitmap(file);
+    const { width } = bitmap;
+    bitmap.close();
+    return width > 0 ? width : null;
+  } catch {
+    return null;
+  }
 }
 
 // The editor (Tiptap, ProseMirror) loads when compose first opens, not with the mail list.
@@ -193,6 +221,24 @@ export function ComposeDock() {
   const fileRef = React.useRef<HTMLInputElement>(null);
   const preview = useAttachmentPreview();
   const savedRef = React.useRef<string>("");
+  const editorRef = React.useRef<RichEditorApi | null>(null);
+  const ownDrag = React.useRef(false);
+  const [dropping, setDropping] = React.useState(false);
+
+  // The dock is a corner of the page: a file dropped beside it would make the
+  // browser open that file in place of the app, and the message would be lost.
+  React.useEffect(() => {
+    if (!open) return;
+    const keepPage = (e: DragEvent) => {
+      if (e.dataTransfer && carriesFiles(e.dataTransfer)) e.preventDefault();
+    };
+    window.addEventListener("dragover", keepPage);
+    window.addEventListener("drop", keepPage);
+    return () => {
+      window.removeEventListener("dragover", keepPage);
+      window.removeEventListener("drop", keepPage);
+    };
+  }, [open]);
 
   React.useEffect(() => {
     try {
@@ -249,6 +295,12 @@ export function ComposeDock() {
       toast.error(`"${bad.address}" isn't an email address.`);
       return;
     }
+    // Undo can bring a deleted image back after more files went in: check what would really go.
+    const problem = sendProblem(toOutgoing({ draft, draftUid, attachments }).draft);
+    if (problem) {
+      toast.error(problem);
+      return;
+    }
     send({ mode, draft, draftUid, attachments });
     closeCompose();
   }
@@ -291,17 +343,59 @@ export function ComposeDock() {
     });
   }
 
-  async function handleFiles(files: FileList | null) {
-    if (!files?.length) return;
-    const next = await Promise.all(
-      Array.from(files).map(async (file) => ({
-        filename: file.name,
-        contentType: file.type || "application/octet-stream",
-        contentBase64: bytesToBase64(await file.arrayBuffer()),
-        size: file.size,
-      })),
+  /**
+   * Every way a file gets in: the paperclip, the editor's image button, a paste
+   * and a drop. With `inline`, images a mail reader can show go into the body;
+   * everything else joins the file chips.
+   */
+  async function addFiles(files: File[], { inline, at }: { inline: boolean; at?: { x: number; y: number } }) {
+    if (!files.length) return;
+    const start = useComposeStore.getState();
+    const { accepted, rejected } = planFiles(files, {
+      html: start.draft.html ?? "",
+      text: start.draft.text,
+      attachments: start.attachments,
+    });
+    const first = (reason: RejectReason) => rejected.find((r) => r.reason === reason);
+    if (first("count")) toast.error(`A message can hold up to ${MAX_FILES} files.`);
+    const tooBig = first("size");
+    if (tooBig) {
+      toast.error(`${called(tooBig.name)} doesn't fit.`, {
+        description: `The files in one message can add up to about ${fileAllowanceMb()} MB.`,
+      });
+    }
+    let unread = first("empty")?.name;
+
+    const read = await Promise.all(
+      accepted.map(async (file): Promise<ComposeAttachment | null> => {
+        try {
+          const contentType = file.type || "application/octet-stream";
+          const base = { contentType, contentBase64: bytesToBase64(await file.arrayBuffer()), size: file.size };
+          const width = inline && isInlineType(contentType) ? await imageWidth(file) : null;
+          // An image that won't decode still goes, as a plain file.
+          if (!width) return { ...base, filename: file.name || "file" };
+          return { ...base, filename: pastedName(file), cid: newCid(), width };
+        } catch {
+          // A folder, or a file that went away while it was being read.
+          unread ??= file.name;
+          return null;
+        }
+      }),
     );
-    addAttachments(next);
+    if (unread !== undefined) toast.error(`Couldn't read ${called(unread).replace(/^T/, "t")}.`);
+
+    const next = read.filter((file) => file !== null);
+    const now = useComposeStore.getState();
+    // Compose closed or moved on to another message while the files were being read.
+    if (!next.length || !now.open || now.session !== start.session) return;
+    // Without the editor (still loading), images go as plain files rather than nowhere.
+    const editor = editorRef.current;
+    const ready: ComposeAttachment[] = editor
+      ? next
+      : next.map(({ filename, contentType, contentBase64, size }) => ({ filename, contentType, contentBase64, size }));
+    addAttachments(ready);
+    const pictures = ready.flatMap((file) => (file.cid ? [{ cid: file.cid, alt: file.filename, width: file.width }] : []));
+    if (editor && pictures.length) editor.insertImages(pictures, at);
   }
 
   // The footer has always advertised mod+Enter; this makes it true.
@@ -310,6 +404,50 @@ export function ComposeDock() {
       e.preventDefault();
       handleSend();
     }
+  }
+
+  // Capture phase, and stopped here: the editor's own paste would otherwise run too.
+  // Works from To, Subject or the body alike.
+  function handlePaste(e: React.ClipboardEvent) {
+    const data = e.clipboardData;
+    let files = Array.from(data.files);
+    if (!files.length) {
+      files = Array.from(data.items).flatMap((item) => {
+        const file = item.kind === "file" ? item.getAsFile() : null;
+        return file ? [file] : [];
+      });
+    }
+    // Spreadsheets and word processors copy a picture of the text beside the text: the text wins.
+    if (!files.length || data.getData("text/plain").trim()) return;
+    e.preventDefault();
+    e.stopPropagation();
+    void addFiles(files, { inline: true });
+  }
+
+  // A drag that began inside the dock (selected text, an image) is the editor's business.
+  const fileDrag = (e: React.DragEvent) => !ownDrag.current && carriesFiles(e.dataTransfer);
+
+  function handleDragOver(e: React.DragEvent) {
+    if (!fileDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+    setDropping(true);
+  }
+
+  function handleDragLeave(e: React.DragEvent) {
+    if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setDropping(false);
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    const files = fileDrag(e) ? Array.from(e.dataTransfer.files) : [];
+    ownDrag.current = false;
+    setDropping(false);
+    if (!files.length) return;
+    e.preventDefault();
+    e.stopPropagation();
+    // On the body, images land where they were dropped; anywhere else on the dock, files attach.
+    const onBody = (e.target as Element).closest?.(".ProseMirror") != null;
+    void addFiles(files, { inline: onBody, at: onBody ? { x: e.clientX, y: e.clientY } : undefined });
   }
 
   const title =
@@ -345,6 +483,8 @@ export function ComposeDock() {
   const ccVisible = showCc || Boolean(draft.cc?.trim()) || Boolean(draft.bcc?.trim());
   // New and forwarded mail start with an empty To; replies start in the body.
   const focusTo = mode === "new" || mode === "forward";
+  // Images in the body aren't chips. `index` is the file's place among all the message's files.
+  const chips = attachments.flatMap((file, index) => (file.cid ? [] : [{ file, index }]));
 
   return (
     <>
@@ -356,8 +496,19 @@ export function ComposeDock() {
         data-compose
         aria-label={title}
         onKeyDown={handleKeyDown}
+        onPasteCapture={handlePaste}
+        onDragStartCapture={() => {
+          ownDrag.current = true;
+        }}
+        onDragEndCapture={() => {
+          ownDrag.current = false;
+        }}
+        onDragOverCapture={handleDragOver}
+        onDragLeaveCapture={handleDragLeave}
+        onDropCapture={handleDrop}
         className={cn(
           "fixed z-40 flex animate-rise-in flex-col overflow-hidden rounded-card text-foreground shadow-lift glass-pane",
+          dropping && "ring-2 ring-ring",
           maximized
             ? "inset-2 sm:inset-6 lg:inset-x-[max(1.5rem,calc((100vw-60rem)/2))]"
             : "inset-2 sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[min(36rem,calc(var(--app-h)-3rem))] sm:w-120",
@@ -444,6 +595,9 @@ export function ComposeDock() {
             placeholder={draft.quote?.kind === "reply" ? "Write your reply…" : "Write your message…"}
             mod={mod}
             onChange={({ html, text }, how) => setDraft({ html, text }, how)}
+            images={composeImages}
+            apiRef={editorRef}
+            onPickImages={(files) => void addFiles(files, { inline: true })}
           />
 
           {draft.quote && (
@@ -464,11 +618,11 @@ export function ComposeDock() {
             </p>
           )}
 
-          {attachments.length > 0 && (
+          {chips.length > 0 && (
             <ul className="flex shrink-0 flex-wrap gap-1.5 border-t border-border px-4 py-3 dark:border-glass-border">
-              {attachments.map((a, i) => (
+              {chips.map(({ file: a, index }, i) => (
                 <li
-                  key={`${a.filename}-${i}`}
+                  key={`${a.filename}-${index}`}
                   className="inline-flex h-8 max-w-full items-center gap-2 rounded-pill bg-card pr-1 pl-3 text-[12px] ring-1 ring-border dark:bg-card-nested dark:ring-glass-border"
                 >
                   <Tip
@@ -477,7 +631,7 @@ export function ComposeDock() {
                     data-preview-key={`compose/${i}`}
                     onClick={(e) =>
                       canPreview(a)
-                        ? preview.open(a, e.currentTarget, { sources: attachments, index: i })
+                        ? preview.open(a, e.currentTarget, { sources: chips.map((chip) => chip.file), index: i })
                         : downloadAttachment(a)
                     }
                     className="inline-flex min-w-0 items-center gap-2 rounded-pill outline-none hover:underline focus-visible:ring-2 focus-visible:ring-ring"
@@ -487,7 +641,7 @@ export function ComposeDock() {
                   </Tip>
                   <button
                     type="button"
-                    onClick={() => removeAttachment(i)}
+                    onClick={() => removeAttachment(index)}
                     className="grid size-6 place-items-center rounded-full text-ink-2 outline-none transition-colors hover:bg-foreground/5 hover:text-destructive focus-visible:ring-2 focus-visible:ring-ring"
                     aria-label={`Remove ${a.filename}`}
                   >
@@ -512,7 +666,12 @@ export function ComposeDock() {
                 type="file"
                 multiple
                 className="hidden"
-                onChange={(e) => handleFiles(e.target.files)}
+                onChange={(e) => {
+                  const files = Array.from(e.target.files ?? []);
+                  // Cleared so picking the same file again still counts as a change.
+                  e.target.value = "";
+                  void addFiles(files, { inline: false });
+                }}
               />
               <IconCircle label="Save to Drafts" onClick={handleSaveDraft} disabled={blocked}>
                 {busy === "draft" ? <LoaderCircle className="animate-spin" /> : <FilePen />}

@@ -8,6 +8,7 @@ import { messageQuery } from "@/hooks/use-mail";
 import { useComposeStore, type ComposeAttachment } from "@/lib/store/compose";
 import { attachmentHref, bytesToBase64 } from "@/lib/mail/attachment";
 import { draftFromMessage } from "@/lib/mail/reply";
+import { adoptDataImages } from "@/lib/mail/inline-images";
 import type { AttachmentMeta } from "@/lib/mail/types";
 
 async function loadFile(folder: string, uid: string, file: AttachmentMeta): Promise<ComposeAttachment> {
@@ -74,10 +75,16 @@ export function useResumeDraft() {
 				}
 				current.setAttachmentsLoading(false);
 			};
+			// The server hands inline images back inside the HTML. Compose keeps them as files,
+			// so the HTML it stores (and autosaves on this device) stays small.
+			const draft = draftFromMessage(message);
+			const inline = draft.html ? adoptDataImages(draft.html) : null;
+			if (inline) draft.html = inline.html;
 			// With unsaved changes open, compose asks first; the files load only once it opens.
 			let loading: Promise<void> | undefined;
-			useComposeStore.getState().openCompose(message.inReplyTo ? "reply" : "new", draftFromMessage(message), {
+			useComposeStore.getState().openCompose(message.inReplyTo ? "reply" : "new", draft, {
 				draftUid: uid,
+				attachments: inline?.images,
 				attachmentsLoading: files.length > 0,
 				signature: false,
 				onOpen: files.length > 0 ? () => { loading = loadFiles(); } : undefined,

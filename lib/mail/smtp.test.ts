@@ -38,3 +38,32 @@ describe("buildRawMessage bodies", () => {
     expect(mime).toMatch(/Content-Type: text\/plain/);
   });
 });
+
+describe("buildRawMessage inline images", () => {
+  const png = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]).toString("base64");
+
+  test("a cid image sits beside the HTML (multipart/related); a plain file stays a normal attachment", async () => {
+    const { raw } = await buildRawMessage(makeSession({ dev: false }), {
+      ...draft("a@x.com"),
+      text: "[image: shot.png]",
+      html: '<p><img src="cid:abc123@raven.mail" alt="shot.png" width="560"></p>',
+      attachments: [
+        { filename: "shot.png", contentType: "image/png", contentBase64: png, cid: "abc123@raven.mail" },
+        { filename: "notes.pdf", contentType: "application/pdf", contentBase64: "aGk=" },
+      ],
+    });
+    const mime = raw.toString();
+    const mixed = mime.indexOf("Content-Type: multipart/mixed");
+    const related = mime.indexOf("Content-Type: multipart/related");
+    const image = mime.indexOf("Content-Type: image/png");
+    const pdf = mime.indexOf("Content-Type: application/pdf");
+    expect(mixed).toBeGreaterThan(-1);
+    expect(related).toBeGreaterThan(mixed);
+    expect(image).toBeGreaterThan(related);
+    expect(pdf).toBeGreaterThan(image);
+    expect(mime).toMatch(/^Content-ID: <abc123@raven\.mail>$/m);
+    expect(mime.match(/^Content-ID:/gm)).toHaveLength(1);
+    expect(mime).toMatch(/Content-Disposition: inline; filename="?shot\.png"?/);
+    expect(mime).toMatch(/Content-Disposition: attachment; filename="?notes\.pdf"?/);
+  });
+});

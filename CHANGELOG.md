@@ -11,6 +11,30 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- You can now paste a screenshot, or any image you copied, into a
+  message with Ctrl+V (Cmd+V on a Mac). The image shows up inside
+  the text, so the person you write to sees it right there. It
+  works whether your cursor is in To, in Subject or in the message.
+  You can also drop an image onto the message, or use the new
+  Insert image button next to the link button. Other files you
+  paste or drop are attached as files.
+- An image in a message comes back when you undo a send, undo a
+  discard, or reopen a saved draft.
+
+### Fixed
+
+- A message with files bigger than about 700 KB used to get stuck
+  on "Sending…" and never go. Now the files in one message can add
+  up to about 18 MB in the desktop app and on a Raven you host
+  yourself, and about 3 MB on the hosted website. If a file is too
+  big, Raven tells you right away and does not try to send.
+- Dropping a file next to the compose window no longer makes the
+  browser leave Raven and lose your message.
+- Picking the same file twice in a row with Attach files now works
+  the second time.
+
 ## [0.13.0] - 2026-11-11
 
 ### Changed

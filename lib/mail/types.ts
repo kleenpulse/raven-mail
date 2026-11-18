@@ -96,6 +96,8 @@ export type ComposeDraft = {
     filename: string;
     contentType: string;
     contentBase64: string;
+    /** Set on an image shown in the body: the HTML points at it as `cid:<this>`. */
+    cid?: string;
   }[];
 };
 

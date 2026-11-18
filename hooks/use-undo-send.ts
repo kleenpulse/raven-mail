@@ -10,6 +10,7 @@ import { useInvalidateMail } from "@/hooks/use-mail";
 import { getPref } from "@/lib/prefs/store";
 import { draftBody } from "@/lib/mail/reply";
 import { draftHtml } from "@/lib/mail/rich-text";
+import { fileAllowanceMb, pruneInline } from "@/lib/mail/inline-images";
 import { createSendQueue, pickOrphan, type SendRecord } from "@/lib/mail/pending-send";
 import { useComposeStore, type ComposeAttachment, type ComposeMode } from "@/lib/store/compose";
 import type { ComposeDraft } from "@/lib/mail/types";
@@ -34,18 +35,42 @@ export type OutgoingSend = {
 // Files stay out: base64 would blow the localStorage quota.
 type StoredSend = SendRecord & { mode: ComposeMode; draft: ComposeDraft; draftUid?: string; files: number };
 
-/** What the send and save actions take. */
+/**
+ * What the send and save actions take. Inline images deleted from the body
+ * stay behind, and so do images whose bytes are gone; compose's own copy is
+ * left as it is, so undo still works there.
+ */
 export function toOutgoing({ draft, draftUid, attachments }: Omit<OutgoingSend, "mode">) {
+	const body = pruneInline(draftHtml(draft) ?? "", attachments);
 	return {
 		draft: {
 			...draft,
 			text: draftBody(draft),
-			html: draftHtml(draft),
+			html: body.html || undefined,
 			quote: undefined,
-			attachments: attachments.map(({ filename, contentType, contentBase64 }) => ({ filename, contentType, contentBase64 })),
+			attachments: body.attachments.map(({ filename, contentType, contentBase64, cid }) => ({
+				filename,
+				contentType,
+				contentBase64,
+				...(cid ? { cid } : {}),
+			})),
 		},
 		draftUid,
 	};
+}
+
+/**
+ * A best-effort guard: if a send or save is ever rejected for its size, say so
+ * plainly. Not seen to fire on Next 16.4.2, where an over-limit action is
+ * retried instead of rejected; compose's own size check (sendProblem) is what
+ * keeps such a message from being sent at all.
+ */
+export function plainSizeError(err: unknown): Error {
+	const message = err instanceof Error ? err.message : String(err);
+	if (/body exceeded|\b413\b|payload too large|entity too large/i.test(message)) {
+		return new Error(`This message is too big to send. Its files can add up to about ${fileAllowanceMb()} MB.`);
+	}
+	return err instanceof Error ? err : new Error(message);
 }
 
 export function forgetLocalCopy() {
@@ -126,7 +151,9 @@ function reopen(send: OutgoingSend) {
 const queue = createSendQueue<OutgoingSend>({
 	delayMs: () => getPref("mail.undoSend"),
 	send: async (send) => {
-		const res = await sendMessageAction(toOutgoing(send));
+		const res = await sendMessageAction(toOutgoing(send)).catch((err: unknown) => {
+			throw plainSizeError(err);
+		});
 		if (!res.ok) throw new Error(res.error);
 		send.reminder = res.data.reminder;
 	},
