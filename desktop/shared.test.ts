@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { isLocalDbTrouble } from "./shared";
+import { isLocalDbTrouble, isServerPhase } from "./shared";
 
 describe("isLocalDbTrouble", () => {
 	test("a damaged PGlite folder: the wasm aborts inside the instrumentation hook", () => {
@@ -25,5 +25,13 @@ Error: The first page answered 500.`;
 		expect(isLocalDbTrouble("Error: listen EADDRINUSE: address already in use 127.0.0.1:52731")).toBe(false);
 		expect(isLocalDbTrouble("Error: The first page answered 500.")).toBe(false);
 		expect(isLocalDbTrouble("")).toBe(false);
+	});
+});
+
+describe("isServerPhase", () => {
+	test("only the steps the shell knows", () => {
+		expect(isServerPhase("next")).toBe(true);
+		expect(isServerPhase("db")).toBe(true);
+		for (const other of ["ready", "", undefined, null, 1, { name: "db" }]) expect(isServerPhase(other)).toBe(false);
 	});
 });

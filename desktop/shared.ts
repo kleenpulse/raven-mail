@@ -10,6 +10,17 @@ export const HOST = "127.0.0.1";
  */
 export const LINK_BASE = "https://raven-mail.vercel.app";
 
+/**
+ * Steps the local server reports on its way to ready, for the start screen
+ * and the log: "next" once Next.js is loaded and listening, "db" once the
+ * local database is open.
+ */
+export type ServerPhase = "next" | "db";
+
+export function isServerPhase(value: unknown): value is ServerPhase {
+	return value === "next" || value === "db";
+}
+
 export function originFor(port: number): string {
 	return `http://${HOST}:${port}`;
 }
