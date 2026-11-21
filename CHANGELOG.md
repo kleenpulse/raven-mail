@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.16.0] - 2026-11-21
+
 ### Changed
 
 - The desktop app has a new start screen. It shows the raven and
