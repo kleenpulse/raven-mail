@@ -26,6 +26,14 @@ On Windows, dev and preview use their own app ID (`io.github.kleenpulse.raven.de
 - Staging replaces Turbopack's PGlite alias (`.next/node_modules/@electric-sql/pglite-<hash>`) with a small package that re-exports the real one, and leaves out PGlite's extension files. Otherwise PGlite would ship twice.
 - Next's offline check asks the page's own server, and on desktop that server always answers. So desktop asks `/api/mail/reach` whether your mail server can be reached instead (`lib/desktop/reach-watch.ts`).
 
+## Starting up
+
+- The window opens right away on a start screen (`splash.ts`). It's one inline page, because the local server isn't up yet and there is nothing to load from. It draws the raven mark and three steps: "Waking up", "Opening your mail store" and "Getting your overview ready".
+- The steps aren't on a timer. The server tells the shell when Next.js is loaded and when the local database is open (`ServerPhase` in `shared.ts`), and the start screen moves on when that happens. After 12 seconds it says the start is taking longer than usual.
+- The start screen uses the theme the page had last time. The shell saves the title bar's colours in `settings.json` each time the page sends them, so a light theme doesn't start with a dark window.
+- While the server starts, the shell reads the server folder's files ahead of it, up to 8 at a time (`prewarm.ts`). The server opens about 2,400 small files one after another. On Windows the virus scanner checks each file the first time it's opened after a restart or a few busy hours, and that made a cold start take 15 to 23 seconds when a warm one took 1.3. The scanner can check several files at once, so reading them in parallel cuts the wait. `desktop:dev` skips this: it runs `next dev` from the repo.
+- `main.log` shows where a start spent its time. Look for `read ahead: …`, `server step "next"`, `server step "db"`, `server ready` and `first page loaded`. Each has the milliseconds since the app's process began.
+
 ## Tray and notifications
 
 - Closing the window hides it, and Raven keeps running so the page can keep checking for mail. To stop that, turn off "Keep running when the window is closed". It's in the tray menu and the File menu (the Raven menu on macOS), and it's saved in `settings.json`. Quit Raven, Windows logging off and shutting down all still close the app for real.
@@ -97,4 +105,4 @@ The port is picked at random on first launch and kept in `desktop.json`. It's pa
 | --- | --- | --- | --- |
 | Installed app | `%APPDATA%\Raven` | `~/Library/Application Support/Raven` | `~/.config/Raven` |
 
-The folder holds `db/` (the local database), `db.backups/` (copies from before database updates), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` (the port), `window-state.json` (the window's size and place), `settings.json` (the desktop app's own settings) and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.
+The folder holds `db/` (the local database), `db.backups/` (copies from before database updates), `logs/` (`main.log`, `server.log`), `secrets.json`, `desktop.json` (the port), `window-state.json` (the window's size and place), `settings.json` (the desktop app's own settings, and the colours of the theme you last used) and Chromium's own profile files. When Raven puts a broken database or secrets file aside, the copy stays next to it as `db.broken-<time>` or `secrets.json.broken-<time>`. Dev and preview runs use `Raven Dev` and `Raven Preview` instead.

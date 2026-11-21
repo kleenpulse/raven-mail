@@ -11,6 +11,19 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Changed
+
+- The desktop app has a new start screen. It shows the raven and
+  three steps: waking up, opening your mail store, getting your
+  overview ready. The steps follow what Raven is really doing, not
+  a timer. It opens in the theme you used last time. If the start
+  is slow, it tells you.
+- The desktop app now reads its files several at a time while it
+  starts. Before, it opened about 2,400 files one by one, and on
+  Windows the virus scanner checked each one first. That made the
+  first start of the day take 15 to 23 seconds. This should make
+  it a lot shorter.
+
 ## [0.15.0] - 2026-11-18
 
 ### Added

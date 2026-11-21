@@ -64,6 +64,16 @@ describe("settings", () => {
 		expect(parseSettings("[]")).toEqual(DEFAULT_SETTINGS);
 	});
 
+	test("remembers the page's title bar colours, and drops ones that aren't colours", () => {
+		const titleBar = { color: "#f3f3f1", symbol: "#55554f" };
+		expect(parseSettings(JSON.stringify({ titleBar })).titleBar).toEqual(titleBar);
+		expect(parseSettings('{"titleBar":{"color":"#F3F3F1","symbol":"#55554F"}}').titleBar).toEqual(titleBar);
+		for (const bad of ['{"titleBar":"#f3f3f1"}', '{"titleBar":{"color":"red","symbol":"#000000"}}', '{"titleBar":{"color":"#fff;}body{display:none","symbol":"#000000"}}', '{"titleBar":null}']) {
+			expect(parseSettings(bad)).toEqual(DEFAULT_SETTINGS);
+			expect("titleBar" in parseSettings(bad)).toBe(false);
+		}
+	});
+
 	test("round trip through settings.json", () => {
 		const dir = mkdtempSync(join(tmpdir(), "raven-settings-"));
 		try {

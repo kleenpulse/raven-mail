@@ -1,5 +1,6 @@
 import { readFileSync, renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { parseTitleBarColors, type TitleBarColors } from "./bridge";
 
 /*
  * Settings the desktop shell owns (the page's own settings live in the
@@ -11,6 +12,8 @@ export type DesktopSettings = {
 	keepRunning: boolean;
 	/** The "Raven is still running" notice was shown once already. */
 	trayHintShown: boolean;
+	/** The title bar's colours the page last had, so the next start opens in the same theme. */
+	titleBar?: TitleBarColors;
 };
 
 export const DEFAULT_SETTINGS: DesktopSettings = { keepRunning: true, trayHintShown: false };
@@ -25,8 +28,9 @@ export function parseSettings(text: string | null): DesktopSettings {
 		return { ...DEFAULT_SETTINGS };
 	}
 	const record = raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {};
-	const flag = (key: keyof DesktopSettings) => (typeof record[key] === "boolean" ? (record[key] as boolean) : DEFAULT_SETTINGS[key]);
-	return { keepRunning: flag("keepRunning"), trayHintShown: flag("trayHintShown") };
+	const flag = (key: "keepRunning" | "trayHintShown") => (typeof record[key] === "boolean" ? (record[key] as boolean) : DEFAULT_SETTINGS[key]);
+	const titleBar = parseTitleBarColors(record.titleBar);
+	return { keepRunning: flag("keepRunning"), trayHintShown: flag("trayHintShown"), ...(titleBar ? { titleBar } : {}) };
 }
 
 function settingsFile(userData: string): string {

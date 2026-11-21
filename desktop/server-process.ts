@@ -2,7 +2,7 @@ import { utilityProcess } from "electron";
 import { spawn, spawnSync, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import type { Log } from "./log";
-import { HOST, isLocalDbTrouble, originFor, TOKEN_HEADER } from "./shared";
+import { HOST, isLocalDbTrouble, isServerPhase, originFor, TOKEN_HEADER, type ServerPhase } from "./shared";
 
 export type ServerHandle = {
 	readonly port: number;
@@ -33,6 +33,8 @@ export async function startStandaloneServer(opts: {
 	port: number;
 	env: Record<string, string>;
 	log: Log;
+	/** Each step the server passes before it's ready. */
+	onPhase?: (phase: ServerPhase) => void;
 }): Promise<ServerHandle> {
 	const child = utilityProcess.fork(join(opts.serverDir, "raven-server.js"), [], {
 		cwd: opts.serverDir,
@@ -52,7 +54,11 @@ export async function startStandaloneServer(opts: {
 
 	const report = await new Promise<Report>((resolve) => {
 		const timer = setTimeout(() => resolve({ type: "failed", message: "timed out" }), 90_000);
-		child.on("message", (message: Report) => {
+		child.on("message", (message: Report | { type: "phase"; name?: unknown }) => {
+			if (message.type === "phase") {
+				if (isServerPhase(message.name)) opts.onPhase?.(message.name);
+				return;
+			}
 			clearTimeout(timer);
 			resolve(message);
 		});

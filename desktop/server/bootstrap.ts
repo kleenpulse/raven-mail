@@ -3,7 +3,7 @@ import http, { type IncomingMessage, type ServerResponse } from "node:http";
 import type { AddressInfo } from "node:net";
 import { createRequire } from "node:module";
 import { join } from "node:path";
-import { HOST, originFor, TOKEN_HEADER } from "../shared";
+import { HOST, originFor, TOKEN_HEADER, type ServerPhase } from "../shared";
 import { checkRequest } from "./guard";
 
 /*
@@ -15,7 +15,9 @@ import { checkRequest } from "./guard";
  * install folder may be read-only, and macOS would see a broken bundle).
  *
  * It reports {ready, port} or {failed} to the shell, and on {shutdown} it
- * drains, closes Next and the local database, then exits.
+ * drains, closes Next and the local database, then exits. On the way to
+ * ready it also tells the shell each step it passes ({phase}), for the start
+ * screen and the log.
  */
 
 type Report = { type: "ready"; port: number } | { type: "failed"; message: string };
@@ -42,8 +44,29 @@ function report(message: Report): void {
 	else console.log(JSON.stringify({ raven: message }));
 }
 
+/** A step on the way to ready. Only the shell hears it: the smoke test reads stdout for ready or failed alone. */
+function phase(name: ServerPhase): void {
+	process.parentPort?.postMessage({ type: "phase", name });
+}
+
 function delay(ms: number): Promise<void> {
 	return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Reports "db" once the local database is open. The app opens it from its
+ * instrumentation hook and keeps the pending open on globalThis
+ * (lib/db/local.ts), so this waits for that to show up, then for it to finish.
+ */
+async function reportLocalDb(until: () => boolean): Promise<void> {
+	const key = Symbol.for("raven.pglite");
+	const registry = globalThis as { [key: symbol]: Promise<unknown> | undefined };
+	while (!registry[key]) {
+		if (until()) return;
+		await delay(50);
+	}
+	await registry[key];
+	if (!until()) phase("db");
 }
 
 /** The config Next inlined into server.js, which is what server.js itself would use. */
@@ -117,9 +140,15 @@ async function start(): Promise<void> {
 	process.env.PORT = String(port);
 	process.env.__NEXT_PRIVATE_ORIGIN = originFor(port);
 	handlers = await getRequestHandlers({ dir, port, isDev: false, server, hostname: HOST, quiet: true });
+	phase("next");
+	let warm = false;
+	// A failed open is the warm-up's to report; here it only means there's no step to tell.
+	void reportLocalDb(() => warm).catch(() => {});
 
 	// Warm up: this waits for instrumentation (local database + migrations).
-	const res = await fetch(`${originFor(port)}/login`, { headers: { [TOKEN_HEADER]: token }, redirect: "manual" });
+	const res = await fetch(`${originFor(port)}/login`, { headers: { [TOKEN_HEADER]: token }, redirect: "manual" }).finally(() => {
+		warm = true;
+	});
 	if (res.status !== 200) throw new Error(`The first page answered ${res.status}.`);
 	report({ type: "ready", port });
 

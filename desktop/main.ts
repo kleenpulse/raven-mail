@@ -15,9 +15,11 @@ import { classifyUrl } from "./policy";
 import { electronSealer } from "./sealer";
 import { fileStore, loadSecrets, resetSecrets, type Secrets } from "./secrets";
 import { freePort, isPortFree, savePort, savedPort } from "./ports";
+import { prewarm } from "./prewarm";
 import { delay, ServerStartError, startDevServer, startStandaloneServer, type ServerHandle } from "./server-process";
 import { loadSettings, saveSettings, type DesktopSettings } from "./settings";
-import { TOKEN_HEADER } from "./shared";
+import { TOKEN_HEADER, type ServerPhase } from "./shared";
+import { SPLASH_DEFAULTS, splashStepScript, splashUrl, type SplashStep } from "./splash";
 import { CHECK_FOR_UPDATES_LABEL, createTray, KEEP_RUNNING_LABEL, type RavenTray } from "./tray";
 import { parseBuildInfo, updateMode } from "./update-policy";
 import { updateMenuItem, updateNotice } from "./update-state";
@@ -42,8 +44,6 @@ const USER_DATA: Record<Mode, string> = { dev: "Raven Dev", preview: "Raven Prev
 // electron.exe the first time it shows a notification.
 const APP_ID: Record<Mode, string> = { dev: "io.github.kleenpulse.raven.dev", preview: "io.github.kleenpulse.raven.preview", packaged: "io.github.kleenpulse.raven" };
 const START_PATH = "/overview";
-const SPLASH_BACKGROUND = "#050a0b";
-const SPLASH_TEXT = "#9aa3a5";
 /** The page draws the title bar itself everywhere but macOS. */
 const OWN_TITLE_BAR = process.platform !== "darwin";
 /** Matches the caption buttons Windows 11 draws in a normal title bar. */
@@ -79,12 +79,14 @@ function boot(): void {
 	let secrets: Secrets | null = null;
 	let appOrigin: string | null = null;
 	let mainWindow: BrowserWindow | null = null;
-	// The page's title bar colours once it has said them (null: the splash's until then).
-	let titleBarColors: TitleBarColors | null = null;
+	let settings: DesktopSettings = loadSettings(userData);
+	// The page's title bar colours: the ones it had last time until it says them again (null: it never has).
+	let titleBarColors: TitleBarColors | null = settings.titleBar ?? null;
+	// How far the start screen's steps have got; they only go forward.
+	let splashStep: SplashStep = 0;
 	let quitting: "no" | "closing" | "done" = "no";
 	// Windows is logging off or shutting down: windows must close, not hide.
 	let sessionEnding = false;
-	let settings: DesktopSettings = loadSettings(userData);
 	let tray: RavenTray | null = null;
 	// A link's path that came before the server was up (it started Raven, say); the newest wins.
 	let pendingLink: string | null = null;
@@ -100,6 +102,10 @@ function boot(): void {
 	});
 
 	log.info(`starting (${mode}, Electron ${process.versions.electron}, updates ${updater.mode})`);
+	// Read the server's files ahead of it, several at a time (prewarm.ts). Dev mode runs `next dev` from the repo instead.
+	if (mode !== "dev") {
+		void prewarm(serverDir()).then((read) => log.info(`read ahead: ${read.files} files, ${(read.bytes / 1e6).toFixed(1)} MB in ${read.ms} ms`));
+	}
 	registerRavenLinks();
 	openLink(linkArg(process.argv));
 
@@ -142,6 +148,8 @@ function boot(): void {
 		titleBarColors = colors;
 		win.setTitleBarOverlay(titleBarOverlay());
 		win.setBackgroundColor(colors.color);
+		// Kept for the next start's window and start screen.
+		if (settings.titleBar?.color !== colors.color || settings.titleBar?.symbol !== colors.symbol) updateSettings({ titleBar: colors });
 	});
 	ipcMain.on(CHANNELS.titleBarMenu, (event, payload: unknown) => {
 		if (!fromMainWindow(event) || !OWN_TITLE_BAR) return;
@@ -224,10 +232,43 @@ function boot(): void {
 		secrets = await loadOrAskSecrets();
 		server = await startServerOrRecover();
 		attach(server);
+		showSplashStep(2);
 		const first = pendingLink ?? START_PATH;
 		pendingLink = null;
 		await mainWindow?.loadURL(`${server.origin}${first}`);
+		log.info(`first page loaded (${sinceStart()} ms after start)`);
 		updater.start();
+	}
+
+	/** Milliseconds since this process began, for the log's start-up timings. */
+	function sinceStart(): number {
+		return Math.round(process.uptime() * 1000);
+	}
+
+	/** Packaged: resources/server. Preview: desktop/.stage/server next to the staged app. */
+	function serverDir(): string {
+		return app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
+	}
+
+	/** A step the server passed on its way to ready: logged with its time, and shown on the start screen. */
+	function serverPhase(phase: ServerPhase): void {
+		log.info(`server step "${phase}" (${sinceStart()} ms after start)`);
+		showSplashStep(phase === "next" ? 1 : 2);
+	}
+
+	function showSplashStep(step: SplashStep): void {
+		if (step <= splashStep) return;
+		splashStep = step;
+		applySplashStep();
+	}
+
+	/** Tells the start screen its step, if the window still shows it. */
+	function applySplashStep(): void {
+		const win = mainWindow;
+		if (!win || win.isDestroyed() || !win.webContents.getURL().startsWith("data:")) return;
+		win.webContents.executeJavaScript(splashStepScript(splashStep)).catch(() => {
+			// The page was on its way out: nothing to update.
+		});
 	}
 
 	/** ravenBuild from the app's package.json (scripts/build.ts writes it); dev and preview have none. */
@@ -355,10 +396,8 @@ function boot(): void {
 			const env = serverEnv(process.env, { mode: "dev", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
 			return startDevServer({ repoRoot, port, token, env, log: serverLog });
 		}
-		// Packaged: resources/server. Preview: desktop/.stage/server next to the staged app.
-		const serverDir = app.isPackaged ? join(process.resourcesPath, "server") : join(app.getAppPath(), "..", "server");
 		const env = serverEnv(process.env, { mode: "prod", port, token, dataDir: join(userData, "db"), secrets, restoreFrom });
-		const handle = await startStandaloneServer({ serverDir, port, env, log: serverLog });
+		const handle = await startStandaloneServer({ serverDir: serverDir(), port, env, log: serverLog, onPhase: serverPhase });
 		if (handle.port !== port) {
 			log.info(`port ${port} was taken; the server moved to ${handle.port}. Data the window keeps per origin starts fresh.`);
 			savePort(userData, handle.port);
@@ -456,7 +495,7 @@ function boot(): void {
 		appOrigin = handle.origin;
 		routeToken(session.defaultSession, handle.origin);
 		handle.onExit((detail) => void serverDied(detail));
-		log.info(`server ready at ${handle.origin}`);
+		log.info(`server ready at ${handle.origin} (${sinceStart()} ms after start)`);
 	}
 
 	async function serverDied(detail: string): Promise<void> {
@@ -612,11 +651,11 @@ function boot(): void {
 		else void win.loadURL(`${appOrigin}${safe}`);
 	}
 
-	/** The window's buttons over the page's title bar: the page's colours once it has said them, the splash's until then. */
+	/** The window's buttons over the page's title bar: in the page's colours, or the start screen's if it has never said them. */
 	function titleBarOverlay(): { color: string; symbolColor: string; height: number } {
 		return {
-			color: titleBarColors?.color ?? SPLASH_BACKGROUND,
-			symbolColor: titleBarColors?.symbol ?? SPLASH_TEXT,
+			color: titleBarColors?.color ?? SPLASH_DEFAULTS.color,
+			symbolColor: titleBarColors?.symbol ?? SPLASH_DEFAULTS.symbol,
 			height: TITLE_BAR_HEIGHT,
 		};
 	}
@@ -631,7 +670,7 @@ function boot(): void {
 			minHeight: MIN_SIZE.height,
 			show: false,
 			title: "Raven",
-			backgroundColor: titleBarColors?.color ?? SPLASH_BACKGROUND,
+			backgroundColor: titleBarColors?.color ?? SPLASH_DEFAULTS.color,
 			autoHideMenuBar: process.platform !== "darwin",
 			// Windows and Linux: no system title bar. The page draws its own in the
 			// theme's colours (components/shell/title-bar.tsx), under the window's
@@ -661,7 +700,13 @@ function boot(): void {
 			sessionEnding = true;
 			void Promise.allSettled([session.defaultSession.cookies.flushStore(), server?.stop()]);
 		});
-		void win.loadURL(appOrigin ? `${appOrigin}${START_PATH}` : SPLASH);
+		if (appOrigin) {
+			void win.loadURL(`${appOrigin}${START_PATH}`);
+		} else {
+			// A step can arrive before the start screen has loaded: show it once it has.
+			win.webContents.once("did-finish-load", applySplashStep);
+			void win.loadURL(splashUrl(titleBarColors));
+		}
 		mainWindow = win;
 		return win;
 	}
@@ -847,7 +892,3 @@ const REG = join(process.env.SystemRoot ?? "C:\\Windows", "System32", "reg.exe")
 // Not geolocation: Electron's location service needs a Google API key, so it
 // only ever fails, and a denial at least tells the weather card to stop asking.
 const ALLOWED_PERMISSIONS = new Set<string>(["clipboard-sanitized-write", "fullscreen", "fileSystem"]);
-
-const SPLASH = `data:text/html;charset=utf-8,${encodeURIComponent(
-	`<!doctype html><meta charset="utf-8"><title>Raven</title><style>html,body{height:100%;margin:0;background:${SPLASH_BACKGROUND};color:${SPLASH_TEXT};font:14px system-ui,sans-serif;display:grid;place-items:center}</style><p>Starting Raven…</p>`,
-)}`;
