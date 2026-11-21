@@ -1,4 +1,4 @@
-import { describe, expect, mock, test } from "bun:test";
+import { beforeEach, describe, expect, mock, setSystemTime, test } from "bun:test";
 import { answers, fakeJev } from "@/test/helpers/jev";
 import { makeSession } from "@/test/helpers/session";
 import { runAsk } from "@/lib/jev/ask/pipeline";
@@ -8,6 +8,18 @@ import type { AskAnswer, AskEvent, AskRequest } from "@/lib/jev/ask/types";
 import type { MailSession } from "@/lib/session";
 
 /* Runs against the offline dev mailbox (makeSession() is a dev session): no IMAP, no network. */
+
+/*
+ * The dev mailbox is generated from the clock. At some hours its Inbox holds
+ * a single "roadmap" message, one candidate is not ranked, and the rank tests
+ * failed (2026-11-21 from about 13:00 to 18:00 UTC, on CI too). A fixed time
+ * gives every run the same mailbox. It is set before each test, not once:
+ * test/setup.ts puts the real clock back before every test.
+ */
+const NOW = new Date("2026-09-25T12:00:00.000Z");
+beforeEach(() => {
+	setSystemTime(NOW);
+});
 
 type Call = { questions: Record<string, { criteria: Record<string, string> }> };
 
