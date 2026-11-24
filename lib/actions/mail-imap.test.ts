@@ -17,7 +17,11 @@ const imap = path.resolve(import.meta.dir, "../mail/imap.ts");
 const realImap = await import(imap);
 mock.module(imap, () => ({
 	...realImap,
-	resolveSpecial: async (_s: unknown, role: string) => (role === "\\Drafts" ? "Drafts" : "Sent"),
+	resolveSpecial: async (_s: unknown, role: string) =>
+		({ "\\Drafts": "Drafts", "\\Junk": "Junk", "\\Inbox": "INBOX" })[role] ?? "Sent",
+	moveMessages: async (_s: unknown, folder: string, uids: string[], to: string, opts?: { notJunk?: boolean }) => {
+		calls.push(`move ${folder} ${uids.join(",")} -> ${to}${opts?.notJunk ? " notJunk" : ""}`);
+	},
 	appendRaw: async (_s: unknown, mailbox: string, raw: Buffer) => {
 		calls.push(`append ${mailbox}`);
 		if (appendFails) throw new Error("NO [OVERQUOTA]");
@@ -47,7 +51,7 @@ mock.module(smtp, () => ({
 	serverSavesSentCopy: () => true,
 }));
 
-const { saveDraftAction, sendMessageAction } = await import("@/lib/actions/mail");
+const { moveMessagesAction, saveDraftAction, sendMessageAction } = await import("@/lib/actions/mail");
 
 const draft: ComposeDraft = { to: "a@x.com", bcc: "secret@x.com", subject: "Plan", text: "hello" };
 
@@ -124,5 +128,18 @@ describe("sendMessageAction over IMAP: \\Answered", () => {
 	test("nothing found, nothing flagged", async () => {
 		await sendMessageAction({ draft: { ...draft, inReplyTo: "<orig@x>" } });
 		expect(calls.some((c) => c.startsWith("flag"))).toBe(false);
+	});
+});
+
+describe("moveMessagesAction over IMAP: not spam", () => {
+	test("Junk to Inbox tells the server it isn't spam", async () => {
+		await moveMessagesAction({ folder: "Junk", uids: ["3"], destination: "INBOX" });
+		expect(calls).toEqual(["move Junk 3 -> INBOX notJunk"]);
+	});
+
+	test("other moves out of Junk, and into the Inbox from elsewhere, stay plain", async () => {
+		await moveMessagesAction({ folder: "Junk", uids: ["3"], destination: "Archive" });
+		await moveMessagesAction({ folder: "Trash", uids: ["4"], destination: "INBOX" });
+		expect(calls).toEqual(["move Junk 3 -> Archive", "move Trash 4 -> INBOX"]);
 	});
 });

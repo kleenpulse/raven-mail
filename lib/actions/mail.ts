@@ -165,7 +165,10 @@ export async function moveMessagesAction(input: z.input<typeof moveSchema>): Pro
       devMoveMessages(folder, uids, destination);
       return { ok: true, data: null };
     }
-    await moveMessages(session, folder, uids, destination);
+    // Junk → Inbox is "Not spam": the provider's filter should hear it too.
+    const [junk, inbox] = await Promise.all([resolveSpecial(session, "\\Junk"), resolveSpecial(session, "\\Inbox")]);
+    const notJunk = Boolean(junk) && folder === junk && destination === inbox;
+    await moveMessages(session, folder, uids, destination, { notJunk });
     invalidateSnapshot(session);
     return { ok: true, data: null };
   } catch (err) {
