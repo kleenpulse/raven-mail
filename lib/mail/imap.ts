@@ -891,9 +891,11 @@ export async function moveMessages(
   folder: string,
   uids: string[],
   destination: string,
+  { notJunk = false }: { notJunk?: boolean } = {},
 ): Promise<void> {
   if (uids.length === 0) return;
   await withMailbox(session, folder, async (client) => {
+    if (notJunk) await reportNotJunk(client, uids.join(","));
     if (client.capabilities.has("MOVE")) {
       await client.messageMove(uids.join(","), destination, { uid: true });
     } else {
@@ -902,6 +904,21 @@ export async function moveMessages(
       await client.messageDelete(uids.join(","), { uid: true });
     }
   });
+}
+
+/**
+ * Tells the server's spam filter it got these wrong, with the RFC 5788
+ * keywords. Set before the move so they travel with the message. Best effort:
+ * imapflow drops keywords the mailbox doesn't accept, and the move out of Junk
+ * is itself the signal Gmail, Outlook and Dovecot's antispam learn from.
+ */
+async function reportNotJunk(client: ImapFlow, set: string): Promise<void> {
+  try {
+    await client.messageFlagsRemove(set, ["$Junk"], { uid: true });
+    await client.messageFlagsAdd(set, ["$NotJunk"], { uid: true });
+  } catch {
+    // Never block the move over a keyword.
+  }
 }
 
 export async function deleteMessages(

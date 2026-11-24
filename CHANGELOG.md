@@ -11,6 +11,14 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- In Junk, there is now a "Not spam" button. It sits in the toolbar
+  of an open message and in the list toolbar when you select mail.
+  It moves the mail back to your Inbox, and you can undo it. Raven
+  also tells your mail provider the mail is not spam, so its spam
+  filter can learn from it.
+
 ## [0.16.0] - 2026-11-21
 
 ### Changed

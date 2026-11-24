@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Archive, Inbox, LoaderCircle, Mail, MailOpen, RotateCw, Trash2 } from "lucide-react";
+import { Archive, Inbox, LoaderCircle, Mail, MailOpen, RotateCw, ShieldCheck, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -246,6 +246,7 @@ function MailListInner({
 		: null;
 	const canArchive = Boolean(archivePath) && !isTrash && !isArchive;
 	const canRestoreInbox = isTrash && Boolean(inboxPath) && inboxPath !== folder;
+	const canNotSpam = role === "\\Junk" && Boolean(inboxPath) && inboxPath !== folder;
 
 	// j/k and the wide view's prev/next move the selection from app-shell; keep
 	// the open row in view, including when a hidden list comes back.
@@ -461,6 +462,11 @@ function MailListInner({
 						{canRestoreInbox && (
 							<ToolButton label="Move to Inbox" disabled={busy} onClick={() => runBulk("inbox")}>
 								<Inbox />
+							</ToolButton>
+						)}
+						{canNotSpam && (
+							<ToolButton label="Not spam" disabled={busy} onClick={() => runBulk("inbox")}>
+								<ShieldCheck />
 							</ToolButton>
 						)}
 						<ToolButton

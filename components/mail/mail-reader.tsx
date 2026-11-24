@@ -19,6 +19,7 @@ import {
 	Printer,
 	Reply,
 	ReplyAll,
+	ShieldCheck,
 	Star,
 	Trash2,
 	X,
@@ -312,6 +313,7 @@ function MailReaderInner({
 	const inboxPath = folders ? resolveSpecialFolder(folders, "\\Inbox") : null;
 	const canArchive = Boolean(archivePath) && !isTrash && !isArchive;
 	const canRestoreInbox = isTrash && Boolean(inboxPath) && inboxPath !== folder;
+	const canNotSpam = role === "\\Junk" && Boolean(inboxPath) && inboxPath !== folder;
 
 	// Reply all only when it reaches more people than Reply; it leads for group threads.
 	const replyAll = message ? replyOptions(message, accountEmail) : null;
@@ -513,6 +515,11 @@ function MailReaderInner({
 								onClick={() => move("inbox", inboxPath)}
 							>
 								<Inbox />
+							</ToolCircle>
+						)}
+						{canNotSpam && (
+							<ToolCircle label="Not spam" onClick={() => move("inbox", inboxPath)}>
+								<ShieldCheck />
 							</ToolCircle>
 						)}
 						<ToolCircle
