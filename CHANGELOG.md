@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.17.0] - 2026-11-24
+
 ### Added
 
 - In Junk, there is now a "Not spam" button. It sits in the toolbar
