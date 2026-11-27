@@ -164,9 +164,9 @@ export function Segmented<T extends string>({
 				<ToggleGroupItem
 					key={o.value}
 					value={o.value}
-					className="h-10 flex-1 rounded-pill px-3.5 text-[12.5px] active:scale-[0.97] sm:h-8 sm:flex-none"
+					className="h-10 flex-1 rounded-pill px-3.5 text-[12.5px] sm:h-8 sm:flex-none"
 				>
-					{o.label}
+					<span className="transition-transform group-active/toggle:scale-[0.97]">{o.label}</span>
 				</ToggleGroupItem>
 			))}
 		</ToggleGroup>
