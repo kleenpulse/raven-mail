@@ -1,7 +1,3 @@
-/**
- * Pure MIME helpers over IMAP BODYSTRUCTURE. Structural type (not imapflow's)
- * so this stays importable from tests and client-safe code.
- */
 export type MimeNode = {
   part?: string;
   type: string;
@@ -15,18 +11,15 @@ export type MimeNode = {
 };
 
 export type TextPartRef = {
-  /** Section to fetch. Single-part bodies are section "1" (RFC 3501) — BINARY[] rejects TEXT. */
   key: string;
   type: "text/plain" | "text/html";
   encoding: string;
   charset: string;
 };
 
-/** imapflow nests a whole message under message/rfc822; mailparser only unpacks it when inline. */
 const isAttachedMessage = (node: MimeNode) =>
   node.type.toLowerCase() === "message/rfc822" && node.disposition?.toLowerCase() !== "inline";
 
-/** Document order. An attached message is one leaf. */
 function leaves(node: MimeNode, out: MimeNode[] = []): MimeNode[] {
   if (node.childNodes?.length && !isAttachedMessage(node)) {
     for (const child of node.childNodes) leaves(child, out);
@@ -55,7 +48,6 @@ export function isAttachmentNode(node: MimeNode): boolean {
   const type = node.type.toLowerCase();
   const disposition = node.disposition?.toLowerCase();
   if (disposition === "attachment") return true;
-  // cid-referenced images are part of the body, not attachments
   if (node.id && type.startsWith("image/")) return false;
   if ((type === "text/plain" || type === "text/html") && !filenameOf(node)) return false;
   return Boolean(filenameOf(node));
@@ -65,7 +57,6 @@ export function hasAttachments(root: MimeNode | undefined): boolean {
   return root ? leaves(root).some(isAttachmentNode) : false;
 }
 
-/** Sum of attachment part sizes (transfer-encoded; close enough for storage stats). */
 export function attachmentBytes(root: MimeNode | undefined): number {
   if (!root) return 0;
   return leaves(root)
@@ -73,13 +64,6 @@ export function attachmentBytes(root: MimeNode | undefined): number {
     .reduce((sum, n) => sum + (n.size ?? 0), 0);
 }
 
-/**
- * BODYSTRUCTURE section for each parsed attachment (mailparser's own partId
- * miscounts sibling multiparts). Both lists are in document order, so this
- * walks forward: same type and filename first, then filename alone (mailparser
- * retypes octet-stream by extension), then type alone. A part nothing matches
- * gets no section rather than shifting the rest.
- */
 export function attachmentSections(
   attachments: { contentType: string; filename?: string }[],
   root: MimeNode | undefined,
@@ -137,7 +121,6 @@ export function pickTextPart(root: MimeNode | undefined): TextPartRef | null {
   };
 }
 
-/** Decodes a possibly truncated transfer-encoded slice (partial FETCH). */
 export function decodeTransfer(input: Uint8Array, encoding: string): Uint8Array {
   const enc = encoding.toLowerCase();
   if (enc === "base64") {
@@ -172,7 +155,6 @@ export function decodeCharset(bytes: Uint8Array, charset: string): string {
   } catch {
     decoder = new TextDecoder("utf-8");
   }
-  // A cut multi-byte sequence decodes to U+FFFD at the tail; drop it.
   return decoder.decode(bytes).replace(/�+$/, "");
 }
 
@@ -198,7 +180,6 @@ export function htmlToText(html: string): string {
     .replace(/&([a-z]+);/gi, (m, name: string) => ENTITIES[name.toLowerCase()] ?? m);
 }
 
-/** Collapses whitespace, drops quoted reply lines, trims to ~200 chars. */
 export function toPreview(text: string, max = 200): string {
   const lines = text
     .split(/\r?\n/)

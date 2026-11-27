@@ -1,8 +1,6 @@
 import { describe, expect, mock, test } from "bun:test";
 import { makeSession } from "@/test/helpers/session";
 
-// getMessage / getUnsubscribeHeaders against a stand-in imapflow serving one raw message.
-
 const RAW = [
   "From: Weekly <news@reads.example>",
   "To: me@x.example",
@@ -17,7 +15,6 @@ const RAW = [
   "Hello.",
 ].join("\r\n");
 
-// Message 8 carries a small PNG as section 2.
 const PNG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 1, 2, 3]);
 const WITH_FILE = [
   "From: Ada <ada@x.example>",

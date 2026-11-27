@@ -6,15 +6,8 @@ import type { Contact } from "@/lib/mail/contact-match";
 export type { Contact };
 
 const DAY = 86_400_000;
-// People you write to are the likeliest next recipients; people copied
-// alongside you count for a little.
 const WEIGHT = { sentTo: 3, from: 1, alsoCopied: 0.5 } as const;
 
-/**
- * Address suggestions from the snapshot window, scored by how often and how
- * recently they appear (each sighting decays over about a week). Mailing
- * lists, no-reply and role addresses, and yourself are left out.
- */
 export function rankContacts(
   rows: EnvelopeRow[],
   { self, now, limit = 300 }: { self: string[]; now: number; limit?: number },

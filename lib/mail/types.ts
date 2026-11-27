@@ -3,7 +3,6 @@ export type AttachmentMeta = {
   contentType: string;
   size: number;
   contentId?: string;
-  /** IMAP section to download. Missing when the part couldn't be located. */
   part?: string;
 };
 
@@ -42,15 +41,11 @@ export type MailSummary = {
   messageId?: string;
   references?: string[];
   inReplyTo?: string;
-  /** The server's conversation id (Gmail X-GM-THRID, RFC 8474 THREADID), when it has one. */
   threadId?: string;
 };
 
-/** A conversation around one message, across its folder and Sent (GET /api/mail/thread). */
 export type MailThread = {
-  /** Oldest first. Includes the message it was asked for. */
   messages: MailSummary[];
-  /** Searching the rest timed out or failed; only the one message is here. */
   partial?: boolean;
 };
 
@@ -73,7 +68,6 @@ export type MailMessage = {
   references?: string[];
   threadId?: string;
   headers: Record<string, string>;
-  /** True when the HTML references remote (http/https) images or CSS. */
   remoteContent?: boolean;
 };
 
@@ -86,17 +80,13 @@ export type ComposeDraft = {
   html?: string;
   inReplyTo?: string;
   references?: string[];
-  /** Message being replied to — flagged \Answered after a successful send. */
   source?: { folder: string; uid: string };
-  /** "Remind me if no reply": a reminder is set once the message has gone. */
   remind?: { days: number } | { at: string };
-  /** The original being replied to / forwarded, kept out of `text` until send (see draftBody). */
   quote?: { kind: "reply" | "forward"; header: string; body: string };
   attachments?: {
     filename: string;
     contentType: string;
     contentBase64: string;
-    /** Set on an image shown in the body: the HTML points at it as `cid:<this>`. */
     cid?: string;
   }[];
 };

@@ -128,9 +128,9 @@ describe("snapshotFromMessages", () => {
 		message({ uid: "2", folder: "Sent", date: at(2), text: "123" }),
 		message({ uid: "3", folder: "Drafts", date: at(1) }),
 		message({ uid: "4", folder: "Archive", date: at(1) }),
-		message({ uid: "5", folder: "INBOX", date: at(24 * 8) }), // outside a 7-day window
-		message({ uid: "6", folder: "INBOX", date: new Date(NOW + hour).toISOString() }), // future
-		message({ uid: "7", folder: "INBOX", date: at(24 * 7) }), // exactly on the edge
+		message({ uid: "5", folder: "INBOX", date: at(24 * 8) }),
+		message({ uid: "6", folder: "INBOX", date: new Date(NOW + hour).toISOString() }),
+		message({ uid: "7", folder: "INBOX", date: at(24 * 7) }),
 	];
 
 	const snap = snapshotFromMessages(messages, { now: NOW, days: 7, account: "me@x.com", inbox: { unseen: 3, total: 9 } });

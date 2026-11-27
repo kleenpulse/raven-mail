@@ -32,10 +32,7 @@ import { createKeyedSemaphore } from "@/lib/server/semaphore";
 import { createTtlCache } from "@/lib/server/cache";
 import { acceptTerms, neededTerms, parseQuery, termKey, type Term } from "@/lib/search/text";
 
-// Gmail allows ~15 concurrent IMAP connections per account; stay well under.
 const connections = createKeyedSemaphore(4);
-// Downloads hold a connection for the whole stream; capping them below `connections`
-// keeps slots free for the list, poll, reader and send.
 const downloads = createKeyedSemaphore(2);
 const folderIndex = createTtlCache<MailFolder[]>({ ttlMs: 5 * 60_000, maxEntries: 100 });
 
@@ -45,7 +42,6 @@ function createClient(session: MailSession): ImapFlow {
     host: session.imap.host,
     port: session.imap.port,
     secure: session.imap.secure,
-    // Non-TLS ports must upgrade; a stripped STARTTLS would leak the password.
     doSTARTTLS: plain && !isLoopbackHost(session.imap.host) ? true : undefined,
     auth: {
       user: session.email,
@@ -62,20 +58,16 @@ function createClient(session: MailSession): ImapFlow {
   });
 }
 
-// Most connects to Gmail answer in 1-3 s, but now and then a handshake hangs for 20 s or
-// more. Give up on those early and try once more on a fresh socket, which usually answers.
 export const CONNECT_TIMEOUT_MS = 8_000;
 export const CONNECT_ATTEMPTS = 2;
 const STALLED = new Set(["CONNECT_TIMEOUT", "GREETING_TIMEOUT", "ETIMEOUT", "ETIMEDOUT", "ECONNRESET", "EPIPE"]);
 
-/** A connect that hung or dropped before signing in. A rejected login never counts. */
 export function isStalledConnect(err: unknown): boolean {
   if (!err || typeof err !== "object") return false;
   const { code, authenticationFailed } = err as { code?: unknown; authenticationFailed?: unknown };
   return !authenticationFailed && typeof code === "string" && STALLED.has(code);
 }
 
-/** A connected, signed-in client. An ImapFlow can't connect twice, so a retry gets a new one. */
 async function connectClient(session: MailSession, signal?: AbortSignal): Promise<ImapFlow> {
   for (let attempt = 1; ; attempt++) {
     signal?.throwIfAborted();
@@ -119,21 +111,11 @@ export async function withClient<T>(session: MailSession, fn: (client: ImapFlow)
   });
 }
 
-/**
- * A client not yet connected that counts against the per-mailbox connection cap.
- * Always call `release()`. For diagnostics, which connects by hand to time and
- * classify each phase, so it never retries: it reports the network as it is.
- */
 export async function acquireClient(session: MailSession): Promise<{ client: ImapFlow; release: () => void }> {
   const free = await connections.acquire(sessionKey(session));
   return holdClient(createClient(session), free);
 }
 
-/**
- * A connected client held across several steps that counts against the per-mailbox
- * connection cap. Always call `release()`. `onSlot` runs once a slot is free, before
- * connecting, so callers can time the wait apart from the connect.
- */
 export async function openClient(
   session: MailSession,
   { signal, onSlot }: { signal?: AbortSignal; onSlot?: () => void } = {},
@@ -199,7 +181,6 @@ export async function listFolders(session: MailSession): Promise<MailFolder[]> {
   );
 }
 
-/** Special-use path lookup for mutations — LIST only, cached; no per-folder STATUS. */
 export async function resolveSpecial(
   session: MailSession,
   role: NonNullable<MailFolder["specialUse"]>,
@@ -244,7 +225,6 @@ const SUMMARY_QUERY: FetchQueryObject = {
   internalDate: true,
   bodyStructure: true,
   size: true,
-  // Conversation grouping (lib/mail/thread). threadId is only asked of servers that have one.
   threadId: true,
   headers: ["references"],
 };
@@ -284,12 +264,6 @@ function termCriterion(t: Term, plainCriterion: (token: string) => SearchObject)
   }
 }
 
-/**
- * Term-wise server search with the same acceptance policy as `searchText`
- * (`acceptTerms`). imapflow can't AND repeated `or`/`text` keys in one query,
- * so it's one SEARCH per term and the UID sets combine here. The server can't
- * do fuzzy; SEARCH is already substring, so prefixes land while typing.
- */
 export async function searchTerms(
   client: ImapFlow,
   query: string | string[],
@@ -326,12 +300,10 @@ export async function listMessages(
           : await client.search({ uid: `1:${Math.max(1, opts.before! - 1)}` }, { uid: true });
         const uids = (Array.isArray(found) ? found : []).sort((a, b) => b - a);
         if (query) count = uids.length;
-        // `before` is the page cursor: the lowest UID the client already holds.
         const before = opts.before;
         const page = (before ? uids.filter((u) => u < before) : uids).slice(0, limit);
         if (page.length) fetched = await client.fetchAll(page, SUMMARY_QUERY, { uid: true });
       } else if (exists > 0) {
-        // Newest messages have the highest sequence numbers — no SEARCH ALL needed.
         fetched = await client.fetchAll(`${Math.max(1, exists - limit + 1)}:${exists}`, SUMMARY_QUERY);
       }
 
@@ -348,7 +320,6 @@ export async function listMessages(
 
 const INLINE_IMAGE_LIMIT = 1_500_000;
 
-/** cid: references can't resolve inside a srcdoc iframe; inline small images as data: URLs. */
 function inlineCidImages(html: string, attachments: Attachment[]): string {
   let out = html;
   for (const a of attachments) {
@@ -362,8 +333,6 @@ function inlineCidImages(html: string, attachments: Attachment[]): string {
   return out;
 }
 
-// `source` is BODY.PEEK[]: reading a message never marks it \Seen.
-// bodyStructure gives each attachment its section number for download.
 const MESSAGE_QUERY: FetchQueryObject = {
   envelope: true,
   flags: true,
@@ -380,10 +349,6 @@ function charsetOf(a: Attachment): string | undefined {
   return typeof charset === "string" ? charset : undefined;
 }
 
-/**
- * Parse + sanitize one fetched message. CPU only, so callers run it after releasing the mailbox.
- * With `owner`, the listed attachments' bytes are kept so a click on one skips the IMAP round trip.
- */
 async function toMailMessage(
   msg: FetchMessageObject,
   source: Buffer,
@@ -469,7 +434,6 @@ export async function getMessage(session: MailSession, folder: string, uid: stri
   return toMailMessage(msg, msg.source, folder, sessionKey(session));
 }
 
-/** Just the List-Unsubscribe pair, read fresh from the server (never trusted from the client). */
 export async function getUnsubscribeHeaders(session: MailSession, folder: string, uid: string): Promise<Record<string, string>> {
   const msg = await withMailbox(
     session,
@@ -481,10 +445,6 @@ export async function getUnsubscribeHeaders(session: MailSession, folder: string
   return Object.fromEntries(parseHeaderBlock(msg.headers));
 }
 
-/**
- * Bodies for the list rows in view, over one connection. Sizes come first so
- * an oversized message is never downloaded.
- */
 export async function getMessages(
   session: MailSession,
   folder: string,
@@ -524,28 +484,12 @@ export type AttachmentDownload = {
   filename?: string;
   contentType?: string;
   charset?: string;
-  /** Known only when the bytes are already in memory. */
   size?: number;
-  /**
-   * Milliseconds per phase up to the first bytes, for the Server-Timing header:
-   * wait, connect, open and first from IMAP, or just memory when kept from reading the message.
-   */
   timings: Record<string, number>;
 };
 
-/**
- * Bytes per FETCH. Each window is one round trip to the mail server, and parts
- * arrive base64-encoded (about 1.37x larger), so imapflow's 64 KB default spent
- * ~64 round trips on a 3 MB photo. 1 MB keeps most previews to one or two.
- */
 export const DOWNLOAD_CHUNK_BYTES = 1024 * 1024;
 
-/**
- * One decoded part as a stream. Served from memory when the message was just
- * read (see attachment-cache); otherwise imapflow pulls it in DOWNLOAD_CHUNK_BYTES
- * FETCH windows as the body is read, so the connection and mailbox lock stay
- * held until the stream ends, errors or is cancelled.
- */
 export async function downloadAttachment(
   session: MailSession,
   folder: string,
@@ -587,12 +531,10 @@ export async function downloadAttachment(
     const held = await openClient(session, { signal, onSlot: () => (wait = lap()) });
     release = held.release;
     const client = held.client;
-    // Retries included: a stalled first try shows here.
     const connect = lap();
     const lock = await client.getMailboxLock(folder, { readOnly: true });
     unlock = () => lock.release();
     const open = lap();
-    // Resolves once the first window is in, so `first` covers that round trip too.
     const { meta, content } = await client.download(uid, part, { uid: true, chunkSize: DOWNLOAD_CHUNK_BYTES });
     const first = lap();
     if (!content) throw new Error("Attachment not found");
@@ -600,7 +542,6 @@ export async function downloadAttachment(
     content.once("error", done);
     signal?.addEventListener("abort", () => content.destroy(), { once: true });
     return {
-      // node:stream/web and the DOM lib type the same global ReadableStream separately.
       body: Readable.toWeb(content) as unknown as ReadableStream<Uint8Array>,
       filename: meta.filename || undefined,
       contentType: meta.contentType || undefined,
@@ -613,7 +554,6 @@ export async function downloadAttachment(
   }
 }
 
-/** Deep links carry the Message-ID so a UIDVALIDITY reset can't strand them. */
 export async function findUidByMessageId(
   session: MailSession,
   folder: string,
@@ -634,15 +574,6 @@ export async function findUidByMessageId(
 const THREAD_LIMIT = 50;
 const THREAD_SINCE_MS = 180 * 86_400_000;
 
-/**
- * The conversation around one message, in its folder plus Sent (or Inbox plus
- * Sent when it was opened from Sent): one SEARCH per folder. Servers with a
- * thread id answer exactly; others match the header chain, bounded by SINCE
- * so a big unindexed folder isn't scanned end to end.
- *
- * One connection for every step. imapflow can't cancel a command, so `signal`
- * closes the socket instead: the slow SEARCH rejects and the slot frees.
- */
 export async function getThread(
   session: MailSession,
   folder: string,
@@ -724,7 +655,6 @@ async function threadOn(
   return { messages: dedupeThread(found, folder) };
 }
 
-/** Oldest first, newest THREAD_LIMIT kept; a copy in the asked folder beats one elsewhere (mail to yourself). */
 function dedupeThread(found: MailSummary[], folder: string): MailSummary[] {
   const byId = new Map<string, MailSummary>();
   for (const m of found) {
@@ -737,11 +667,6 @@ function dedupeThread(found: MailSummary[], folder: string): MailSummary[] {
     .slice(-THREAD_LIMIT);
 }
 
-/**
- * What the rules run reads: the given Inbox uids, or the newest `limit`, with
- * their previews and the folder's UIDVALIDITY (the fingerprint for mail with
- * no Message-ID).
- */
 export async function rulesBatch(
   session: MailSession,
   uids: string[] | null,
@@ -768,11 +693,6 @@ export async function rulesBatch(
   );
 }
 
-/**
- * Move, and say where each message landed: the COPYUID map (UIDPLUS) as
- * old uid → new uid. A server without UIDPLUS answers with an empty map, and
- * those moves can't be undone by uid.
- */
 export async function moveWithUids(
   session: MailSession,
   folder: string,
@@ -800,14 +720,6 @@ export async function moveWithUids(
 export type ReplyCheck = { messageId: string; since: Date; needUid: boolean };
 export type ReplyAnswer = { replied: boolean; sentUid?: string };
 
-/**
- * For each sent Message-ID: has a reply reached the Inbox (In-Reply-To or
- * References), and, when asked, its uid in Sent. One connection, one SEARCH
- * per check, each bounded by SINCE so a big folder isn't scanned end to end.
- *
- * `signal` closes the socket, like getThread: the answers found so far come
- * back, and the checks that didn't finish are simply missing.
- */
 export async function findReplies(
   session: MailSession,
   checks: ReplyCheck[],
@@ -850,10 +762,6 @@ export async function findReplies(
   }
 }
 
-/**
- * Every UID in `folder` belonging to the given server thread ids, plus `uids`.
- * Whole-thread archive/trash/read act on messages the list never loaded.
- */
 export async function expandThreadUids(
   session: MailSession,
   folder: string,
@@ -906,18 +814,11 @@ export async function moveMessages(
   });
 }
 
-/**
- * Tells the server's spam filter it got these wrong, with the RFC 5788
- * keywords. Set before the move so they travel with the message. Best effort:
- * imapflow drops keywords the mailbox doesn't accept, and the move out of Junk
- * is itself the signal Gmail, Outlook and Dovecot's antispam learn from.
- */
 async function reportNotJunk(client: ImapFlow, set: string): Promise<void> {
   try {
     await client.messageFlagsRemove(set, ["$Junk"], { uid: true });
     await client.messageFlagsAdd(set, ["$NotJunk"], { uid: true });
   } catch {
-    // Never block the move over a keyword.
   }
 }
 
@@ -946,7 +847,6 @@ export async function appendRaw(
 ): Promise<{ uid?: string }> {
   return withClient(session, async (client) => {
     const res = await client.append(mailbox, raw, flags);
-    // UIDPLUS servers answer with APPENDUID; others leave the caller to search.
     return res && res.uid ? { uid: String(res.uid) } : {};
   });
 }

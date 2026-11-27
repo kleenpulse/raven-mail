@@ -1,11 +1,3 @@
-/**
- * Attachment bytes already fetched for a preview, so opening the same file again
- * (or stepping back to it in the gallery) doesn't download it again, and a click
- * joins a download already running for the same file. Memory only: a reload starts
- * empty, and sign-out empties it. Oldest files go first once the total passes the budget.
- */
-
-/** A few large photos, or one video at the preview limit plus some images. */
 export const PREVIEW_CACHE_BYTES = 64 * 1024 * 1024;
 
 const blobs = new Map<string, Blob>();
@@ -14,7 +6,6 @@ let total = 0;
 export function recallPreview(key: string): Blob | undefined {
 	const blob = blobs.get(key);
 	if (!blob) return undefined;
-	// Re-insert: Map order is the eviction order, so this marks it recently used.
 	blobs.delete(key);
 	blobs.set(key, blob);
 	return blob;
@@ -26,7 +17,6 @@ export function rememberPreview(key: string, blob: Blob, budget = PREVIEW_CACHE_
 		total -= old.size;
 		blobs.delete(key);
 	}
-	// Bigger than the whole budget: keeping it would push out everything else.
 	if (blob.size > budget) return;
 	blobs.set(key, blob);
 	total += blob.size;
@@ -40,12 +30,6 @@ export function rememberPreview(key: string, blob: Blob, budget = PREVIEW_CACHE_
 type Pending = { promise: Promise<Blob>; controller: AbortController; waiters: number };
 const pending = new Map<string, Pending>();
 
-/**
- * The file under `key`: from memory, from a download already running for it (a hover
- * prefetch, say), or from `load`. A caller whose `signal` aborts stops waiting; the
- * download itself is cancelled only once nobody is waiting. With no `signal` the
- * caller waits to the end, so a prefetch is never cancelled by a viewer moving on.
- */
 export function loadPreview(
 	key: string,
 	load: (signal: AbortSignal) => Promise<Blob>,
@@ -61,7 +45,6 @@ export function loadPreview(
 		const started: Pending = { controller, waiters: 0, promise: load(controller.signal) };
 		started.promise.then(
 			(blob) => {
-				// Forgotten mid-flight (sign-out): the bytes must not land after the clear.
 				if (pending.get(key) !== started) return;
 				pending.delete(key);
 				rememberPreview(key, blob);
@@ -100,7 +83,6 @@ export function loadPreview(
 	});
 }
 
-/** Sign-out, and tests. Downloads still running are cancelled. */
 export function forgetPreviews(): void {
 	blobs.clear();
 	total = 0;

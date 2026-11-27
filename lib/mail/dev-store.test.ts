@@ -301,7 +301,6 @@ describe("devGetAttachment", () => {
 		const text = (b: Uint8Array) => new TextDecoder().decode(b);
 		const pdf = text(find("application/pdf"));
 		expect(pdf.startsWith("%PDF-1.4\n")).toBe(true);
-		// startxref must point at the xref table, or viewers have to repair the file
 		const at = Number(pdf.match(/startxref\n(\d+)/)![1]);
 		expect(pdf.slice(at, at + 4)).toBe("xref");
 		expect([...find("image/png").slice(0, 4)]).toEqual([0x89, 0x50, 0x4e, 0x47]);

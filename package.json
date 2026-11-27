@@ -12,6 +12,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "lint:prune": "eslint --prune-suppressions",
     "typecheck": "next typegen && tsc --noEmit --incremental false",
     "test": "bun test --isolate",
     "test:unit": "bun test --isolate --path-ignore-patterns='**/*.dom.test.tsx'",

@@ -13,7 +13,6 @@ import {
   SECTION_RE,
 } from "@/lib/mail/attachment";
 
-/** The RFC 5987 value, decoded the way a browser would. */
 const extName = (header: string) => decodeURIComponent(header.split("filename*=UTF-8''")[1]!);
 const asciiName = (header: string) => header.match(/filename="([^"]*)"/)![1];
 
@@ -39,7 +38,6 @@ describe("contentDisposition", () => {
 
   test("quotes, semicolons and backslashes can't break out of the quoted fallback", () => {
     const header = contentDisposition('a"; filename="evil.html');
-    // One quoted value, then one token: nothing escapes into a second parameter.
     expect(header).toMatch(/^attachment; filename="[^"\\;]*"; filename\*=UTF-8''[A-Za-z0-9%!._~-]+$/);
     expect(extName(header)).toBe('a"; filename="evil.html');
   });

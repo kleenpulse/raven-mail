@@ -1,20 +1,11 @@
 import type { MailMessage } from "@/lib/mail/types";
 
-/** Most UIDs one preload request may carry: about a tall screen of rows. */
 export const PRELOAD_MAX_UIDS = 12;
-/** Raw RFC822 size. Bigger messages (attachments, heavy inline images) load on open, as before. */
 export const PRELOAD_MAX_MESSAGE_BYTES = 1_000_000;
-/** Bytes one request may download; the rest wait for the next request. */
 export const PRELOAD_BATCH_BYTES = 3_000_000;
 
-/** A UID in neither list was deferred to the next request. */
 export type PreloadResult = { messages: MailMessage[]; skipped: string[] };
 
-/**
- * Which of the requested messages one preload request downloads, newest first
- * (the list's order). The first eligible message is always taken, so every
- * request makes progress.
- */
 export function planPreload(
   items: readonly { uid: number; size: number }[],
   { maxMessageBytes = PRELOAD_MAX_MESSAGE_BYTES, batchBytes = PRELOAD_BATCH_BYTES } = {},
@@ -34,19 +25,12 @@ export function planPreload(
 }
 
 export type Preloader = {
-  /** Every row in the list, top-down. Clears what's in view until the observer reports again. */
   setRows(uids: readonly string[]): void;
   see(uid: string, inView: boolean): void;
-  /** Check again once things settle. */
   poke(): void;
   stop(): void;
 };
 
-/**
- * Warms the cache with the bodies of the rows in view, one request at a time.
- * Rows flicked past are never fetched: the visible set has to hold still for
- * `settleMs` first.
- */
 export function createPreloader({
   load,
   isWarm,
@@ -57,7 +41,6 @@ export function createPreloader({
   now = Date.now,
 }: {
   load: (uids: string[], signal: AbortSignal) => Promise<PreloadResult>;
-  /** Already cached, or being fetched by the reader. */
   isWarm: (uid: string) => boolean;
   seed: (message: MailMessage) => void;
   canRun?: () => boolean;
@@ -67,7 +50,6 @@ export function createPreloader({
 }): Preloader {
   let rows: readonly string[] = [];
   const inView = new Set<string>();
-  // Too big, gone, or unparseable: the reader fetches these on open, as before.
   const skipped = new Set<string>();
   let inFlight: AbortController | null = null;
   let timer: ReturnType<typeof setTimeout> | undefined;
@@ -81,7 +63,6 @@ export function createPreloader({
     timer = setTimeout(flush, settleMs);
   }
 
-  // A failing mail server gets a growing pause, not a request on every scroll.
   function fail() {
     backoff = Math.min(backoff * 2 || 5_000, 60_000);
     retryAt = now() + backoff;
@@ -99,7 +80,6 @@ export function createPreloader({
         inFlight = null;
         for (const message of result.messages) seed(message);
         for (const uid of result.skipped) skipped.add(uid);
-        // A reply that settles nothing would ask for the same rows forever.
         if (result.messages.length + result.skipped.length === 0) return fail();
         backoff = 0;
         flush();

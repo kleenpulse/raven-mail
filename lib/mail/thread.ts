@@ -1,25 +1,13 @@
 import type { MailAddress, MailSummary } from "@/lib/mail/types";
 
-/*
- * Conversation grouping over the rows a list has loaded. Three tiers, strongest first:
- *  1. the server's thread id (Gmail X-GM-THRID, RFC 8474 THREADID);
- *  2. the header chain: Message-ID ↔ In-Reply-To ↔ every References entry;
- *  3. a guarded subject match for replies that lost their headers.
- * Pure and client-safe: the list and the shell's j/k both group the same way.
- */
-
 export type ThreadRow = {
-  /** The newest member's uid: the row's identity for selection, j/k and links. */
   key: string;
   latest: MailSummary;
-  /** Newest first, as the list shows them. */
   members: MailSummary[];
   unread: boolean;
   flagged: boolean;
   hasAttachments: boolean;
-  /** Distinct senders, oldest first; the account itself reads as "You". */
   people: string[];
-  /** Server thread ids among the members (whole-thread actions reach unloaded mail through them). */
   threadIds: string[];
 };
 
@@ -27,7 +15,6 @@ const PREFIX = /^\s*((re|aw|sv|antw|fwd?|fw|wg|tr)\s*(\[\d+\])?\s*:\s*|\[[^\]]{1
 const REPLY_PREFIX = /^\s*(re|aw|sv|antw|fwd?|fw|wg|tr)\s*(\[\d+\])?\s*:/i;
 const SUBJECT_WINDOW_MS = 30 * 86_400_000;
 
-/** "Re: [team] Fwd:  Q3  plan" → "q3 plan". */
 export function normalizeSubject(subject: string): string {
   return subject.replace(PREFIX, "").replace(/\s+/g, " ").trim().toLowerCase();
 }
@@ -57,11 +44,6 @@ function makeUnion() {
 
 const key = (a: MailAddress) => a.address.trim().toLowerCase();
 
-/**
- * Groups rows (newest first) into conversations, in the order of each one's
- * newest message. `self` is the account address, left out of the people
- * that must overlap for a subject match and shown as "You".
- */
 export function groupThreads(rows: MailSummary[], self: string): ThreadRow[] {
   const me = self.trim().toLowerCase();
   const { find, union } = makeUnion();
@@ -74,8 +56,6 @@ export function groupThreads(rows: MailSummary[], self: string): ThreadRow[] {
     for (const id of [m.inReplyTo, ...(m.references ?? [])]) if (id) union(node(i), `mid:${id}`);
   });
 
-  // A reply with no headers at all joins on subject, only when it says it's a reply,
-  // the two share a person besides you, and they're within a month of each other.
   const others = (m: MailSummary) => new Set([m.from, ...m.to].map(key).filter((a) => a && a !== me));
   rows.forEach((m, i) => {
     if (m.threadId || m.inReplyTo || m.references?.length || !REPLY_PREFIX.test(m.subject)) return;
@@ -118,7 +98,6 @@ export function groupThreads(rows: MailSummary[], self: string): ThreadRow[] {
   });
 }
 
-/** One row per message, for search results and threading switched off. */
 export function singleRows(rows: MailSummary[], self: string): ThreadRow[] {
   const me = self.trim().toLowerCase();
   return rows.map((m) => ({
@@ -133,22 +112,16 @@ export function singleRows(rows: MailSummary[], self: string): ThreadRow[] {
   }));
 }
 
-/** Every uid a set of selected rows stands for. */
 export function memberUids(rows: ThreadRow[], keys: Iterable<string>): string[] {
   const wanted = new Set(keys);
   return rows.filter((r) => wanted.has(r.key)).flatMap((r) => r.members.map((m) => m.uid));
 }
 
-/** The row holding a uid, which may be an older member opened from a link. */
 export function rowOf(rows: ThreadRow[], uid: string | null): number {
   if (!uid) return -1;
   return rows.findIndex((r) => r.members.some((m) => m.uid === uid));
 }
 
-/**
- * The Message-IDs a header SEARCH should look for around one message: the
- * root, its parents and itself. Long chains keep the root and the newest.
- */
 export function threadHeaderIds(m: Pick<MailSummary, "messageId" | "inReplyTo" | "references">, cap = 20): string[] {
   const ids = [...new Set([...(m.references ?? []), m.inReplyTo, m.messageId])].filter(
     (id): id is string => Boolean(id && /^<[^<>\s]{1,250}>$/.test(id)),
@@ -156,10 +129,6 @@ export function threadHeaderIds(m: Pick<MailSummary, "messageId" | "inReplyTo" |
   return ids.length <= cap ? ids : [ids[0]!, ...ids.slice(ids.length - (cap - 1))];
 }
 
-/**
- * Whole-thread targets for the reader's archive / trash: every member in this
- * folder plus their server thread ids. Just the open message without a thread.
- */
 export function conversationTargets(
   thread: { messages: MailSummary[] } | undefined,
   folder: string,

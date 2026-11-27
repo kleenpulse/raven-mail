@@ -5,7 +5,6 @@ import { pickTextPart, previewFromPart, type TextPartRef } from "@/lib/mail/mime
 const PREVIEW_BYTES = 1536;
 const CACHE_LIMIT = 5000;
 
-// uidValidity-scoped keys: a UID never means a different message within one scope.
 const cache = new Map<string, string>();
 
 function remember(key: string, value: string) {
@@ -17,11 +16,6 @@ function remember(key: string, value: string) {
   }
 }
 
-/**
- * Fetches only the first ~1.5KB of each message's best text part, grouped by
- * section so a page of 50 costs a couple of FETCHes instead of 50 full sources.
- * `scope` = session key + folder + uidValidity.
- */
 export async function fetchPreviews(
   client: ImapFlow,
   scope: string,
@@ -57,7 +51,7 @@ export async function fetchPreviews(
         { uid: true, binary: true },
       );
     } catch {
-      continue; // previews are decoration; the list must still render
+      continue;
     }
     const mapKey = key.toLowerCase();
     for (const msg of fetched) {

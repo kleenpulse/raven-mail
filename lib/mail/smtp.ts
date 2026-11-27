@@ -11,7 +11,6 @@ function createTransport(session: MailSession) {
     host: session.smtp.host,
     port: session.smtp.port,
     secure: session.smtp.secure,
-    // 587 is STARTTLS: without requireTLS a stripped STARTTLS would send the password in clear.
     requireTLS: !session.smtp.secure && !isLoopbackHost(session.smtp.host),
     auth: {
       user: session.email,
@@ -25,12 +24,10 @@ function createTransport(session: MailSession) {
   });
 }
 
-// Objects, not strings: nodemailer then encodes each name itself, commas and all.
 function parseAddressList(raw: string): ({ name: string; address: string } | string)[] {
   return splitAddressList(raw).map((a) => (a.name ? { name: a.name, address: a.address } : a.address));
 }
 
-/** `keepBcc` is for saved drafts only: sent mail must never carry the Bcc header. */
 export async function buildRawMessage(
   session: MailSession,
   draft: ComposeDraft,
@@ -54,7 +51,6 @@ export async function buildRawMessage(
       filename: a.filename,
       contentType: a.contentType,
       content: Buffer.from(a.contentBase64, "base64"),
-      // An image the HTML shows as cid:…; nodemailer then files it beside the HTML (multipart/related).
       ...(a.cid ? { cid: a.cid } : {}),
     })),
     date: new Date(),
@@ -96,7 +92,6 @@ export async function verifySmtp(session: MailSession): Promise<void> {
   await transport.verify();
 }
 
-/** Gmail and Microsoft 365 file sent mail themselves; appending creates duplicates. */
 export function serverSavesSentCopy(session: MailSession): boolean {
   if (session.provider === "gmail" || session.provider === "outlook") return true;
   return /(^|\.)(gmail\.com|googlemail\.com|office365\.com|outlook\.com)$/i.test(session.smtp.host);

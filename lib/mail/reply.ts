@@ -68,9 +68,7 @@ export function buildReplyDraft(
   };
 }
 
-// Automated senders never read replies; reply-all leaves them out (unless they're the one you're answering).
 const AUTOMATED = /^(?:no-?reply|do-?not-?reply|notifications?|mailer-daemon|bounces?|postmaster)(?:[+.-][^@]*)?@/i;
-// Addresses that fan out to many people — answering the group is usually the point.
 const GROUP = /^(?:all|everyone|team|staff|group|list|announce|dev|eng|ops|support|hello|info)(?:[+.-][^@]*)?@/i;
 
 const key = (a: MailAddress) => a.address.trim().toLowerCase();
@@ -80,7 +78,6 @@ function replyRecipients(
   mode: "reply" | "replyAll",
   self: string,
 ): { to: MailAddress[]; cc: MailAddress[] } {
-  // Replying to your own sent message goes back to its recipients, not to you.
   const fromSelf = key(message.from) === self;
   const primary = fromSelf ? message.to : [message.replyTo ?? message.from];
   const notSelf = (a: MailAddress) => key(a) !== self;
@@ -94,11 +91,8 @@ function replyRecipients(
 }
 
 export type ReplyOptions = {
-  /** People reply-all adds on top of a plain reply; empty = reply-all would change nothing. */
   extra: MailAddress[];
-  /** Everyone reply-all reaches (for the button's count and tooltip). */
   everyone: MailAddress[];
-  /** Group address or you were only Cc'd — the conversation belongs to the room, so reply-all leads. */
   preferReplyAll: boolean;
 };
 
@@ -115,11 +109,6 @@ export function replyOptions(message: MailMessage, accountEmail: string): ReplyO
   return { extra, everyone, preferReplyAll: extra.length > 0 && (group || onlyCc) };
 }
 
-/**
- * The body that actually leaves: what you wrote, then the quoted original
- * ("> " lines for replies, a header block for forwards). The composer keeps
- * the two apart so the quote never clutters the text box.
- */
 export function draftBody(draft: Pick<ComposeDraft, "text" | "quote">): string {
   const lead = draft.text.replace(/\s+$/, "");
   if (!draft.quote) return lead;
@@ -134,7 +123,6 @@ export function draftBody(draft: Pick<ComposeDraft, "text" | "quote">): string {
   return lead ? `${lead}\n\n${block}` : block;
 }
 
-/** A saved draft back into compose fields, so reopening it carries on where it was left. */
 export function draftFromMessage(message: MailMessage): Partial<ComposeDraft> {
   const list = (as: MailAddress[]) => as.map(formatAddress).join(", ");
   const text = message.text.trim() ? message.text : htmlToText(message.html).trim();
@@ -142,10 +130,8 @@ export function draftFromMessage(message: MailMessage): Partial<ComposeDraft> {
     to: list(message.to),
     cc: list(message.cc),
     bcc: list(message.bcc),
-    // Saving fills an empty subject with this placeholder; don't hand it back as typed text.
     subject: message.subject === "(no subject)" ? "" : message.subject,
     text: text.replace(/\r\n/g, "\n").replace(/\s+$/, ""),
-    // The editor parses this through its own schema (inert, no scripts), keeping the formatting.
     ...(message.html ? { html: message.html } : {}),
     inReplyTo: message.inReplyTo,
     references: message.references,

@@ -46,7 +46,6 @@ describe("attachment cache", () => {
   test("drops the least recently used files to stay under the total", () => {
     const quarter = ATTACHMENT_MAX_TOTAL_BYTES / 4;
     for (const part of ["1", "2", "3", "4"]) rememberAttachment("me", "INBOX", "7", part, file(quarter));
-    // Opening part 1 again makes part 2 the oldest.
     expect(recallAttachment("me", "INBOX", "7", "1")).toBeDefined();
     rememberAttachment("me", "INBOX", "7", "5", file(quarter));
     expect(recallAttachment("me", "INBOX", "7", "2")).toBeUndefined();

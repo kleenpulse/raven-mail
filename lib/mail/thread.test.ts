@@ -60,7 +60,6 @@ describe("groupThreads", () => {
   test("a trimmed References still joins through In-Reply-To, and a missing middle through References", () => {
     const a = row({ date: day(3) });
     const b = row({ date: day(2), inReplyTo: a.messageId });
-    // b's own copy isn't loaded; c names the root in References only.
     const c = row({ date: day(0), references: [a.messageId!, "<gone@x>"], inReplyTo: "<gone@x>" });
     expect(shape([c, b, a])).toEqual([[c.uid, b.uid, a.uid]]);
   });

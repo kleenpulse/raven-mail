@@ -6,11 +6,6 @@ import { outboundPolicy, safeFetch } from "@/lib/integrations/safe-fetch";
 
 const TIMEOUT_MS = 10_000;
 
-/**
- * RFC 8058 one-click: a bare POST of `List-Unsubscribe=One-Click`, no cookies,
- * no redirects followed, private networks blocked at the socket. A 3xx counts:
- * senders often answer the POST with a redirect to a "you're out" page.
- */
 export async function oneClickUnsubscribe(target: string): Promise<void> {
   let ok = false;
   try {

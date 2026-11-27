@@ -44,7 +44,6 @@ export function resolveSpecialFolder(
   return byName?.path ?? null;
 }
 
-/** Special-use role for the open folder (flag on the folder, else name match). */
 export function folderSpecialUse(
   folders: MailFolder[] | undefined,
   path: string,

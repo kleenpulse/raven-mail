@@ -39,14 +39,11 @@ describe("labelSpecialUse", () => {
 
 	test("matches the last path segment with the server's delimiter", () => {
 		expect(labelSpecialUse("INBOX.Sent", ".")).toBe("\\Sent");
-		expect(labelSpecialUse("INBOX.Sent", "/")).toBe("\\Sent"); // suffix match still hits
+		expect(labelSpecialUse("INBOX.Sent", "/")).toBe("\\Sent");
 		expect(labelSpecialUse("Work/INBOX", "/")).toBe("\\Inbox");
 		expect(labelSpecialUse("INBOX/Work", "/")).toBeUndefined();
 	});
 
-	// BUG: lib/mail/folders.ts:5-6 — the Sent/Trash patterns aren't anchored at a word start
-	// and Sent is tried before Drafts, so "Unsent" (listed in the Drafts pattern) resolves to
-	// \Sent, and ordinary folders like "Consent" or "Cabin" get system roles.
 	test.todo("BUG: 'Unsent' is Drafts; 'Consent' / 'Cabin' have no role", () => {
 		expect(labelSpecialUse("Unsent", "/")).toBe("\\Drafts");
 		expect(labelSpecialUse("Consent", "/")).toBeUndefined();
