@@ -73,7 +73,7 @@ describe("createSendQueue", () => {
     await sleep(DELAY + 10);
     expect(q.isWaiting(id)).toBe(false);
     expect(q.undo(id)).toBeNull();
-    expect(q.pending()).toBe(1); // still on the wire
+    expect(q.pending()).toBe(1);
     release();
     await sleep(0);
     expect(q.pending()).toBe(0);

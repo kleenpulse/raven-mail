@@ -22,14 +22,11 @@ export function isDevSession(session: { dev?: boolean }): boolean {
 type DevDb = {
   nextUid: number;
   messages: MailMessage[];
-  /** Bytes of attachments sent or saved through compose, by `uid/part`. Seeds use fixtures. */
   files: Map<string, Uint8Array>;
 };
 
-// Versioned so a running dev server (store lives on globalThis across HMR) picks up the synthetic seed.
 const STORE_KEY = "__em_dev_mail_store_v9__";
 
-/** Section numbers like a multipart/mixed message: the body is part 1. */
 function withParts(attachments: AttachmentMeta[]): AttachmentMeta[] {
   return attachments.map((a, i) => ({ ...a, part: String(i + 2) }));
 }
@@ -65,9 +62,7 @@ type SeedInput = {
   messageId?: string;
   inReplyTo?: string;
   references?: string[];
-  /** Extra raw headers, lowercased (e.g. List-Unsubscribe). */
   headers?: Record<string, string>;
-  /** Like Gmail's X-GM-THRID: a server thread id, so dev runs that path too. */
   threadId?: string;
 };
 
@@ -164,8 +159,6 @@ function seed(now: number): DevDb {
       from: addr("digest@reads.example", "Reads Digest"),
       date: hoursAgo(now, 30),
       text: "This week: local-first sync patterns, Postgres query plans, and a deep dive on IMAP IDLE.\n\nRead more →",
-      // A designed newsletter (own colours + a tracking-style remote image) so dev exercises the
-      // reader's paper look and the "Load images" banner.
       html: `<table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f3efe8" style="font-family:Georgia,serif">
 <tr><td style="padding:28px 32px;background:#1f2a44;color:#f6f1e7">
 <p style="margin:0;font:600 12px/1.4 Arial,sans-serif;letter-spacing:.14em;color:#e0b25c">READS DIGEST · ISSUE 212</p>
@@ -178,7 +171,6 @@ function seed(now: number): DevDb {
 <p style="margin:0;font-size:12px;color:#8a8375">You get this because you subscribed at reads.example. <a href="https://reads.example/u" style="color:#8a8375">Unsubscribe</a></p>
 <img src="https://t.reads.example/open.gif" width="1" height="1" alt="">
 </td></tr></table>`,
-      // A link but no one-click POST: the reader's Unsubscribe opens the page.
       headers: { "list-unsubscribe": "<https://reads.example/u>" },
       seen: true,
     }),
@@ -224,7 +216,6 @@ function seed(now: number): DevDb {
       from: addr("deals@shop.example", "Shop Deals"),
       date: hoursAgo(now, 96),
       text: "Everything must go. 50% off sitewide. Use code SPRING50 at checkout. Unsubscribe",
-      // Mailto only: the reader's Unsubscribe writes the email.
       headers: { "list-unsubscribe": "<mailto:leave@shop.example?subject=unsubscribe>" },
       seen: true,
     }),
@@ -306,8 +297,6 @@ function seed(now: number): DevDb {
       text: "This month in archives…",
       seen: true,
     }),
-    // Threading cases (task 1.5). A Gmail-style thread: only the server id ties it together,
-    // and its first message sits beyond the first page, so whole-thread archive must reach it.
     seedMessage({
       uid: 30,
       folder: "INBOX",
@@ -338,7 +327,6 @@ function seed(now: number): DevDb {
       text: "Thanks! One more item: the press list needs a final pass.",
       threadId: "dev-thread-7301",
     }),
-    // A reply from a phone client that sent no In-Reply-To or References: joins on subject.
     seedMessage({
       uid: 33,
       folder: "INBOX",
@@ -356,7 +344,6 @@ function seed(now: number): DevDb {
       date: hoursAgo(now, 5),
       text: "Sent from my phone. The lake venue just dropped its price.",
     }),
-    // Same sender, same subject, no reply prefix: two receipts, never one thread.
     seedMessage({
       uid: 35,
       folder: "INBOX",
@@ -375,7 +362,6 @@ function seed(now: number): DevDb {
       text: "Order #5498: 2 × notebooks.",
       seen: true,
     }),
-    // A thread whose middle message was archived: the Inbox and the reader show the rest.
     seedMessage({
       uid: 37,
       folder: "INBOX",
@@ -412,8 +398,6 @@ function seed(now: number): DevDb {
   ];
 
   messages.push(...generateSyntheticMail({ now }));
-  // IMAP UIDs rise with arrival, and list paging relies on it (cursor = lowest UID held),
-  // so renumber hand seeds + synthetic mail by date. Message-IDs were fixed at creation.
   messages.sort((a, b) => Date.parse(a.date) - Date.parse(b.date));
   messages.forEach((m, i) => {
     m.uid = String(i + 1);
@@ -428,7 +412,6 @@ function getDb(): DevDb {
   return g[STORE_KEY];
 }
 
-/** Every folder, unsorted. The array is a copy; the messages are the live store objects. */
 export function devAllMessages(): MailMessage[] {
   return [...getDb().messages];
 }
@@ -481,7 +464,6 @@ export function devListMessages(
 
   let list = db.messages.filter((m) => m.folder === folder);
   if (query) {
-    // Same policy as IMAP (every token, else any token) plus prefix/typo tiers; order stays by date.
     const people = (as: MailAddress[]) => as.map((a) => `${a.name ?? ""} ${a.address}`).join(" ");
     list = searchText(list, query, (m) => [
       { text: m.subject, weight: 4, key: "subject" },
@@ -491,12 +473,10 @@ export function devListMessages(
     ]).map((h) => h.item);
   }
 
-  // Parse each date once rather than inside the comparator (hundreds of seeded messages).
   const sorted = list
     .map((m) => ({ m, t: Date.parse(m.date), uid: Number(m.uid) }))
     .sort((a, b) => b.t - a.t || b.uid - a.uid);
 
-  // Like IMAP: `count` is the whole folder (or all matches); `before` only pages.
   const before = opts.before;
   const page = before ? sorted.filter(({ uid }) => uid < before) : sorted;
   return {
@@ -512,7 +492,6 @@ export function devGetMessage(folder: string, uid: string): MailMessage {
   return found;
 }
 
-/** Same search as IMAP `getThread`: the folder plus Sent (Inbox plus Sent from Sent). */
 export function devGetThread(folder: string, uid: string): MailThread {
   const anchor = devGetMessage(folder, uid);
   const folders = new Set([folder, folder === "Sent" ? "INBOX" : "Sent"]);
@@ -545,7 +524,6 @@ export function devGetThread(folder: string, uid: string): MailThread {
   return { messages };
 }
 
-/** Like IMAP `rulesBatch`: the given Inbox uids, or the newest `limit`. */
 export function devRulesBatch(
   uids: string[] | null,
   limit: number,
@@ -558,7 +536,6 @@ export function devRulesBatch(
   return { folder: "INBOX", uidValidity: "1", messages: picked.map(toSummary) };
 }
 
-/** Like IMAP `moveWithUids`. Dev uids are unique across folders, so a move keeps its uid. */
 export function devMoveWithUids(folder: string, uids: string[], destination: string): Map<string, string> {
   const present = new Set(getDb().messages.filter((m) => m.folder === folder).map((m) => m.uid));
   const moving = uids.filter((uid) => present.has(uid));
@@ -566,7 +543,6 @@ export function devMoveWithUids(folder: string, uids: string[], destination: str
   return new Map(moving.map((uid) => [uid, uid]));
 }
 
-/** Like IMAP `findReplies`: a reply in the Inbox since `since`, and the uid in Sent when asked. */
 export function devFindReplies(
   checks: { messageId: string; since: Date; needUid: boolean }[],
 ): Map<string, { replied: boolean; sentUid?: string }> {
@@ -580,7 +556,6 @@ export function devFindReplies(
   );
 }
 
-/** Like IMAP `expandThreadUids`: `uids` plus every message in `folder` with one of the thread ids. */
 export function devExpandThread(folder: string, uids: string[], threadIds: string[]): string[] {
   if (threadIds.length === 0) return uids;
   const wanted = new Set(threadIds);
@@ -590,7 +565,6 @@ export function devExpandThread(folder: string, uids: string[], threadIds: strin
   return [...new Set([...uids, ...more])];
 }
 
-/** An attachment's bytes: what compose uploaded, or a fixture for seeded mail. */
 export function devGetAttachment(
   folder: string,
   uid: string,
@@ -656,7 +630,6 @@ function draftToMessage(
   const uid = String(db.nextUid++);
   const now = new Date().toISOString();
   const text = draft.text;
-  // As reading real mail does: an image the HTML shows by cid: goes into the HTML as a data: URL, and isn't listed.
   let html = draft.html || `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`;
   const files = (draft.attachments ?? []).filter((a) => {
     if (!a.cid || !/^image\/\w+$/i.test(a.contentType) || !html.includes(`cid:${a.cid}`)) return true;
@@ -689,7 +662,6 @@ function draftToMessage(
       draft: flags.draft,
     },
     text,
-    // What compose's editor wrote; plain-text sends get the same simple HTML as before.
     html,
     attachments,
     messageId: `<dev-${uid}@localhost>`,
@@ -711,7 +683,6 @@ export function devSendMessage(
   const db = getDb();
   const message = draftToMessage("Sent", draft, from, { seen: true, draft: false });
   db.messages.unshift(message);
-  // Mail to yourself lands in the Inbox too, as on a real server — the only way new mail arrives here.
   const self = from.address.toLowerCase();
   if ([...message.to, ...message.cc, ...message.bcc].some((a) => a.address.toLowerCase() === self)) {
     db.messages.unshift({ ...draftToMessage("INBOX", draft, from, { seen: false, draft: false }), messageId: message.messageId });
@@ -719,7 +690,6 @@ export function devSendMessage(
   return { messageId: message.messageId ?? "" };
 }
 
-/** Like IMAP: append the new copy first, then drop the one it replaces. */
 export function devSaveDraft(draft: ComposeDraft, from: MailAddress, replaces?: string): { uid: string } {
   const db = getDb();
   const message = draftToMessage("Drafts", draft, from, { seen: true, draft: true });

@@ -1,14 +1,6 @@
-/*
- * Sends held back for an undo window. The queue owns timing only; the caller
- * persists each entry (so a closed tab brings the message back unsent) and
- * shows the countdown. Framework-free so the timing can be tested directly.
- */
-
 export type PendingSendOptions<T> = {
-  /** 0 sends at once, with no window. */
   delayMs: () => number;
   send: (payload: T) => Promise<void>;
-  /** Called on queue, when the send starts, and when it settles (sent, failed or undone). */
   persist?: {
     save: (id: string, payload: T, until: number) => void;
     sending: (id: string) => void;
@@ -24,11 +16,6 @@ type Entry<T> = { payload: T; timer: ReturnType<typeof setTimeout> | null };
 
 export type SendRecord = { id: string; until: number; sending?: boolean };
 
-/**
- * On page load: a record whose lock nobody holds belongs to a tab that closed
- * before its send finished. Bring back the newest such one; keep the rest
- * (live tabs' records, and older orphans for the next load).
- */
 export function pickOrphan<R extends SendRecord>(
   records: R[],
   isHeld: (id: string) => boolean,
@@ -75,7 +62,6 @@ export function createSendQueue<T>(options: PendingSendOptions<T>) {
       else entry.timer = setTimeout(() => void go(id), ms);
       return { id, until };
     },
-    /** The payload, if it hadn't started sending yet; null when it's too late. */
     undo(id: string): T | null {
       const entry = waiting.get(id);
       if (!entry) return null;
@@ -84,12 +70,10 @@ export function createSendQueue<T>(options: PendingSendOptions<T>) {
       options.persist?.remove(id);
       return entry.payload;
     },
-    /** Sends everything still waiting, now. */
     flush(): Promise<void> {
       return Promise.all([...waiting.keys()].map(go)).then(() => undefined);
     },
     isWaiting: (id: string) => waiting.has(id),
-    /** Waiting or on the wire: leaving the page now would lose or cut one off. */
     pending: () => waiting.size + inFlight,
   };
 }

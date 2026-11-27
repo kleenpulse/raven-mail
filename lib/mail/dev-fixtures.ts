@@ -1,19 +1,11 @@
 import type { AttachmentMeta } from "@/lib/mail/types";
 
-/*
- * Bytes for the dev mailbox's seeded attachments, which only carry metadata.
- * PDF, PNG, calendar and text files open for real; anything else (docx, zip)
- * gets a short text body, since building those formats isn't worth it here.
- */
-
 const encoder = new TextEncoder();
 
-// A 1x1 PNG.
 const PNG = "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==";
 
 const pdfText = (s: string) => s.replace(/[^\x20-\x7e]/g, "?").replace(/[\\()]/g, "\\$&");
 
-/** A one-page PDF with real xref offsets, so viewers open it without repair. */
 function pdf(title: string): Uint8Array {
   const content = [
     `BT /F1 18 Tf 72 720 Td (${pdfText(title)}) Tj ET`,

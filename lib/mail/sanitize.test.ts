@@ -47,8 +47,6 @@ describe("sanitizeBody", () => {
 		expect(out).toContain(">x</a>");
 	});
 
-	// The body renders in a srcdoc frame, so a relative link resolves against Raven's own
-	// URL: a newsletter's "Unsubscribe" opened a second Raven window.
 	test.each(["", "#", "#top", "unsubscribe", "/u/1", "?x=1", "*|UNSUB|*", "{{unsubscribe_url}}"])("drops relative href %p", (href) => {
 		expect(sanitizeBody(`<a href="${href}" style="color:red">x</a>`)).toBe(
 			`<a style="color:red" rel="noopener noreferrer" target="_blank">x</a>`,
@@ -158,10 +156,6 @@ describe("hasRemoteContent", () => {
 		expect(hasRemoteContent(sanitizeBody(`<style>@import url(https://x/a.css);</style>`))).toBe(true);
 	});
 
-	// BUG: sanitizeBody re-serialises a double-quoted CSS url() in a style attribute as
-	// `url(&quot;https://…&quot;)`; the regex in lib/mail/sanitize.ts:60 only allows a literal
-	// quote after `url(`, so the "Remote images blocked" banner never shows for these mails.
-	// (The frame's CSP still blocks the fetch; the user just can't opt in to loading them.)
 	test.todo("BUG: detects double-quoted CSS url() after sanitizing (&quot; entity)", () => {
 		const html = sanitizeBody(`<div style='background:url("https://x/a.png")'>s</div>`);
 		expect(html).toContain("url(&quot;https://x/a.png&quot;)");

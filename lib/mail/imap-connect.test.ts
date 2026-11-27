@@ -1,7 +1,6 @@
 import { afterEach, describe, expect, mock, test } from "bun:test";
 import { makeSession } from "@/test/helpers/session";
 
-// A stand-in imapflow whose connects fail as scripted, in order; an empty script connects.
 const script: (Error | null)[] = [];
 let created = 0;
 let open = 0;
@@ -54,7 +53,6 @@ describe("connecting", () => {
 
   test(`gives up after ${CONNECT_ATTEMPTS} stalls, and frees the slot each time`, async () => {
     const session = makeSession({ dev: false });
-    // More failed requests than the mailbox has slots: a leaked slot would hang the last ones.
     for (let i = 0; i < 6; i++) {
       script.push(failure("GREETING_TIMEOUT"), failure("GREETING_TIMEOUT"));
       await expect(openClient(session)).rejects.toThrow("GREETING_TIMEOUT");
@@ -69,12 +67,9 @@ describe("connecting", () => {
     const controller = new AbortController();
     script.push(failure("CONNECT_TIMEOUT"));
     const pending = openClient(makeSession({ dev: false }), { signal: controller.signal });
-    // Mid-connect: the first client exists and its connect hasn't failed yet.
     await new Promise((resolve) => setTimeout(resolve, 1));
     expect(created).toBe(1);
     controller.abort();
-    // Not expect(pending).rejects: in bun 1.4.4 that spins forever on a promise still
-    // pending after an abort.
     const err = await pending.catch((e: unknown) => e);
     expect(isStalledConnect(err)).toBe(true);
     expect(created).toBe(1);

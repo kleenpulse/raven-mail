@@ -1,13 +1,8 @@
 import { describe, expect, mock, test } from "bun:test";
 import { makeSession } from "@/test/helpers/session";
 
-// A message with an inline image, through the real builder (nodemailer) and the
-// real reader (mailparser, sanitize), then back into compose's shape: the path a
-// saved draft takes when it's reopened. Only the IMAP connection is a stand-in.
-
 const messages = new Map<string, Buffer>();
 
-// What a server reports for the tree buildRawMessage writes: mixed > (alternative > (text, related > (html, image)), file).
 const STRUCTURE = {
   type: "multipart/mixed",
   childNodes: [
@@ -65,7 +60,6 @@ const { buildRawMessage } = await import("@/lib/mail/smtp");
 const { draftFromMessage } = await import("@/lib/mail/reply");
 const { adoptDataImages } = await import("@/lib/mail/inline-images");
 
-/** Not a real picture: nothing on this path decodes it. */
 function bytes(length: number): Buffer {
   const out = Buffer.alloc(length);
   for (let i = 0; i < length; i++) out[i] = (i * 31 + 7) % 251;
@@ -103,12 +97,10 @@ describe("an inline image, sent or saved and then read back", () => {
       const image = bytes(size);
       const { message, draft, adopted } = await roundTrip(String(size), image);
 
-      // The reader shows it in the body and lists only the real attachment, once.
       expect(message.html).not.toContain("cid:");
       expect(message.html.match(/<img/g)).toHaveLength(1);
       expect(message.attachments.map((a) => [a.filename, a.part])).toEqual([["notes.pdf", "2"]]);
 
-      // Back in compose: one cid image, same bytes, same name, alt and width; no data: URL kept.
       expect(adopted.images).toHaveLength(1);
       const [back] = adopted.images;
       expect(Buffer.from(back!.contentBase64, "base64").equals(image)).toBe(true);

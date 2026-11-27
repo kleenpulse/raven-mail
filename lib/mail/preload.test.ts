@@ -13,7 +13,6 @@ describe("planPreload", () => {
       ],
       { maxMessageBytes: 1_000_000, batchBytes: 1_000_000 },
     );
-    // 4 fits, 3 is too big, 2 would overrun the budget (deferred), 1 still fits.
     expect(plan).toEqual({ take: [4, 1], tooBig: [3] });
   });
 

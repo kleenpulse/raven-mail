@@ -45,7 +45,6 @@ describe("preview cache", () => {
 	});
 });
 
-/** A download the test finishes by hand, recording the signal it was given. */
 function manual() {
 	let finish!: (blob: Blob) => void;
 	const calls: AbortSignal[] = [];
@@ -69,7 +68,6 @@ describe("loadPreview", () => {
 		expect(await a).toBe(blob);
 		expect(await b).toBe(blob);
 		expect(dl.calls).toHaveLength(1);
-		// Kept, so the next ask doesn't download at all.
 		expect(await loadPreview("k", dl.load)).toBe(blob);
 		expect(dl.calls).toHaveLength(1);
 	});
@@ -86,7 +84,6 @@ describe("loadPreview", () => {
 		two.abort();
 		await expect(second).rejects.toBeDefined();
 		expect(dl.calls[0]!.aborted).toBe(true);
-		// The next ask starts afresh rather than joining the cancelled one.
 		void loadPreview("k", dl.load).catch(() => {});
 		expect(dl.calls).toHaveLength(2);
 	});

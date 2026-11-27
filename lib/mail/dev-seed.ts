@@ -1,11 +1,5 @@
 import type { AttachmentMeta, MailAddress, MailMessage } from "@/lib/mail/types";
 
-/**
- * Deterministic 45-day synthetic mailbox for the dev login. Pure (no server-only imports) so
- * tests and the dev store share it. Same (now, seed) ⇒ deep-equal output on a given machine;
- * hours are laid out in the machine's local time zone so heatmaps look right in dev.
- */
-
 export const DEV_SELF: MailAddress = { address: "dev@localhost", name: "You" };
 
 const DEFAULT_SEED = 20_260_924;
@@ -13,9 +7,7 @@ const MIN = 60_000;
 const HOUR = 60 * MIN;
 const DAY = 24 * HOUR;
 const WINDOW_DAYS = 45;
-/** My unanswered Sent mail younger than this never reads as "waiting on" (the rule's floor is 48h). */
 const YOUNG_MS = 40 * HOUR;
-/** Needs-reply window is 14 days; keep a margin so the boundary never flips a count. */
 const NEEDS_REPLY_EDGE_MS = 14 * DAY;
 const EDGE_MARGIN_MS = 6 * HOUR;
 
@@ -44,7 +36,6 @@ function pickWeighted<T>(rand: Rand, items: readonly (readonly [T, number])[]): 
   return items[items.length - 1]![0];
 }
 
-/** Lognormal around `medianHours`, so per-contact reply medians land near the roster values. */
 function latency(rand: Rand, medianHours: number): number {
   const gauss = Math.sqrt(-2 * Math.log(1 - rand())) * Math.cos(2 * Math.PI * rand());
   const hours = medianHours * Math.exp(0.5 * gauss);
@@ -83,7 +74,6 @@ const localHour = (t: number) => {
 
 type Hours = readonly (readonly [number, number])[];
 
-// Inbound human mail clusters 8–11 and 14–16 with a thin evening tail.
 const HUMAN_HOURS: Hours = [
   [8, 3], [9, 5], [10, 5], [11, 4], [12, 1], [13, 1], [14, 4], [15, 4], [16, 3],
   [17, 1], [18, 0.6], [19, 0.5], [20, 0.4], [21, 0.3],
@@ -102,7 +92,6 @@ function slotOn(day: number, hours: Hours, rand: Rand): number {
   return atLocal(day, pickWeighted(rand, hours), Math.floor(rand() * 60), Math.floor(rand() * 60));
 }
 
-/** Push a reply into the sender's working day: evenings sometimes, weekends rarely, else next morning. */
 function snapWork(t: number, rand: Rand, evening: number): number {
   const h = localHour(t);
   if (!isWeekend(t)) {
@@ -117,7 +106,6 @@ function snapWork(t: number, rand: Rand, evening: number): number {
   return Math.max(t, slotOn(day, MORNING, rand));
 }
 
-/** Move `t` back (never forward) onto a weekday afternoon. */
 function snapBackWork(t: number, rand: Rand): number {
   const h = localHour(t);
   if (!isWeekend(t) && h >= 8 && h < 18) return t;
@@ -127,20 +115,15 @@ function snapBackWork(t: number, rand: Rand): number {
   return atLocal(day, intIn(rand, 15, 17), Math.floor(rand() * 60), Math.floor(rand() * 60));
 }
 
-/* ─── Roster ─── */
-
 type Topic = { subject: string; body: string; attach?: AttachmentMeta };
 
 type Contact = {
   key: string;
   name: string;
   address: string;
-  /** Fixed Date: header offset in minutes east of UTC; otherwise the machine's local offset. */
   offset?: number;
-  /** Median hours before I reply to them / they reply to me. */
   mine: number;
   theirs: number;
-  /** Chance a late reply of theirs goes out that evening instead of next morning. */
   evening: number;
   weight: number;
   colleague: string;
@@ -302,7 +285,6 @@ const HANDOFFS = [
   "Perfect. Adding {col}, who owns this now. {col}, context is below.",
 ];
 
-/** Sent mail to people 2–10 days old that never got an answer ("waiting on"). */
 const GHOSTS: { key: string; minAgeH: number; topic: Topic }[] = [
   { key: "priya", minAgeH: 54, topic: { subject: "Fieldwork notes from last week", body: "Could you share the raw notes from last week's sessions? I'd like to pull a few quotes for Thursday's roadmap review." } },
   { key: "alex", minAgeH: 86, topic: { subject: "On-call runbook review", body: "Could you review the on-call runbook changes before next week's rotation? Mostly the IMAP reconnect section." } },
@@ -322,7 +304,6 @@ type Thread = {
   turns: Turn[];
   planned: number;
   ghost: boolean;
-  /** Scheduled arrival of their next reply. */
   next?: number;
   done: boolean;
 };
@@ -331,9 +312,7 @@ type Ctx = {
   floor: number;
   rand: Rand;
   cursor: Map<string, number>;
-  /** Sent count per local day (keyed by local midnight), so every pass respects the daily range. */
   sentPerDay: Map<number, number>;
-  /** Inbound count per local day, so human arrivals never push a day past its range. */
   inPerDay: Map<number, number>;
 };
 
@@ -345,7 +324,6 @@ function countInbound(ctx: Ctx, t: number): void {
   ctx.inPerDay.set(day, (ctx.inPerDay.get(day) ?? 0) + 1);
 }
 
-/** Slide an arrival to the next weekday morning while its day is already full. */
 function withRoom(ctx: Ctx, t: number): number {
   let at = t;
   for (let i = 0; i < 5 && !hasRoom(ctx, at); i++) at = snapWork(addDays(startOfLocalDay(at), 1), ctx.rand, 0);
@@ -364,7 +342,6 @@ function openThread(ctx: Ctx, c: Contact, outreach: boolean, at: number): Thread
   const cycle = Math.floor(n / pool.length);
   return {
     c,
-    // Attachments ride only on a topic's first appearance.
     topic: cycle === 0 ? base : { subject: base.subject, body: base.body },
     subject: base.subject + SUBJECT_SUFFIX[Math.min(cycle, SUBJECT_SUFFIX.length - 1)],
     turns: [{ out: outreach, at: sec(at) }],
@@ -386,7 +363,6 @@ function myReplyTime(ctx: Ctx, th: Thread, day: number, weekend: boolean): numbe
   return sec(at);
 }
 
-/** After I send: schedule their answer, or let the thread rest on my message only while it's young. */
 function afterMine(ctx: Ctx, th: Thread): void {
   const { now, rand } = ctx;
   const at = last(th).at;
@@ -404,7 +380,6 @@ function afterMine(ctx: Ctx, th: Thread): void {
       th.done = true;
       return;
     }
-    // Keeps "waiting on" limited to GHOSTS: an old message of mine gets a late (evening/weekend) answer.
     reply = Math.max(at + 20 * MIN, Math.min(at + latency(rand, th.c.theirs), now - (20 + rand() * 100) * MIN));
   }
   countInbound(ctx, reply);
@@ -437,8 +412,6 @@ function simulate(ctx: Ctx): Thread[] {
     const weekend = isWeekend(day);
     const inDay = (t: number) => t >= day && t < next && t >= ctx.floor && t <= now;
 
-    // Fewer, longer conversations inside the needs-reply window: a thread that ends there on their
-    // word needs a late reply from me or a cc-only hand-off (see settle), so keep those rare.
     const recent = now - day < NEEDS_REPLY_EDGE_MS;
     const fresh = weekend ? (rand() < 0.12 ? 1 : 0) : recent ? pickWeighted(rand, [[0, 1], [1, 2], [2, 1]]) : intIn(rand, 1, 3);
     for (let n = fresh; n > 0; n--) {
@@ -486,11 +459,6 @@ function simulate(ctx: Ctx): Thread[] {
   return threads;
 }
 
-/**
- * Pin the obligations: exactly NEEDS_REPLY_TOTAL unanswered asks addressed to me in the last 14 days
- * (the newest few plus a spread of older ones). Any other thread that ends with them inside the
- * window gets a recent reply from me if that day's Sent range allows, else becomes a cc-only hand-off.
- */
 function settle(ctx: Ctx, threads: Thread[]): void {
   const { now, rand } = ctx;
   const edge = now - NEEDS_REPLY_EDGE_MS;
@@ -538,7 +506,6 @@ function settle(ctx: Ctx, threads: Thread[]): void {
       end.nr = true;
       continue;
     }
-    // Answer it late but recently (young, so not "waiting on") when the day still has Sent room.
     const earliest = Math.max(end.at + latency(rand, th.c.mine), now - YOUNG_MS + HOUR);
     let placed = false;
     for (let step = 0; step < 4 && !placed; step++) {
@@ -558,8 +525,6 @@ function settle(ctx: Ctx, threads: Thread[]): void {
   for (const th of threads) if (keep.has(th)) last(th).nr = true;
 }
 
-/* ─── Drafts: everything becomes one of these before uids and ids are assigned in date order ─── */
-
 type Kind = "person" | "sent" | "auto" | "transactional" | "newsletter";
 type Draft = {
   at: number;
@@ -570,7 +535,6 @@ type Draft = {
   cc: MailAddress[];
   subject: string;
   text: string;
-  /** Date: header offset (minutes east); undefined = machine local. */
   offset?: number;
   attachments: AttachmentMeta[];
   extra: Record<string, string>;
@@ -642,8 +606,6 @@ function humanDrafts(ctx: Ctx, threads: Thread[]): Draft[] {
   return out;
 }
 
-/* ─── Newsletters ─── */
-
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const DOW_LONG = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
@@ -653,7 +615,6 @@ type Newsletter = {
   slug: string;
   name: string;
   address: string;
-  /** Share of issues opened (\Seen). */
   rate: number;
   hour: number;
   on: (dow: number, week: number) => boolean;
@@ -716,8 +677,6 @@ function hexToken(rand: Rand, length: number): string {
   for (let i = 0; i < length; i++) out += "0123456789abcdef"[Math.floor(rand() * 16)];
   return out;
 }
-
-/* ─── Notifications and transactional mail ─── */
 
 const AUTO = { "auto-submitted": "auto-generated" } as const;
 
@@ -792,7 +751,6 @@ function withAuto(draft: Draft): Draft {
   return draft;
 }
 
-/** Newsletters, receipts, shipping, billing, e-tickets and calendar invites on fixed weekly rhythms. */
 function scheduledDrafts(ctx: Ctx): Draft[] {
   const { now, rand } = ctx;
   const out: Draft[] = [];
@@ -815,7 +773,6 @@ function scheduledDrafts(ctx: Ctx): Draft[] {
       issues.set(nl.slug, n + 1);
       const [subject, body] = nl.issue(rand, n, date);
       const draft = inbound(at, "newsletter", nl, subject, body);
-      // Evenly spread opens so each list hits its rate exactly over its issues.
       draft.seen = Math.floor((n + 1) * nl.rate + 0.5) > Math.floor(n * nl.rate + 0.5);
       draft.extra = {
         "list-id": `<${nl.slug}.list.example>`,
@@ -851,8 +808,6 @@ function scheduledDrafts(ctx: Ctx): Draft[] {
       keep(withAuto(draft));
     }
 
-    // Non-human Sent mail (team alias, Linear reply-by-email) carries part of each day's Sent range,
-    // so fewer people threads have to end inside the needs-reply window.
     if (dow === 5 || (dow === 2 && week % 2 === 0)) {
       const at = slotOn(day, dow === 5 ? [[15, 1], [16, 2], [17, 1]] : [[10, 1], [11, 1], [14, 1]], rand);
       const [subject, body] =
@@ -885,7 +840,6 @@ function scheduledDrafts(ctx: Ctx): Draft[] {
       const draft = inbound(slotOn(day, MORNING, rand), "auto", NOTIFIERS.calendar, `Invitation: ${event} @ ${DOW[when.getDay()]} ${MON[when.getMonth()]} ${when.getDate()}, ${range}`, `${pickFrom(rand, PEOPLE)} has invited you to “${event}”.\n\nWhen: ${DOW_LONG[when.getDay()]} ${MON[when.getMonth()]} ${when.getDate()}, ${range}\nWhere: Video call\n\nGoing? Yes · Maybe · No`);
       draft.attachments = [{ filename: "invite.ics", contentType: "text/calendar", size: intIn(rand, 1850, 2150) }];
       keep(withAuto(draft));
-      // RSVP by email: Sent mail to a machine address, so it can never read as "waiting on".
       const rsvpAt = sec(draft.at + (5 + rand() * 115) * MIN);
       if (rand() < 0.85 && out.includes(draft) && rsvpAt <= now && localHour(rsvpAt) < 19 && startOfLocalDay(rsvpAt) === day) {
         draft.answered = true;
@@ -898,7 +852,6 @@ function scheduledDrafts(ctx: Ctx): Draft[] {
   return out;
 }
 
-/** Top each day up to its inbound target (weekdays 10–16, weekends 3–6) with bot notifications. */
 function notificationFill(ctx: Ctx, drafts: Draft[]): Draft[] {
   const { now, rand } = ctx;
   const perDay = new Map<number, number>();
@@ -927,8 +880,6 @@ function notificationFill(ctx: Ctx, drafts: Draft[]): Draft[] {
   return out;
 }
 
-/* ─── Flags, ids, headers ─── */
-
 function applyFlags(drafts: Draft[]): void {
   const newestFirst = (kind: Kind) => drafts.filter((d) => d.kind === kind).sort((a, b) => b.at - a.at);
   for (const d of newestFirst("person").slice(0, 6)) d.seen = false;
@@ -950,7 +901,6 @@ const toHtml = (text: string) => `<p>${escapeHtml(text).replace(/\n\n/g, "</p><p
 const formatAddress = (a: MailAddress) => (a.name ? `${a.name} <${a.address}>` : a.address);
 const localOffset = (t: number) => -new Date(t).getTimezoneOffset();
 
-/** RFC 2822 date in the writer's zone, e.g. "Thu, 24 Sep 2026 09:12:00 +0900". */
 function rfc2822(t: number, offsetMin: number): string {
   const d = new Date(t + offsetMin * MIN);
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -959,12 +909,10 @@ function rfc2822(t: number, offsetMin: number): string {
   return `${DOW[d.getUTCDay()]}, ${d.getUTCDate()} ${MON[d.getUTCMonth()]} ${d.getUTCFullYear()} ${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())} ${zone}`;
 }
 
-/** RFC 2822 Date: header, in the machine's zone unless an offset is given. */
 export function dateHeader(t: number, offsetMin: number = localOffset(t)): string {
   return rfc2822(t, offsetMin);
 }
 
-/** uids and Message-IDs follow arrival order across both folders, so uids are unique store-wide. */
 function finalize(drafts: Draft[]): MailMessage[] {
   const ordered = [...drafts].sort((a, b) => a.at - b.at);
   const ids = new Map<Draft, string>();
@@ -1012,7 +960,6 @@ export function generateSyntheticMail(opts: { now?: number; seed?: number } = {}
   const now = opts.now ?? Date.now();
   const rand = mulberry32(opts.seed ?? DEFAULT_SEED);
   const ctx: Ctx = { now, floor: now - WINDOW_DAYS * DAY, rand, cursor: new Map(), sentPerDay: new Map(), inPerDay: new Map() };
-  // Scheduled mail first: it claims each day's Inbox/Sent room before people threads fill the rest.
   const scheduled = scheduledDrafts(ctx);
   for (const d of scheduled) if (d.folder === "INBOX") countInbound(ctx, d.at);
   const threads = simulate(ctx);

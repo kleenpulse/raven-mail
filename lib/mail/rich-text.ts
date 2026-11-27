@@ -1,12 +1,5 @@
 import type { ComposeDraft } from "@/lib/mail/types";
 
-/*
- * The compose editor's HTML alongside the plain text compose always kept.
- * Pure, so the text part of a multipart/alternative message is tested
- * without an editor.
- */
-
-/** Tiptap's JSON, narrowed to what's read here. */
 export type DocNode = {
   type?: string;
   text?: string;
@@ -19,7 +12,6 @@ export function escapeHtml(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
-/** One paragraph per line, so the editor's text reads back exactly as it went in. */
 export function textToHtml(text: string): string {
   return text
     .split("\n")
@@ -68,14 +60,11 @@ function lines(nodes: DocNode[] = []): string[] {
   });
 }
 
-/** The editor's document as the text/plain part: lists keep their markers, quotes their ">". */
 export function docToText(doc: DocNode): string {
   return lines(doc.content).join("\n");
 }
 
-/** The HTML part: what was written, then the quoted original, as `draftBody` does for text. */
 export function draftHtml(draft: Pick<ComposeDraft, "html" | "quote">): string | undefined {
-  // The editor keeps an empty paragraph after a list or quote; it isn't part of the message.
   const lead = draft.html?.replace(/(<p>(<br\s*\/?>)?<\/p>)+$/, "");
   if (!lead) return undefined;
   if (!draft.quote) return lead;

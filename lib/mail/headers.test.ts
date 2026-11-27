@@ -232,7 +232,6 @@ describe("isAbsoluteMailLink", () => {
 		expect(isAbsoluteMailLink(href)).toBe(true);
 	});
 
-	// These resolve against Raven's own URL inside the srcdoc frame.
 	test.each(["", "#", "#top", "unsubscribe", "/mail", "?uid=1", "//x.example/u", "*|UNSUB|*", "javascript:x", "raven://open/mail"])(
 		"%p does not",
 		(href) => {

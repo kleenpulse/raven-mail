@@ -1,0 +1,2592 @@
+{
+  "app/(app)/dev/kage/page.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/(app)/dev/tests/page.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/(app)/error.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/(app)/integrations/error.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/(app)/layout.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/(app)/overview/orbit-lab/page.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/blocks/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/dev/desktop/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/dev/kage-eval/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/dev/tests/run/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/follow-ups/route.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "app/api/integrations/brief/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/integrations/check/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/integrations/connect/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/integrations/export/chunk/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/integrations/export/plan/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/integrations/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/integrations/share/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/jev/triage/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/mail/actions/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/mail/attachment/route.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "app/api/mail/contacts/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/mail/message/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/mail/preload/route.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "app/api/mail/reach/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/mail/thread/route.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "app/api/mail/unsubscribe/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/overview/board/route.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "app/api/rules/events/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/rules/preview/route.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "app/api/rules/route.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "app/api/rules/run/route.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/api/tour/route.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "app/api/weather/places/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/api/weather/route.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/error.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/login/page.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/not-found.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "app/open/page.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "app/page.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "app/robots.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/auth/forget-cached-mail.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/auth/login-ambient.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/auth/login-form.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/dev-kage/board.tsx": {
+    "local/no-comments": {
+      "count": 18
+    }
+  },
+  "components/dev-tests/board.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/dev-tests/dot-strip.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/dev-tests/dot-strip.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/dev-tests/file-detail.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/dev-tests/files-table.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/dev-tests/files-table.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/dev-tests/shared.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/dev-tests/test-orbit.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/integrations/activity-list.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/board.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/integrations/brand-marks.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/integrations/connect-form.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/integrations/db-callout.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/deliver-menu.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/integrations/export-toast.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/integration-card.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/integration-sheet.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/integrations/section-boundary.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/status-pill.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/step-list.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/integrations/time.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/integrations/time.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/jev/analysis-card.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/jev/ask-answer.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/jev/ask-name.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/jev/ask-store.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/jev/ask-tray.tsx": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/jev/hero-ask.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/jev/use-ask.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/ask-demo.tsx": {
+    "local/no-comments": {
+      "count": 15
+    }
+  },
+  "components/landing/demo-ask.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/landing/demo-board.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/landing/demo-guard.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/final-cta.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/hero.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/horizon-aurora.tsx": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "components/landing/landing-nav.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/night-sky.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/landing/privacy.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/providers-marquee.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/landing/section-heading.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/landing/section-rail.tsx": {
+    "local/no-comments": {
+      "count": 26
+    }
+  },
+  "components/landing/smooth-scroll.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/landing/tilt-in.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/landing/use-active-section.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/landing/workflow.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/mail/attachment-preview.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "components/mail/attachment-preview.tsx": {
+    "local/no-comments": {
+      "count": 27
+    }
+  },
+  "components/mail/compose.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "components/mail/compose.tsx": {
+    "local/no-comments": {
+      "count": 36
+    }
+  },
+  "components/mail/conversation.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/mail/email-frame.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/mail/email-frame.tsx": {
+    "local/no-comments": {
+      "count": 26
+    }
+  },
+  "components/mail/follow-up-banner.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/mail/follow-up-banner.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/mail/inline-image.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/mail/inline-image.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/mail/list-splitter.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/mail/mail-list.tsx": {
+    "local/no-comments": {
+      "count": 18
+    }
+  },
+  "components/mail/mail-reader.tsx": {
+    "local/no-comments": {
+      "count": 20
+    }
+  },
+  "components/mail/mail-row.tsx": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/mail/media-viewer.tsx": {
+    "local/no-comments": {
+      "count": 44
+    }
+  },
+  "components/mail/new-mail-banner.tsx": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/mail/reader-more-menu.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/mail/reader-more-menu.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/mail/recipient-field.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/mail/remind-menu.tsx": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "components/mail/remote-images.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/mail/replace-compose-dialog.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/mail/replace-compose-dialog.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/mail/rich-editor.tsx": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "components/mail/skeletons.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/mail/triage.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/mail/unsubscribe-button.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/overview/bento.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/board-grid.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "components/overview/board-grid.tsx": {
+    "local/no-comments": {
+      "count": 34
+    }
+  },
+  "components/overview/board.tsx": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/overview/daily-brief.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/overview/follow-ups-card.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/overview/hero-band.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/overview/local-weather.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/overview/mail-mix-card.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/overview/needs-reply-card.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/overview/orbit-card.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/orbit/drilldown.tsx": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "components/overview/orbit/fixtures.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/overview/orbit/format.ts": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "components/overview/orbit/hooks.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/overview/orbit/layout.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/overview/orbit/layout.ts": {
+    "local/no-comments": {
+      "count": 54
+    }
+  },
+  "components/overview/orbit/list.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/overview/orbit/orbit.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/overview/orbit/orbit.tsx": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "components/overview/orbit/scene.tsx": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "components/overview/orbit/vocab.ts": {
+    "local/no-comments": {
+      "count": 19
+    }
+  },
+  "components/overview/overview-search.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/reply-debt-card.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/rhythm-spark-card.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/streak-card.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/overview/threads-radar.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/overview/volume-card.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/overview/weather-card.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/overview/weather-city-picker.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/providers/account-provider.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/providers/motion-provider.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/providers/persisted-queries.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/providers/prefs-dom.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/providers/query-provider.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/providers/theme-provider.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/settings/blocked-senders-row.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/settings/index.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "components/settings/rules-rows.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/settings/rules-rows.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/settings/search.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/settings/sections.tsx": {
+    "local/no-comments": {
+      "count": 23
+    }
+  },
+  "components/settings/setting-row.tsx": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "components/settings/settings-board.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/settings/updates-row.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/settings/updates-row.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/shell/account-menu.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/shell/app-shell.tsx": {
+    "local/no-comments": {
+      "count": 16
+    }
+  },
+  "components/shell/command-palette.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/command-palette.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/shell/compose-from-url.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/shell/desktop-open.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/nav-rail.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/shell/not-found-aurora.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/offline-banner.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/shell/open-in-raven.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/palette-store.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/shell/raven-mark.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/shell/sidebar.tsx": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "components/shell/sponsor-button.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/theme-toggle.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/shell/title-bar.tsx": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "components/shell/topbar.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/update-pill.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/shell/update-pill.tsx": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "components/shell/workspace-frame.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/tour/anchors.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "components/tour/audio.ts": {
+    "local/no-comments": {
+      "count": 29
+    }
+  },
+  "components/tour/store.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "components/tour/tour-audio.manifest.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/tour/tour-audio.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/tour/tour-mount.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/tour/tour.config.ts": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "components/tour/typewriter.ts": {
+    "local/no-comments": {
+      "count": 23
+    }
+  },
+  "components/tour/use-tour.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/tour/use-tour.ts": {
+    "local/no-comments": {
+      "count": 78
+    }
+  },
+  "components/viz/bars.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/viz/concentric.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/viz/count-up.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/viz/dot-matrix.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/viz/heat-dots.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/viz/ring.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "components/viz/sparkline.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "components/viz/viz.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "components/whats-new/store.ts": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "components/whats-new/whats-new.tsx": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "desktop/backups.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/bridge.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "desktop/csp.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "desktop/env.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "desktop/lifecycle.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "desktop/links.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/links.ts": {
+    "local/no-comments": {
+      "count": 19
+    }
+  },
+  "desktop/log.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "desktop/main.ts": {
+    "local/no-comments": {
+      "count": 71
+    }
+  },
+  "desktop/policy.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/ports.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/preload.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/prewarm.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/prewarm.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "desktop/scripts/build.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "desktop/scripts/bundle.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/scripts/dev.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/scripts/forget-links.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "desktop/scripts/release.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "desktop/scripts/signing.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/scripts/signing.ts": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "desktop/scripts/smoke.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/scripts/stage.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "desktop/scripts/verify.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "desktop/sealer.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/secrets.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/secrets.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "desktop/server-process.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "desktop/server/bootstrap.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "desktop/server/guard.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/server/guard.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/settings.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "desktop/shared.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/shared.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "desktop/splash.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "desktop/splash.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "desktop/tray.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "desktop/update-policy.ts": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "desktop/update-state.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "desktop/update-state.ts": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "desktop/updater.ts": {
+    "local/no-comments": {
+      "count": 24
+    }
+  },
+  "desktop/window-state.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "drizzle.config.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "hooks/use-animation-loop.ts": {
+    "local/no-comments": {
+      "count": 35
+    }
+  },
+  "hooks/use-app-offline.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "hooks/use-blocks.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "hooks/use-count-up.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-deep-triage.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-deferred-mail-action.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "hooks/use-follow-ups.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "hooks/use-integrations.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "hooks/use-intro-gate.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-local-weather.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "hooks/use-mail-rows.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "hooks/use-mail.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "hooks/use-media-query.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-mounted.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-new-mail.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "hooks/use-now.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-overlay-back-close.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "hooks/use-overview.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-preload-in-view.ts": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "hooks/use-reduced-motion.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-resume-draft-images.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "hooks/use-resume-draft.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-resume-draft.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "hooks/use-rules.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "hooks/use-save-draft.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "hooks/use-sign-out.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "hooks/use-step-stream.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-step-stream.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-streak-log.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "hooks/use-test-run.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-test-run.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-typewriter.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "hooks/use-ui-zoom.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-undo-send.ts": {
+    "local/no-comments": {
+      "count": 22
+    }
+  },
+  "hooks/use-wheel-scroll-x.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "hooks/use-wheel-scroll-x.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "instrumentation.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/actions/auth.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/actions/integrations.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/actions/jev-key.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/actions/mail-imap.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/actions/mail.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/actions/mail.ts": {
+    "local/no-comments": {
+      "count": 15
+    }
+  },
+  "lib/api-error.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/api/mail-read.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/auth/build-session.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/auth/host-guard.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/auth/ip.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/auth/login-errors.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/auth/login-errors.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/blocks/match.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/blocks/repo.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/blocks/service.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/blocks/types.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/changelog/data.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/changelog/parse.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/changelog/parse.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/changelog/seen.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/changelog/seen.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/db/index.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/db/index.ts": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "lib/db/local.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/db/local.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "lib/db/schema.ts": {
+    "local/no-comments": {
+      "count": 23
+    }
+  },
+  "lib/db/sealed.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/db/store.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/db/store.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/db/stores.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/desktop/bridge.ts": {
+    "local/no-comments": {
+      "count": 19
+    }
+  },
+  "lib/desktop/open-link.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/desktop/reach-watch.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/desktop/reach-watch.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/dev/kage-eval.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/dev/kage-eval.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "lib/dev/kage-stats.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/dev/test-orbit.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/dev/test-report-parse.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/dev/test-report.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/dev/test-run-state.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/dev/test-runner.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/dev/test-runner.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/dev/test-store.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/fit-rect.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/follow-ups/links.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/follow-ups/repo.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/follow-ups/schema.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/follow-ups/service.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/follow-ups/types.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/follow-ups/when.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "lib/format.test.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/format.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/insights/bins.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/insights/health.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/insights/metrics.test.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "lib/insights/metrics.ts": {
+    "local/no-comments": {
+      "count": 28
+    }
+  },
+  "lib/insights/types.ts": {
+    "local/no-comments": {
+      "count": 24
+    }
+  },
+  "lib/integrations/cards.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/integrations/catalog.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/crypto.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/deliver.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "lib/integrations/diagnostics/classify.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/diagnostics/jev.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/diagnostics/mail.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/errors.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "lib/integrations/export/mbox.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/export/plan.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/integrations/export/progress.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/export/source.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/integrations/export/uid-set.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/http.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/integrations/net-errors.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/providers/discord.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/integrations/providers/shared.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/providers/slack.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/providers/webhook.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/repo.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/integrations/repo.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "lib/integrations/route.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/safe-fetch.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/integrations/seal.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/integrations/seal.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/integrations/service.ts": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "lib/integrations/signing.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/integrations/status.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/steps.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/integrations/types.ts": {
+    "local/no-comments": {
+      "count": 15
+    }
+  },
+  "lib/jev/ask/answer.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/answer.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/jev/ask/catalog.test.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/jev/ask/catalog.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/jev/ask/chips.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/format.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/jev/ask/heuristic-plan.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/jev/ask/heuristic-plan.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/jev/ask/narrate.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/pipeline.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/jev/ask/pipeline.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/jev/ask/plan.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/jev/ask/plan.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/jev/ask/question.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/jev/ask/rank.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/jev/ask/rank.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/retrieve.test.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "lib/jev/ask/retrieve.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/jev/ask/search.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/timeframe.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/jev/ask/types.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "lib/jev/client.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "lib/jev/fallbacks.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/kage/arbitrate.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/kage/arbitrate.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/kage/calibrate.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/kage/engine.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/kage/engine.ts": {
+    "local/no-comments": {
+      "count": 37
+    }
+  },
+  "lib/kage/index.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/kage/index.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/kage/lexicon.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/kage/shape.ts": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "lib/kage/text.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "lib/kage/wink-porter2-stemmer.d.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/keyboard.test.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/keyboard.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "lib/landing/demo.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/landing/demo.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/motion.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/ndjson-client.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/ndjson-client.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/overview-board/layout.test.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/overview-board/layout.ts": {
+    "local/no-comments": {
+      "count": 21
+    }
+  },
+  "lib/overview-board/service.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/overview-board/service.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/overview-board/state.dom.test.tsx": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "lib/overview-board/state.ts": {
+    "local/no-comments": {
+      "count": 42
+    }
+  },
+  "lib/overview-board/sync.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/overview-board/sync.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "lib/overview-board/types.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/overview-board/widgets.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/palette/commands.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/prefs/dom.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/prefs/dom.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/prefs/query.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/prefs/schema.ts": {
+    "local/no-comments": {
+      "count": 17
+    }
+  },
+  "lib/prefs/store.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "lib/providers.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/query-keys.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "lib/query-pane.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/query-persist.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "lib/rules/activity.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/rules/engine.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/rules/engine.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "lib/rules/events-repo.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/rules/events-repo.ts": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "lib/rules/fixtures.test.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/rules/repo.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/rules/run.ts": {
+    "local/no-comments": {
+      "count": 13
+    }
+  },
+  "lib/rules/service.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/rules/types.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "lib/search/text.test.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/search/text.ts": {
+    "local/no-comments": {
+      "count": 31
+    }
+  },
+  "lib/server/cache.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/server/guard.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/server/ndjson.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/server/rate-limit.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/server/secret.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/server/semaphore.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/server/server-timing.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/server/session-key.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/session.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/session.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/site.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/store/compose.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/store/compose.ts": {
+    "local/no-comments": {
+      "count": 25
+    }
+  },
+  "lib/store/export-run.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "lib/sync/is-newer.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "lib/tour/clip-hash.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/tour/service.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/tour/state.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "lib/tour/sync.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/tour/types.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/triage/heuristic.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "lib/triage/jev.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/utils.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "lib/weather/codes.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "lib/weather/forecast.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "lib/weather/places.test.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "lib/weather/places.ts": {
+    "local/no-comments": {
+      "count": 12
+    }
+  },
+  "lib/weather/weather.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "next.config.ts": {
+    "local/no-comments": {
+      "count": 18
+    }
+  },
+  "scripts/bump-core.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "scripts/bump-core.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "scripts/bump.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "scripts/check-payload.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "scripts/eval-kage.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "scripts/generate-tour-audio.ts": {
+    "local/no-comments": {
+      "count": 33
+    }
+  },
+  "scripts/kage-fit-arbitrate.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "scripts/kage-fit-calibrate.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "scripts/kage-fit-urgency.ts": {
+    "local/no-comments": {
+      "count": 11
+    }
+  },
+  "scripts/kage-fit.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  },
+  "scripts/kage-lexicon-audit.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "scripts/payload-core.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "scripts/test-report.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/api/blocks-nodb.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/blocks.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/api/dev-tests.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/follow-ups-imap.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/api/follow-ups-nodb.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/follow-ups.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/api/integrations.test.ts": {
+    "local/no-comments": {
+      "count": 5
+    }
+  },
+  "test/api/jev-ask.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/api/jev-triage.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/mail-thread-imap.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/api/mail-unsubscribe-imap.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/mail.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/api/overview-board.test.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/api/rules-nodb.test.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/api/rules.test.ts": {
+    "local/no-comments": {
+      "count": 20
+    }
+  },
+  "test/api/tour.test.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/dom.ts": {
+    "local/no-comments": {
+      "count": 14
+    }
+  },
+  "test/fixtures/kage/ask.ts": {
+    "local/no-comments": {
+      "count": 7
+    }
+  },
+  "test/fixtures/kage/blind/ask.ts": {
+    "local/no-comments": {
+      "count": 18
+    }
+  },
+  "test/fixtures/kage/blind/rank.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/fixtures/kage/blind/triage.ts": {
+    "local/no-comments": {
+      "count": 9
+    }
+  },
+  "test/fixtures/kage/rank.ts": {
+    "local/no-comments": {
+      "count": 4
+    }
+  },
+  "test/fixtures/kage/triage.ts": {
+    "local/no-comments": {
+      "count": 6
+    }
+  },
+  "test/fixtures/rules/index.ts": {
+    "local/no-comments": {
+      "count": 10
+    }
+  },
+  "test/helpers/jev.ts": {
+    "local/no-comments": {
+      "count": 2
+    }
+  },
+  "test/helpers/request.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/helpers/session.ts": {
+    "local/no-comments": {
+      "count": 1
+    }
+  },
+  "test/setup.ts": {
+    "local/no-comments": {
+      "count": 3
+    }
+  },
+  "test/state.ts": {
+    "local/no-comments": {
+      "count": 8
+    }
+  }
+}

@@ -1,13 +1,9 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { makeSession } from "@/test/helpers/session";
 
-// findReplies against a stand-in imapflow: which SEARCHes run, where, and what they answer.
-
 const searches: { mailbox: string; criteria: Record<string, unknown> }[] = [];
-/** mailbox → the uids each Message-ID's search finds there. */
 let hits: Record<string, Record<string, number[]>> = {};
 let connects = 0;
-/** Message-IDs whose search crawls until the socket closes. */
 let stuck = new Set<string>();
 let closed = 0;
 

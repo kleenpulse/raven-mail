@@ -93,7 +93,6 @@ describe("ofKinds", () => {
   });
 
   test("a kind is the mail's own, not where a turned-off tab folds it", () => {
-    // Promotions folds into Important when its tab is off; it still only notifies as Promotions.
     expect(ofKinds(mail, ["important"], deep).map((m) => m.uid)).toEqual(["1", "3"]);
   });
 });

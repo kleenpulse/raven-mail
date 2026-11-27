@@ -27,7 +27,6 @@ export const SNAPSHOT_QUERY: FetchQueryObject = {
   headers: ["list-id", "list-unsubscribe", "auto-submitted", "precedence", "references", "date"],
 };
 
-// Shared by /api/overview and Ask Jev; parallel callers share one in-flight IMAP pass.
 const snapshots = createTtlCache<Snapshot>({ ttlMs: 90_000, maxEntries: 20 });
 
 export function invalidateSnapshot(session: MailSession): void {
@@ -117,7 +116,6 @@ async function fetchSnapshot(session: MailSession, days: number): Promise<Snapsh
         const seen = new Set<string>();
         const batch: EnvelopeRow[] = [];
         for (const msg of fetched) {
-          // Gmail can list one message twice via labels; keep the first copy.
           const dedupeKey = msg.emailId ?? msg.envelope?.messageId;
           if (dedupeKey) {
             if (seen.has(dedupeKey)) continue;
@@ -126,8 +124,6 @@ async function fetchSnapshot(session: MailSession, days: number): Promise<Snapsh
           batch.push(envelopeRowFrom(msg, folder, path));
         }
 
-        // Previews feed the Daily Brief (newest human mail) and the "expects a reply?"
-        // check on recent sends — a couple of grouped partial FETCHes, not full sources.
         const wanted = new Set(
           batch
             .filter((r) => folder === "sent" || (!r.listId && !r.autoSubmitted && !r.bulk))

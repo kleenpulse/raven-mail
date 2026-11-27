@@ -5,8 +5,6 @@ import type { MailMessage } from "@/lib/mail/types";
 const HOUR = 3_600_000;
 const DAY = 24 * HOUR;
 
-// Local-time anchors: the generator lays hours out in the machine's zone, and the obligation
-// counts must hold whatever weekday/hour the dev server happens to boot at.
 const SCENARIOS: [string, number][] = [
   ["Thursday afternoon", new Date(2026, 8, 24, 15, 0).getTime()],
   ["Monday before work", new Date(2026, 8, 21, 7, 30).getTime()],
@@ -38,7 +36,6 @@ function median(values: number[]): number | null {
   return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
 }
 
-/** Last message inbound, from a person, you in To, not \Answered, no Sent reply, ≤ 14 days. */
 function needsReply(list: MailMessage[], now: number): MailMessage[] {
   const latest = latestByThread(list);
   const replied = new Set(sent(list).map((m) => m.inReplyTo));
@@ -53,7 +50,6 @@ function needsReply(list: MailMessage[], now: number): MailMessage[] {
   );
 }
 
-/** Your Sent message is last in thread, to a person, unanswered, older than max(48h, 3× their median reply). */
 function ghosted(list: MailMessage[], now: number): MailMessage[] {
   const people = new Set(inbox(list).filter((m) => !automated(m)).map((m) => m.from.address));
   const sentById = new Map(sent(list).map((m) => [m.messageId, m]));
@@ -216,7 +212,6 @@ describe("generateSyntheticMail", () => {
         expect(out).toBeLessThanOrEqual(6);
       }
     }
-    // The dashboard reads 30 days; that slice is the ≈350–450 message mailbox it sees.
     const month = mail.filter((m) => NOW - at(m) <= 30 * DAY).length;
     expect(month).toBeGreaterThanOrEqual(350);
     expect(month).toBeLessThanOrEqual(480);

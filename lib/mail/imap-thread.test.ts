@@ -1,15 +1,11 @@
 import { beforeEach, describe, expect, mock, test } from "bun:test";
 import { makeSession } from "@/test/helpers/session";
 
-// getThread / expandThreadUids against a stand-in imapflow that records each SEARCH.
-
 type Fake = { uid: number; messageId: string; date: string; threadId?: string; references?: string; inReplyTo?: string };
 let mailboxes: Record<string, Fake[]> = {};
 let anchor: Fake & { folder: string };
 const searches: { mailbox: string; criteria: Record<string, unknown> }[] = [];
 let connects = 0;
-// A SEARCH that never answers, like a header scan on a huge unindexed folder.
-// As in imapflow, close() rejects whatever is still pending.
 let hangSearch = false;
 
 class FakeImapFlow {
@@ -140,7 +136,7 @@ describe("getThread over IMAP", () => {
   test("one login per conversation, not one per folder", async () => {
     const s = session();
     anchor = { folder: "INBOX", uid: 9, messageId: "<c@x>", date: "2026-10-20T10:00:00Z", threadId: "777" };
-    await getThread(s, "INBOX", "9"); // warms the cached folder list
+    await getThread(s, "INBOX", "9");
     connects = 0;
     await getThread(s, "INBOX", "9");
     expect(connects).toBe(1);
@@ -151,7 +147,6 @@ describe("getThread over IMAP", () => {
     anchor = { folder: "INBOX", uid: 9, messageId: "<c@x>", date: "2026-10-20T10:00:00Z", threadId: "777" };
     await getThread(s, "INBOX", "9");
     hangSearch = true;
-    // Fill all four connection slots with searches that never answer.
     const stuck = Array.from({ length: 4 }, () =>
       getThread(s, "INBOX", "9", AbortSignal.timeout(30)).then(
         () => "resolved",

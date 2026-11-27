@@ -2,7 +2,6 @@ import { describe, expect, mock, test } from "bun:test";
 import { PassThrough } from "node:stream";
 import { makeSession } from "@/test/helpers/session";
 
-// A stand-in imapflow: each download hands out a stream the test ends by hand.
 const streams: PassThrough[] = [];
 const downloadOptions: unknown[] = [];
 let connected = 0;
@@ -49,7 +48,6 @@ describe("downloadAttachment", () => {
     await tick();
     expect(started.sort()).toEqual([1, 2]);
 
-    // Two of the four connection slots are still free: the list/poll/reader path isn't starved.
     await Promise.race([
       Promise.all([verifyCredentials(session), verifyCredentials(session)]),
       tick().then(() => {
@@ -57,7 +55,6 @@ describe("downloadAttachment", () => {
       }),
     ]);
 
-    // Finishing one download lets the third start.
     streams[0]!.end();
     streams[0]!.resume();
     await tick();
@@ -92,7 +89,6 @@ describe("downloadAttachment", () => {
     streams[first]!.destroy();
     const file = await third;
     expect(downloadOptions.at(-1)).toEqual({ uid: true, chunkSize: DOWNLOAD_CHUNK_BYTES });
-    // It sat behind the other two for at least one tick before its turn came.
     expect(file.timings.wait).toBeGreaterThanOrEqual(5);
     for (const s of streams.slice(first)) s.destroy();
     await tick();

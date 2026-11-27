@@ -1,10 +1,7 @@
-/** Pure RFC 5322 header helpers (raw header block from IMAP `headers: [...]` fetches). */
-
 export function parseHeaderBlock(raw: Uint8Array | string | undefined): Map<string, string> {
   const out = new Map<string, string>();
   if (!raw) return out;
   const text = typeof raw === "string" ? raw : Buffer.from(raw).toString("utf8");
-  // Unfold continuation lines (CRLF/LF followed by whitespace).
   const unfolded = text.replace(/\r?\n[ \t]+/g, " ");
   for (const line of unfolded.split(/\r?\n/)) {
     const idx = line.indexOf(":");
@@ -33,7 +30,6 @@ const NAMED_ZONES: Record<string, number> = {
   PDT: -420,
 };
 
-/** Date: header → epoch + the writer's UTC offset in minutes (east positive). */
 export function parseDateHeader(value: string | undefined): { epoch: number; offsetMin: number } | null {
   if (!value) return null;
   const epoch = Date.parse(value.replace(/\s*\([^)]*\)\s*$/, ""));
@@ -50,7 +46,6 @@ export function parseDateHeader(value: string | undefined): { epoch: number; off
 
 const MAX_TARGET = 2048;
 
-/** List-Unsubscribe: `<https://…>, <mailto:…>` → first https + first mailto target. */
 export function parseListUnsubscribe(value: string | undefined): { https?: string; mailto?: string } | undefined {
   if (!value) return undefined;
   const targets = [...value.matchAll(/<([^>]+)>/g)]
@@ -63,10 +58,6 @@ export function parseListUnsubscribe(value: string | undefined): { https?: strin
 
 export type UnsubscribeOptions = { https?: string; mailto?: string; oneClick: boolean };
 
-/**
- * What an Unsubscribe button can do for a message. One-click (RFC 8058) needs
- * an https target plus `List-Unsubscribe-Post: List-Unsubscribe=One-Click`.
- */
 export function unsubscribeOptions(headers: Record<string, string | undefined>): UnsubscribeOptions | undefined {
   const targets = parseListUnsubscribe(headers["list-unsubscribe"]);
   if (!targets) return undefined;
@@ -76,10 +67,6 @@ export function unsubscribeOptions(headers: Record<string, string | undefined>):
 
 export type MailtoFields = { to: string; cc?: string; bcc?: string; subject?: string; body?: string };
 
-/**
- * Any `mailto:` link (RFC 6068) → draft fields. Only `%XX` escapes are decoded:
- * a `+` is a literal plus here, not a space as in form data.
- */
 export function mailtoFields(href: string): MailtoFields | undefined {
   const match = /^mailto:([^?]*)(?:\?([\s\S]*))?$/i.exec(href.trim());
   if (!match) return undefined;
@@ -102,7 +89,6 @@ export function mailtoFields(href: string): MailtoFields | undefined {
   }
 }
 
-/** Any `mailto:` link → what a new message in compose starts with. */
 export function mailtoDraft(href: string): { to: string; cc?: string; bcc?: string; subject: string; text: string } | undefined {
   const fields = mailtoFields(href);
   if (!fields) return undefined;
@@ -110,26 +96,16 @@ export function mailtoDraft(href: string): { to: string; cc?: string; bcc?: stri
   return { ...recipients, subject: subject ?? "", text: body ?? "" };
 }
 
-/**
- * Whether a link in a mail body names its own destination. Mail renders in a
- * srcdoc frame, which resolves relative links (`#`, `unsubscribe`, an unfilled
- * `*|UNSUB|*`) against Raven's own URL, so those would open Raven again.
- */
 export function isAbsoluteMailLink(href: string): boolean {
   return /^\s*(?:https?|mailto|tel|cid):/i.test(href);
 }
 
-/** `mailto:list@x.example?subject=…&body=…` → a prefilled unsubscribe request. */
 export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
   const fields = mailtoFields(href);
   if (!fields?.to.includes("@")) return undefined;
   return { to: fields.to, subject: fields.subject || "unsubscribe", body: fields.body || "unsubscribe" };
 }
 
-/**
- * mailparser folds every `List-*` header into one `list` object, so the raw
- * values are read back from its header lines (`{ key, line }`).
- */
 export function listHeaders(lines: readonly { key: string; line: string }[] | undefined): Record<string, string> {
   const out: Record<string, string> = {};
   for (const { key, line } of lines ?? []) {

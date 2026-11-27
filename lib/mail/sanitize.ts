@@ -19,11 +19,6 @@ const LAYOUT_ATTRS = [
   "size",
 ];
 
-/**
- * Output renders inside a sandboxed, script-less iframe with a CSP, so
- * presentational markup (classes, inline styles, <style>) is kept for fidelity;
- * scripts, handlers, forms and embeds are still stripped.
- */
 export function sanitizeBody(html: string): string {
   return sanitizeHtml(html, {
     allowedTags: sanitizeHtml.defaults.allowedTags.concat([
@@ -48,7 +43,6 @@ export function sanitizeBody(html: string): string {
     allowedSchemesByTag: { img: ["http", "https", "cid", "data"] },
     allowProtocolRelative: false,
     transformTags: {
-      // Relative hrefs would resolve against Raven's own URL (see isAbsoluteMailLink), so they go.
       a: (_tag, { href, ...attribs }) => ({
         tagName: "a",
         attribs: {
@@ -62,7 +56,6 @@ export function sanitizeBody(html: string): string {
   });
 }
 
-/** Whether the sanitized HTML would fetch anything remote (images, CSS). */
 export function hasRemoteContent(html: string): boolean {
   return /\b(?:src|background)\s*=\s*["']?\s*(?:https?:)?\/\/|url\(\s*["']?\s*(?:https?:)?\/\/|@import/i.test(html);
 }

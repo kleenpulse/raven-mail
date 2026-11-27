@@ -3,7 +3,6 @@ import type { MailMessage } from "@/lib/mail/types";
 import { parseDateHeader, parseReferences } from "@/lib/mail/headers";
 import { toPreview } from "@/lib/mail/mime";
 
-/** A parsed message as the Overview/Ask snapshot sees it. Pure, so the public landing demo can share it. */
 export function toEnvelopeRow(message: MailMessage, folder: EnvelopeRow["folder"]): EnvelopeRow {
   const h = message.headers;
   const dateHeader = parseDateHeader(h.date);
@@ -42,7 +41,6 @@ export function toEnvelopeRow(message: MailMessage, folder: EnvelopeRow["folder"
 
 const FOLDER_MAP: Record<string, EnvelopeRow["folder"]> = { INBOX: "inbox", Sent: "sent" };
 
-/** Snapshot of synthetic mail (dev store, landing demo) — same shape as the IMAP one. */
 export function snapshotFromMessages(
   messages: Iterable<MailMessage>,
   { now, days, account, inbox }: { now: number; days: number; account: string; inbox: { unseen: number; total: number } },
@@ -63,7 +61,6 @@ export function snapshotFromMessages(
     days,
     inbox: { path: "INBOX", ...inbox },
     sent: { path: "Sent" },
-    // A believable Gmail-sized quota so the storage ring has something to show.
     quota: { usedBytes: 6_200_000_000 + used, limitBytes: 15_000_000_000 },
     rows,
     truncated: false,

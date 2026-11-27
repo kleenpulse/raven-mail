@@ -53,7 +53,6 @@ function makeQueue() {
 const uids = (k: unknown[]) => qc.getQueryData<MessagesCache>(k)!.pages.map((p) => p.messages.map((m) => m.uid));
 const count = (k: unknown[]) => qc.getQueryData<MessagesCache>(k)!.pages[0]!.count;
 
-// A batch left pending would commit into the next test.
 afterEach(() => {
   for (const q of queues.splice(0)) while (q.undoLatest());
 });

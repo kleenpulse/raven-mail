@@ -66,7 +66,6 @@ describe("structure", () => {
 });
 
 describe("attached messages", () => {
-  // imapflow nests the inner message's body under the message/rfc822 node.
   const forwarded: MimeNode = {
     type: "multipart/mixed",
     childNodes: [
@@ -136,7 +135,6 @@ describe("attachmentSections", () => {
     const parsed = [
       { contentType: "image/png", filename: "logo.png" },
       { contentType: "application/pdf", filename: "a.pdf" },
-      // mailparser retypes octet-stream by extension
       { contentType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", filename: "notes.docx" },
       { contentType: "application/pdf", filename: "b.pdf" },
       { contentType: "message/rfc822" },
