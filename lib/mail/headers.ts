@@ -110,6 +110,15 @@ export function mailtoDraft(href: string): { to: string; cc?: string; bcc?: stri
   return { ...recipients, subject: subject ?? "", text: body ?? "" };
 }
 
+/**
+ * Whether a link in a mail body names its own destination. Mail renders in a
+ * srcdoc frame, which resolves relative links (`#`, `unsubscribe`, an unfilled
+ * `*|UNSUB|*`) against Raven's own URL, so those would open Raven again.
+ */
+export function isAbsoluteMailLink(href: string): boolean {
+  return /^\s*(?:https?|mailto|tel|cid):/i.test(href);
+}
+
 /** `mailto:list@x.example?subject=…&body=…` → a prefilled unsubscribe request. */
 export function parseMailto(href: string): { to: string; subject: string; body: string } | undefined {
   const fields = mailtoFields(href);

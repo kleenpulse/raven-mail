@@ -47,7 +47,15 @@ describe("sanitizeBody", () => {
 		expect(out).toContain(">x</a>");
 	});
 
-	test.each(["https://x.com/a", "http://x.com", "mailto:a@b.c", "tel:+15550100", "cid:part1"])("keeps href %p", (href) => {
+	// The body renders in a srcdoc frame, so a relative link resolves against Raven's own
+	// URL: a newsletter's "Unsubscribe" opened a second Raven window.
+	test.each(["", "#", "#top", "unsubscribe", "/u/1", "?x=1", "*|UNSUB|*", "{{unsubscribe_url}}"])("drops relative href %p", (href) => {
+		expect(sanitizeBody(`<a href="${href}" style="color:red">x</a>`)).toBe(
+			`<a style="color:red" rel="noopener noreferrer" target="_blank">x</a>`,
+		);
+	});
+
+	test.each(["https://x.com/a", "http://x.com", "HTTPS://X.COM", "mailto:a@b.c", "tel:+15550100", "cid:part1"])("keeps href %p", (href) => {
 		expect(sanitizeBody(`<a href="${href}">x</a>`)).toContain(`href="${href}"`);
 	});
 

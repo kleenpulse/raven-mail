@@ -11,6 +11,15 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- Some links inside an email, like an "Unsubscribe" link at the
+  bottom of a newsletter, opened a second Raven window instead of the
+  sender's page. These links did not say where they go, so Raven
+  pointed them back at itself. Now they do nothing when you click
+  them. Links that give a full web address still open in your
+  browser.
+
 ## [0.17.0] - 2026-11-24
 
 ### Added
