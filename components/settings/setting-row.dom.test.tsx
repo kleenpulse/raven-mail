@@ -52,6 +52,23 @@ describe("PrefSegmentedRow", () => {
 		fireEvent.click(screen.getByRole("button", { name: "Compact" }));
 		expect(getPref("appearance.density")).toBe("compact");
 	});
+
+	test("a press shrinks the label, never the item that holds the sliding highlight", () => {
+		render(
+			<PrefSegmentedRow
+				id="motion"
+				pref="appearance.motion"
+				options={[
+					{ value: "system", label: "System" },
+					{ value: "reduce", label: "Reduce" },
+				]}
+			/>,
+		);
+		const item = screen.getByRole("button", { name: "System" });
+		expect(item.querySelector("span[aria-hidden]")).not.toBeNull();
+		expect(item.className).not.toMatch(/(^|\s)active:scale/);
+		expect(item.querySelector("span:not([aria-hidden])")?.className).toMatch(/group-active\/toggle:scale/);
+	});
 });
 
 describe("search highlight", () => {

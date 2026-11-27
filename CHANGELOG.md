@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Fixed
+
+- In Settings, switching Reduce Motion from Reduce back to System
+  made the highlight jump in from below the buttons before it slid
+  into place. It happened when you held the mouse button for a
+  moment, which most clicks do. Now it slides straight across.
+
 ## [0.18.0] - 2026-11-27
 
 ### Added
