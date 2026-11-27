@@ -3,12 +3,12 @@ import { afterEach, describe, expect, test } from "bun:test";
 import type { WeatherReply } from "@/lib/weather/forecast";
 
 const React = await import("react");
-const { render, screen, cleanup, waitFor, act } = await import("@testing-library/react");
+const { render, screen, cleanup, waitFor, act, fireEvent } = await import("@testing-library/react");
 const { QueryClient, QueryClientProvider } = await import("@tanstack/react-query");
 const { AccountProvider } = await import("@/components/providers/account-provider");
 const { LocalWeather } = await import("./local-weather");
 const { forgetWeatherPlace } = await import("@/hooks/use-local-weather");
-const { resetPrefs, setPref } = await import("@/lib/prefs/store");
+const { getPref, resetPrefs, setPref, usePrefsStore } = await import("@/lib/prefs/store");
 
 const realFetch = globalThis.fetch;
 const urls: string[] = [];
@@ -47,11 +47,42 @@ const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 describe("LocalWeather", () => {
 	test("shows the sky and the temperature the server found", async () => {
+		setPref("overview.temperatureUnit", "celsius");
 		stubServer();
 		wrap();
 		await waitFor(() => expect(screen.getByText("Light rain")).toBeTruthy());
-		expect(screen.getByText(/^(24°C|75°F)$/)).toBeTruthy();
+		expect(screen.getByText("24°C")).toBeTruthy();
+		expect(screen.queryByText("75°F") === null).toBe(true);
 		expect(urls).toEqual(["/api/weather"]);
+	});
+
+	test("the picked unit is the one it shows", async () => {
+		setPref("overview.temperatureUnit", "fahrenheit");
+		stubServer();
+		wrap();
+		await waitFor(() => expect(screen.getByText("75°F")).toBeTruthy());
+		expect(screen.queryByRole("button", { name: /show in/i }) === null).toBe(true);
+	});
+
+	test("the first time, it asks °C or °F, and the answer sticks", async () => {
+		stubServer();
+		wrap();
+		const fahrenheit = await waitFor(() => screen.getByRole("button", { name: "Show in Fahrenheit" }));
+		expect(screen.getByRole("button", { name: "Show in Celsius" }).textContent).toBe("24°C");
+		expect(fahrenheit.textContent).toBe("75°F");
+		await act(async () => fireEvent.click(fahrenheit));
+		expect(getPref("overview.temperatureUnit")).toBe("fahrenheit");
+		expect(screen.queryByRole("button", { name: /show in/i }) === null).toBe(true);
+		expect(screen.getByText("75°F")).toBeTruthy();
+	});
+
+	test("picking the guessed unit still counts as an answer", async () => {
+		stubServer();
+		wrap();
+		const celsius = await waitFor(() => screen.getByRole("button", { name: "Show in Celsius" }));
+		await act(async () => fireEvent.click(celsius));
+		expect("overview.temperatureUnit" in usePrefsStore.getState().overrides).toBe(true);
+		expect(screen.getByText("24°C")).toBeTruthy();
 	});
 
 	test("offers to ask the browser when the server can't place the user", async () => {

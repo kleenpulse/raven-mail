@@ -39,7 +39,7 @@ import {
 import { stopPreloading } from "@/hooks/use-preload-in-view";
 import { requestChangelogOpen } from "@/components/whats-new/store";
 import { EntryList, useReleases } from "@/components/whats-new/whats-new";
-import { forgetWeatherPlace } from "@/hooks/use-local-weather";
+import { forgetWeatherPlace, useTemperatureUnit, type TemperatureUnit } from "@/hooks/use-local-weather";
 import { useSignOut } from "@/hooks/use-sign-out";
 import { useRefreshIntegrations } from "@/hooks/use-integrations";
 import { removeJevKeyAction, saveJevKeyAction } from "@/lib/actions/jev-key";
@@ -378,6 +378,23 @@ function BannerPositionRow() {
 						</Radio.Root>
 					))}
 				</RadioGroup>
+			)}
+		</SettingRow>
+	);
+}
+
+const TEMPERATURE_UNITS: { value: TemperatureUnit; label: string }[] = [
+	{ value: "celsius", label: "Celsius" },
+	{ value: "fahrenheit", label: "Fahrenheit" },
+];
+
+/** Shows the language's guess until the user picks; reset forgets the pick, so the Overview asks again. */
+function TemperatureUnitRow() {
+	const { unit, guess, answered } = useTemperatureUnit();
+	return (
+		<SettingRow id="temperature-unit" layout="wide" modified={answered && unit !== guess}>
+			{(labelId) => (
+				<Segmented value={unit} options={TEMPERATURE_UNITS} onChange={(next) => setPref("overview.temperatureUnit", next)} labelledBy={labelId} />
 			)}
 		</SettingRow>
 	);
@@ -837,6 +854,7 @@ const ROWS: Record<string, React.ComponentType> = {
 	transparency: () => <PrefSwitchRow id="transparency" pref="appearance.reduceTransparency" />,
 	"ask-pill": () => <PrefSwitchRow id="ask-pill" pref="appearance.askPill" />,
 	"local-weather": LocalWeatherRow,
+	"temperature-unit": TemperatureUnitRow,
 	"remote-images": () => <PrefSwitchRow id="remote-images" pref="mail.remoteImages" />,
 	"force-dark": () => <PrefSwitchRow id="force-dark" pref="mail.forceDark" />,
 	preload: () => <PrefSwitchRow id="preload" pref="mail.preload" />,
