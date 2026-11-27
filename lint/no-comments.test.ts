@@ -4,7 +4,6 @@ import plugin, { isDirective } from "./no-comments.mjs";
 
 RuleTester.describe = describe;
 RuleTester.it = it;
-RuleTester.itOnly = it.only;
 
 const tester = new RuleTester({
 	languageOptions: {
