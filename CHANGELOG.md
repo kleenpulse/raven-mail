@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.18.1] - 2026-11-27
+
 ### Fixed
 
 - In Settings, switching Reduce Motion from Reduce back to System
