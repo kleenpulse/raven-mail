@@ -28,6 +28,11 @@ describe("prefs store", () => {
 		expect(overrides()).toEqual({ "mail.remoteImages": false });
 	});
 
+	test("temperature unit keeps an explicit celsius: the weather's question was answered", () => {
+		setPref("overview.temperatureUnit", "celsius");
+		expect(overrides()).toEqual({ "overview.temperatureUnit": "celsius" });
+	});
+
 	test("reset clears only the keys asked for", () => {
 		setPref("appearance.density", "compact");
 		setPref("mail.undoMs", 20_000);

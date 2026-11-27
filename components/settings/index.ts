@@ -100,6 +100,15 @@ export const SETTINGS: SettingEntry[] = [
 		prefs: ["overview.localWeather"],
 	},
 	{
+		id: "temperature-unit",
+		section: "appearance",
+		card: "Overview",
+		label: "Temperature",
+		description: "How the weather under the date shows the temperature.",
+		keywords: "celsius fahrenheit degrees unit weather °c °f",
+		prefs: ["overview.temperatureUnit"],
+	},
+	{
 		id: "remote-images",
 		section: "mail",
 		card: "Reading",

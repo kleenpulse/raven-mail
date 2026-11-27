@@ -11,6 +11,13 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+### Added
+
+- The first time the weather shows on the Overview, Raven asks how
+  you want the temperature, like "28°C or 83°F?". Click the one you
+  read. You can change it any time in Settings, under Appearance,
+  in the new Temperature setting.
+
 ## [0.17.1] - 2026-11-27
 
 ### Fixed

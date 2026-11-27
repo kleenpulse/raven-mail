@@ -4,9 +4,25 @@ import * as React from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAccount } from "@/components/providers/account-provider";
 import { getJson } from "@/hooks/use-mail";
-import { usePref } from "@/lib/prefs/store";
+import { usePref, usePrefsStore } from "@/lib/prefs/store";
 import { qk } from "@/lib/query-keys";
+import { usesFahrenheit } from "@/lib/weather/codes";
 import type { WeatherReply } from "@/lib/weather/forecast";
+
+export type TemperatureUnit = "celsius" | "fahrenheit";
+
+const noSubscribe = () => () => {};
+
+/**
+ * The unit the user picked, or a guess from the browser's language until they
+ * do (`answered` false: the Overview asks). Celsius during SSR and hydration.
+ */
+export function useTemperatureUnit(): { unit: TemperatureUnit; guess: TemperatureUnit; answered: boolean } {
+	const picked = usePrefsStore((s) => s.overrides["overview.temperatureUnit"]);
+	const fahrenheit = React.useSyncExternalStore(noSubscribe, () => usesFahrenheit(navigator.language), () => false);
+	const guess = fahrenheit ? "fahrenheit" : "celsius";
+	return { unit: picked ?? guess, guess, answered: picked !== undefined };
+}
 
 /** Where the user said they are (rounded to about 1 km), or that they said no. This device only. */
 const STORAGE_KEY = "raven:weather-place";

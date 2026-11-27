@@ -15,6 +15,8 @@ export const PREF_SCHEMAS = {
 	"appearance.askPill": z.boolean(),
 	/** Real weather under the date on the Overview, which needs a rough location. */
 	"overview.localWeather": z.boolean(),
+	/** Absent = never answered: the weather asks once and guesses from the language until then. */
+	"overview.temperatureUnit": z.enum(["celsius", "fahrenheit"]),
 	/** Absent = never answered (the reader asks once); false = "just this once". */
 	"mail.remoteImages": z.boolean(),
 	/** In the dark theme, darken author-styled mail instead of showing it on light paper. */
@@ -57,6 +59,8 @@ export const DEFAULTS: Prefs = {
 	"appearance.reduceTransparency": false,
 	"appearance.askPill": true,
 	"overview.localWeather": true,
+	// Unused while unanswered (see useTemperatureUnit).
+	"overview.temperatureUnit": "celsius",
 	"mail.remoteImages": false,
 	"mail.forceDark": true,
 	"mail.undoMs": 5000,

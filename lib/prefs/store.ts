@@ -74,7 +74,7 @@ function sameValue(a: unknown, b: unknown): boolean {
 }
 
 /** Keys where an explicit answer differs from never having been asked. */
-const ANSWER_KEYS: ReadonlySet<PrefKey> = new Set(["mail.remoteImages"]);
+const ANSWER_KEYS: ReadonlySet<PrefKey> = new Set(["mail.remoteImages", "overview.temperatureUnit"]);
 
 export function setPref<K extends PrefKey>(key: K, value: Prefs[K]) {
 	usePrefsStore.setState((s) => {
