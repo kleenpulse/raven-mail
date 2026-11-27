@@ -11,6 +11,8 @@ as you work — it ships inside the app.
 
 ## [Unreleased]
 
+## [0.17.1] - 2026-11-27
+
 ### Fixed
 
 - Some links inside an email, like an "Unsubscribe" link at the
