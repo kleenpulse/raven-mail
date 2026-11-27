@@ -1,5 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import {
+	isAbsoluteMailLink,
 	listHeaders,
 	mailtoDraft,
 	mailtoFields,
@@ -224,6 +225,20 @@ describe("mailtoDraft", () => {
 	test("not a mailto link", () => {
 		expect(mailtoDraft("raven://open/mail")).toBeUndefined();
 	});
+});
+
+describe("isAbsoluteMailLink", () => {
+	test.each(["https://x.example/u", " HTTP://x.example", "mailto:a@x.example", "tel:+15550100", "cid:part1"])("%p names its destination", (href) => {
+		expect(isAbsoluteMailLink(href)).toBe(true);
+	});
+
+	// These resolve against Raven's own URL inside the srcdoc frame.
+	test.each(["", "#", "#top", "unsubscribe", "/mail", "?uid=1", "//x.example/u", "*|UNSUB|*", "javascript:x", "raven://open/mail"])(
+		"%p does not",
+		(href) => {
+			expect(isAbsoluteMailLink(href)).toBe(false);
+		},
+	);
 });
 
 describe("listHeaders", () => {

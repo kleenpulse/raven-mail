@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { cn } from "@/lib/utils";
-import { mailtoDraft } from "@/lib/mail/headers";
+import { isAbsoluteMailLink, mailtoDraft } from "@/lib/mail/headers";
 import { useComposeStore } from "@/lib/store/compose";
 
 const FORWARDED_KEYS = new Set(["j", "k", "u", "c", "g", "/", "Escape", "ArrowUp", "ArrowDown"]);
@@ -183,10 +183,15 @@ export function EmailFrame({
 		}
 
 		// Raven is the mail app: a mailto link starts a draft here, not in the OS handler.
+		// A relative link would open Raven itself (bodies cached before the sanitizer
+		// dropped them still carry some), so it does nothing.
 		// The target lives in the frame's realm, so `instanceof Element` would fail.
-		function composeMailto(e: MouseEvent) {
+		function followLink(e: MouseEvent) {
 			const link = (e.target as Element | null)?.closest?.("a[href]");
-			const draft = link ? mailtoDraft(link.getAttribute("href") ?? "") : undefined;
+			if (!link) return;
+			const href = link.getAttribute("href") ?? "";
+			if (!isAbsoluteMailLink(href)) return e.preventDefault();
+			const draft = e.type === "click" ? mailtoDraft(href) : undefined;
 			if (!draft) return;
 			e.preventDefault();
 			useComposeStore.getState().openCompose("new", draft);
@@ -219,10 +224,12 @@ export function EmailFrame({
 			observer = new ResizeObserver(measure);
 			observer.observe(doc.body);
 			win?.removeEventListener("keydown", forwardKey);
-			win?.removeEventListener("click", composeMailto);
+			win?.removeEventListener("click", followLink);
+			win?.removeEventListener("auxclick", followLink);
 			win = frame?.contentWindow ?? null;
 			win?.addEventListener("keydown", forwardKey);
-			win?.addEventListener("click", composeMailto);
+			win?.addEventListener("click", followLink);
+			win?.addEventListener("auxclick", followLink);
 		}
 
 		// `load` waits for every remote image, so a newsletter would sit at the 48px
@@ -240,7 +247,8 @@ export function EmailFrame({
 			frame.removeEventListener("load", setup);
 			observer?.disconnect();
 			win?.removeEventListener("keydown", forwardKey);
-			win?.removeEventListener("click", composeMailto);
+			win?.removeEventListener("click", followLink);
+			win?.removeEventListener("auxclick", followLink);
 		};
 	}, [srcDoc]);
 

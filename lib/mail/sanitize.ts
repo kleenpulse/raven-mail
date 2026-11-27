@@ -1,5 +1,6 @@
 import "server-only";
 import sanitizeHtml from "sanitize-html";
+import { isAbsoluteMailLink } from "@/lib/mail/headers";
 
 const LAYOUT_ATTRS = [
   "style",
@@ -47,9 +48,15 @@ export function sanitizeBody(html: string): string {
     allowedSchemesByTag: { img: ["http", "https", "cid", "data"] },
     allowProtocolRelative: false,
     transformTags: {
-      a: sanitizeHtml.simpleTransform("a", {
-        rel: "noopener noreferrer",
-        target: "_blank",
+      // Relative hrefs would resolve against Raven's own URL (see isAbsoluteMailLink), so they go.
+      a: (_tag, { href, ...attribs }) => ({
+        tagName: "a",
+        attribs: {
+          ...attribs,
+          ...(href !== undefined && isAbsoluteMailLink(href) ? { href } : {}),
+          rel: "noopener noreferrer",
+          target: "_blank",
+        },
       }),
     },
   });
